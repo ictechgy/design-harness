@@ -215,6 +215,48 @@ export const CRITERIA: Criterion[] = [
     runtime: "computed-style",
     checkNames: ["excessive-line-length"],
     remediationHint: "Constrain reading content width or use layout columns that preserve readable measure."
+  },
+  {
+    id: "responsive.fixed-width.risk",
+    category: "responsiveness",
+    title: "Wide content does not block small viewports",
+    description: "Large elements should not force small viewport overflow or brittle layout behavior.",
+    sourceRefs: ["wcag-2-2", "govuk-layout"],
+    sourceStrength: "official-pattern",
+    determinism: "heuristic",
+    resultKind: "risk",
+    confidenceDefault: "low",
+    runtime: "computed-style",
+    checkNames: ["fixed-width-risk"],
+    remediationHint: "Replace brittle wide sizing with responsive max-width, minmax, flex, grid, or container-relative sizing."
+  },
+  {
+    id: "responsive.sticky-obstruction.risk",
+    category: "responsiveness",
+    title: "Sticky and fixed elements do not obscure content",
+    description: "Sticky or fixed UI should not occupy enough viewport area to obscure primary content.",
+    sourceRefs: ["nng-usability-heuristics", "govuk-layout"],
+    sourceStrength: "industry-heuristic",
+    determinism: "heuristic",
+    resultKind: "risk",
+    confidenceDefault: "low",
+    runtime: "computed-style",
+    checkNames: ["sticky-obstruction-risk"],
+    remediationHint: "Reduce sticky/fixed element height, reserve layout space, or avoid covering primary content."
+  },
+  {
+    id: "a11y.target-size.minimum",
+    category: "accessibility",
+    title: "Interactive targets meet minimum geometry",
+    description: "Interactive controls should provide sufficient target size for pointer and touch interaction.",
+    sourceRefs: ["wcag-2-2", "carbon-accessibility", "polaris-accessibility"],
+    sourceStrength: "official-testable",
+    determinism: "deterministic",
+    resultKind: "risk",
+    confidenceDefault: "medium",
+    runtime: "computed-style",
+    checkNames: ["tap-target-risk"],
+    remediationHint: "Increase the control hit area or spacing so pointer and touch targets are easier to activate."
   }
 ];
 
@@ -237,7 +279,7 @@ export function getSource(id: string): CriterionSource | undefined {
 
 export function findingMetadataForCheck(checkName: string): Pick<
   Finding,
-  "criterionId" | "sourceRefs" | "determinism" | "resultKind" | "runtime" | "humanReviewRecommended"
+  "criterionId" | "sourceRefs" | "determinism" | "resultKind" | "runtime" | "confidence" | "humanReviewRecommended"
 > | undefined {
   const criterion = getCriterionForCheck(checkName);
   if (!criterion) {
@@ -250,6 +292,7 @@ export function findingMetadataForCheck(checkName: string): Pick<
     determinism: criterion.determinism,
     resultKind: criterion.resultKind,
     runtime: criterion.runtime,
+    confidence: criterion.confidenceDefault,
     humanReviewRecommended: criterion.determinism !== "deterministic" || criterion.resultKind === "needs-review"
   };
 }

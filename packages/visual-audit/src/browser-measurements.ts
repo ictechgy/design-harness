@@ -88,6 +88,10 @@ export async function collectViewportMeasurements(page: {
     const headingIssues = collectHeadingIssues();
     const missingMainLandmark = document.body.querySelector("main,[role='main']") === null;
     const repeatedLabels = collectRepeatedLabels(interactiveElements);
+    const fixedWidthRisks = collectFixedWidthRisks();
+    const stickyObstructionRisks = collectStickyObstructionRisks();
+    const excessiveLineLength = collectExcessiveLineLength(textElements);
+    const tapTargetRisks = collectTapTargetRisks(interactiveElements);
 
     return {
       viewport: document.documentElement.dataset.designHarnessViewport || "unknown",
@@ -104,7 +108,11 @@ export async function collectViewportMeasurements(page: {
       missingImageAlt,
       headingIssues,
       missingMainLandmark,
-      repeatedLabels
+      repeatedLabels,
+      fixedWidthRisks,
+      stickyObstructionRisks,
+      excessiveLineLength,
+      tapTargetRisks
     };
 
     function sampleElement(element: HTMLElement) {
@@ -279,6 +287,74 @@ export async function collectViewportMeasurements(page: {
           count: selectors.length,
           selectors
         }));
+    }
+
+    function collectFixedWidthRisks() {
+      if (viewport.width > 480) {
+        return [];
+      }
+
+      return Array.from(document.body.querySelectorAll<HTMLElement>("body *"))
+        .filter(isElementVisible)
+        .filter((element) => {
+          const rect = element.getBoundingClientRect();
+          return rect.width > viewport.width + 2 || element.scrollWidth > viewport.width + 2;
+        })
+        .slice(0, 10)
+        .map((element) => sampleElement(element));
+    }
+
+    function collectStickyObstructionRisks() {
+      return Array.from(document.body.querySelectorAll<HTMLElement>("body *"))
+        .filter(isElementVisible)
+        .filter((element) => {
+          const style = window.getComputedStyle(element);
+          if (style.position !== "fixed" && style.position !== "sticky") {
+            return false;
+          }
+          const rect = element.getBoundingClientRect();
+          const intersectsViewport = rect.bottom > 0 && rect.top < viewport.height;
+          const occupiesLargeHeight = rect.height >= viewport.height * 0.22;
+          const occupiesLargeWidth = rect.width >= viewport.width * 0.5;
+          return intersectsViewport && occupiesLargeHeight && occupiesLargeWidth;
+        })
+        .slice(0, 10)
+        .map((element) => sampleElement(element));
+    }
+
+    function collectExcessiveLineLength(elements: HTMLElement[]) {
+      return elements
+        .filter((element) => ["P", "LI", "ARTICLE", "SECTION", "MAIN"].includes(element.tagName))
+        .map((element) => {
+          const style = window.getComputedStyle(element);
+          const rect = element.getBoundingClientRect();
+          const fontSize = Number.parseFloat(style.fontSize || "16");
+          const estimatedCharactersPerLine = Math.round(rect.width / Math.max(fontSize * 0.52, 1));
+          return {
+            element,
+            estimatedCharactersPerLine
+          };
+        })
+        .filter(({ element, estimatedCharactersPerLine }) => element.innerText.trim().length > 160 && estimatedCharactersPerLine > 95)
+        .slice(0, 10)
+        .map(({ element, estimatedCharactersPerLine }) => ({
+          ...sampleElement(element),
+          estimatedCharactersPerLine
+        }));
+    }
+
+    function collectTapTargetRisks(elements: HTMLElement[]) {
+      return elements
+        .filter((element) => {
+          const style = window.getComputedStyle(element);
+          if (element.tagName === "A" && style.display === "inline") {
+            return false;
+          }
+          const rect = element.getBoundingClientRect();
+          return rect.width > 0 && rect.height > 0 && (rect.width < 24 || rect.height < 24);
+        })
+        .slice(0, 10)
+        .map((element) => sampleElement(element));
     }
 
     function findEffectiveBackgroundColor(element: HTMLElement): string {
