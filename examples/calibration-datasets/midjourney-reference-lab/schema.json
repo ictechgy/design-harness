@@ -49,6 +49,9 @@
     "sourcePromptHash": {
       "type": "string"
     },
+    "approvedAssetPath": {
+      "type": "string"
+    },
     "referenceDescription": {
       "type": "string"
     },
@@ -91,7 +94,7 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["summary", "claimType"],
+        "required": ["summary", "claimType", "expectedResult"],
         "properties": {
           "summary": {
             "type": "string"
