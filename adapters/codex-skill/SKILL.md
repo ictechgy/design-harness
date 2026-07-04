@@ -24,7 +24,9 @@ pnpm design-harness -- audit --url http://localhost:<port> --out runs/<run-id>
 ## Rules
 
 - Do not invent a parallel critique structure. Consume `audit.json`, `metadata.json`, screenshots, and `report.md`.
-- Keep deterministic audit findings separate from optional subjective critique.
+- Keep deterministic failures, deterministic risks, heuristic prompts, and optional subjective critique separate.
+- Prefer `criterionId`, `sourceRefs`, `observed`, and `expected` when choosing fixes.
+- Do not treat heuristic or subjective findings as hard failures without human review.
 - Treat scores as advisory evidence, not objective design quality.
 - Keep the core workflow model-agnostic; no required step should depend on one hosted LLM.
 

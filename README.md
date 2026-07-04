@@ -2,7 +2,7 @@
 
 Design Harness is an open-source, model-agnostic UI/UX critique, visual QA, and iteration harness for AI coding agents and design automation tools.
 
-The v0.1 golden path is intentionally narrow:
+The local CLI golden path is intentionally narrow:
 
 ```text
 local URL -> desktop/mobile screenshots -> schema-valid audit.json -> report.md -> iteration prompt scaffold
@@ -12,7 +12,7 @@ Design Harness does not train a design model, require a hosted LLM, or claim tha
 
 ## Status
 
-This repository is in early v0.1 implementation. The required path is a local CLI audit loop; MCP and Open Design materials are contracts/specs until verified implementations exist.
+This repository has the local CLI audit loop implemented and is expanding the v0.2 research-backed quality model. MCP and Open Design materials remain contracts/specs until verified implementations exist.
 
 ## Quickstart
 
@@ -38,19 +38,24 @@ runs/demo/
 ## Packages
 
 - `@design-harness/core`: schemas, validation, scoring, report rendering, shared types.
-- `@design-harness/visual-audit`: Playwright screenshot capture and deterministic visual checks.
+- `@design-harness/visual-audit`: Playwright screenshot capture and source-backed DOM, layout, accessibility, and interaction checks.
 - `@design-harness/cli`: command-line entry point for the v0.1 audit workflow.
 
 ## What Gets Checked
 
-The first deterministic checks are conservative:
+Checks are conservative and source-backed:
 
 - render failure or blank render
 - horizontal overflow
 - likely text clipping
 - DOM-computed contrast risk
+- semantic accessibility risks: missing names, form labels, image alternatives, heading issues, landmarks
+- responsive readability risks: wide content, sticky obstruction, excessive line length, target size
+- interaction state risks: error association, color-only states, disabled controls, live status, dialogs, custom controls, moving content
 
-Every finding includes severity, confidence, viewport, category, evidence references, and a recommendation.
+Every finding includes severity, confidence, viewport, category, evidence references, and a recommendation. v0.2 findings may also include `criterionId`, `sourceRefs`, `determinism`, `resultKind`, runtime type, observed evidence, and expected behavior.
+
+See [Criteria And Checks](docs/criteria-and-checks.md) and [Fixture Catalog](docs/fixtures.md).
 
 ## Example Fixture
 
