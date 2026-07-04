@@ -153,7 +153,7 @@ function renderSourceBackedCriteria(findings: Finding[]): string {
     const sources = criterion.sourceRefs
       .map((sourceRef) => {
         const source = getSource(sourceRef);
-        return source ? `${source.title} (${source.strength})` : sourceRef;
+        return source ? `[${escapeInline(source.title)}](${source.url}) (${source.strength})` : sourceRef;
       })
       .join("; ");
 
@@ -181,7 +181,11 @@ function renderEvidence(auditResult: AuditResult): string {
 }
 
 function renderRecommendations(findings: Finding[]): string {
-  const recommendations = findings.map((finding) => `- ${finding.recommendation}`);
+  const recommendations = findings.map((finding) => {
+    const criterion = finding.criterionId ? ` Criterion: \`${finding.criterionId}\`.` : "";
+    const evidence = finding.evidenceRefs.length ? ` Evidence: ${finding.evidenceRefs.map((ref) => `\`${ref}\``).join(", ")}.` : "";
+    return `- \`${finding.id}\`: ${finding.recommendation}${criterion}${evidence}`;
+  });
   return [
     "## Recommendations",
     "",
@@ -219,6 +223,10 @@ function renderOptionalCritique(critique?: Critique): string {
 
 function escapeTable(value: string): string {
   return value.replaceAll("|", "\\|").replaceAll("\n", " ");
+}
+
+function escapeInline(value: string): string {
+  return value.replaceAll("[", "\\[").replaceAll("]", "\\]");
 }
 
 function groupFindings(findings: Finding[]): {
