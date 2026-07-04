@@ -139,6 +139,12 @@ function measurementFor(name: string): ViewportMeasurements {
     textLength: 120,
     meaningfulElementCount: 8,
     clippedText: [],
-    contrastRisks: []
+    contrastRisks: [],
+    missingAccessibleNames: [],
+    missingFormLabels: [],
+    missingImageAlt: [],
+    headingIssues: [],
+    missingMainLandmark: false,
+    repeatedLabels: []
   };
 }

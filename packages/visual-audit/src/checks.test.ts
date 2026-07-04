@@ -10,16 +10,23 @@ const baseMeasurements: ViewportMeasurements = {
   textLength: 120,
   meaningfulElementCount: 4,
   clippedText: [],
-  contrastRisks: []
+  contrastRisks: [],
+  missingAccessibleNames: [],
+  missingFormLabels: [],
+  missingImageAlt: [],
+  headingIssues: [],
+  missingMainLandmark: false,
+  repeatedLabels: []
 };
 
 describe("findingsFromMeasurements", () => {
   it("detects likely blank renders", () => {
     const findings = findingsFromMeasurements(
-      { ...baseMeasurements, textLength: 0, meaningfulElementCount: 0 },
+      { ...baseMeasurements, textLength: 0, meaningfulElementCount: 0, missingMainLandmark: true },
       ["screenshot-desktop", "measurement-desktop"]
     );
     expect(findings.some((finding) => finding.checkName === "blank-render")).toBe(true);
+    expect(findings).toHaveLength(1);
   });
 
   it("detects horizontal overflow", () => {
@@ -57,5 +64,35 @@ describe("findingsFromMeasurements", () => {
     expect(finding.severity).toBe("critical");
     expect(finding.confidence).toBe("high");
     expect(finding.evidenceRefs).toEqual(["navigation-error-desktop"]);
+  });
+
+  it("emits semantic accessibility and hierarchy risks", () => {
+    const findings = findingsFromMeasurements(
+      {
+        ...baseMeasurements,
+        missingAccessibleNames: [{ selector: "button.icon" }],
+        missingFormLabels: [{ selector: "#email" }],
+        missingImageAlt: [{ selector: "img.hero" }],
+        headingIssues: [{ selector: "h3", level: 3, previousLevel: 1, issue: "heading-level-skip" }],
+        missingMainLandmark: true,
+        repeatedLabels: [{ label: "view", count: 3, selectors: ["button:nth-of-type(1)", "button:nth-of-type(2)", "button:nth-of-type(3)"] }]
+      },
+      ["screenshot-desktop", "measurement-desktop"]
+    );
+
+    expect(findings.map((finding) => finding.checkName)).toEqual(expect.arrayContaining([
+      "missing-accessible-name",
+      "missing-form-label",
+      "missing-image-alt",
+      "heading-level-skip",
+      "missing-main-landmark",
+      "ambiguous-repeated-label"
+    ]));
+    expect(findings.find((finding) => finding.checkName === "ambiguous-repeated-label")).toMatchObject({
+      determinism: "heuristic",
+      resultKind: "needs-review",
+      confidence: "low",
+      humanReviewRecommended: true
+    });
   });
 });
