@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Heuristic Needs Review Fixture</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        line-height: 1.5;
+        margin: 32px;
+      }
+
+      main {
+        max-width: 1120px;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Actions</h1>
+      <p>
+        This paragraph is intentionally wide so readability checks can classify it as a heuristic risk
+        rather than a deterministic failure. The content remains visible, but the measure should prompt
+        a design review for dense reading surfaces.
+      </p>
+      <button>View</button>
+      <button>View</button>
+      <button>View</button>
+    </main>
+  </body>
+</html>

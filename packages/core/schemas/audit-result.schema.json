@@ -237,6 +237,91 @@
           "checkName": {
             "type": "string",
             "minLength": 1
+          },
+          "criterionId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "sourceRefs": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "determinism": {
+            "type": "string",
+            "enum": [
+              "deterministic",
+              "heuristic",
+              "subjective"
+            ]
+          },
+          "resultKind": {
+            "type": "string",
+            "enum": [
+              "failure",
+              "risk",
+              "needs-review"
+            ]
+          },
+          "runtime": {
+            "type": "string",
+            "enum": [
+              "static-dom",
+              "computed-style",
+              "viewport-sweep",
+              "interaction-simulation",
+              "human-review"
+            ]
+          },
+          "observed": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "object"
+              },
+              {
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "expected": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "object"
+              },
+              {
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "humanReviewRecommended": {
+            "type": "boolean"
           }
         }
       }

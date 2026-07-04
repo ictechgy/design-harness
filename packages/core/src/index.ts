@@ -1,3 +1,4 @@
+export * from "./criteria.js";
 export * from "./fixtures.js";
 export * from "./integrity.js";
 export * from "./report.js";

@@ -1,4 +1,5 @@
 import { verdictForScore } from "./scoring.js";
+import { getCriterion, getSource } from "./criteria.js";
 import type { AuditResult, Critique, Finding } from "./types.js";
 
 export interface RenderReportInput {
@@ -14,6 +15,7 @@ export function renderMarkdownReport(input: RenderReportInput): string {
     renderFailedChecks(auditResult),
     renderScore(auditResult),
     renderFindings(auditResult.findings),
+    renderSourceBackedCriteria(auditResult.findings),
     renderEvidence(auditResult),
     renderRecommendations(auditResult.findings),
     renderIterationPrompt(auditResult),
@@ -38,7 +40,11 @@ function renderFailedChecks(auditResult: AuditResult): string {
 export function buildIterationPrompt(auditResult: AuditResult): string {
   const topFindings = auditResult.findings.slice(0, 5);
   const findingLines = topFindings.length
-    ? topFindings.map((finding) => `- ${finding.id}: ${finding.problem} Recommendation: ${finding.recommendation}`).join("\n")
+    ? topFindings.map((finding) => {
+        const implementationArea = implementationAreaFor(finding);
+        const criterion = finding.criterionId ? ` Criterion: ${finding.criterionId}.` : "";
+        return `- ${implementationArea}: ${finding.id}: ${finding.problem}${criterion} Recommendation: ${finding.recommendation}`;
+      }).join("\n")
     : "- No blocking deterministic findings were detected. Improve polish while preserving the current layout stability.";
 
   return [
@@ -79,10 +85,29 @@ function renderScore(auditResult: AuditResult): string {
 function renderFindings(findings: Finding[]): string {
   if (findings.length === 0) {
     return [
-      "## Deterministic Findings",
+      "## Findings",
       "",
       "No blocking deterministic findings were detected."
     ].join("\n");
+  }
+
+  const groupedFindings = groupFindings(findings);
+  const sections = [
+    "## Findings",
+    "",
+    renderFindingGroup("Deterministic Findings: Failures", groupedFindings.deterministicFailures),
+    renderFindingGroup("Deterministic Findings: Risks", groupedFindings.deterministicRisks),
+    renderFindingGroup("Heuristic Review Prompts", groupedFindings.heuristicFindings),
+    renderFindingGroup("Subjective Review Notes", groupedFindings.subjectiveFindings),
+    renderFindingGroup("Legacy Findings", groupedFindings.legacyFindings)
+  ].filter(Boolean);
+
+  return sections.join("\n\n");
+}
+
+function renderFindingGroup(title: string, findings: Finding[]): string {
+  if (findings.length === 0) {
+    return "";
   }
 
   const rows = findings.map((finding) =>
@@ -92,17 +117,53 @@ function renderFindings(findings: Finding[]): string {
       finding.confidence,
       finding.category,
       finding.viewport,
+      finding.determinism ?? "legacy",
+      finding.resultKind ?? "finding",
+      finding.criterionId ?? "",
       escapeTable(finding.problem),
       finding.evidenceRefs.map((ref) => `\`${ref}\``).join(", ")
     ].join(" | ")
   );
 
   return [
-    "## Deterministic Findings",
+    `### ${title}`,
     "",
-    "| ID | Severity | Confidence | Category | Viewport | Problem | Evidence |",
-    "| --- | --- | --- | --- | --- | --- | --- |",
+    "| ID | Severity | Confidence | Category | Viewport | Determinism | Result | Criterion | Problem | Evidence |",
+    "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |",
     ...rows.map((row) => `| ${row} |`)
+  ].join("\n");
+}
+
+function renderSourceBackedCriteria(findings: Finding[]): string {
+  const criterionIds = unique(findings.map((finding) => finding.criterionId).filter(isString));
+  if (criterionIds.length === 0) {
+    return [
+      "## Source-Backed Criteria",
+      "",
+      "No source-backed criteria were attached to this audit."
+    ].join("\n");
+  }
+
+  const lines = criterionIds.map((criterionId) => {
+    const criterion = getCriterion(criterionId);
+    if (!criterion) {
+      return `- \`${criterionId}\`: criterion metadata was not found.`;
+    }
+
+    const sources = criterion.sourceRefs
+      .map((sourceRef) => {
+        const source = getSource(sourceRef);
+        return source ? `${source.title} (${source.strength})` : sourceRef;
+      })
+      .join("; ");
+
+    return `- \`${criterion.id}\` (${criterion.determinism}/${criterion.resultKind}, ${criterion.runtime}): ${criterion.title}. Sources: ${sources}.`;
+  });
+
+  return [
+    "## Source-Backed Criteria",
+    "",
+    ...lines
   ].join("\n");
 }
 
@@ -158,4 +219,60 @@ function renderOptionalCritique(critique?: Critique): string {
 
 function escapeTable(value: string): string {
   return value.replaceAll("|", "\\|").replaceAll("\n", " ");
+}
+
+function groupFindings(findings: Finding[]): {
+  deterministicFailures: Finding[];
+  deterministicRisks: Finding[];
+  heuristicFindings: Finding[];
+  subjectiveFindings: Finding[];
+  legacyFindings: Finding[];
+} {
+  return {
+    deterministicFailures: findings.filter((finding) => finding.determinism === "deterministic" && finding.resultKind === "failure"),
+    deterministicRisks: findings.filter((finding) => finding.determinism === "deterministic" && finding.resultKind !== "failure"),
+    heuristicFindings: findings.filter((finding) => finding.determinism === "heuristic"),
+    subjectiveFindings: findings.filter((finding) => finding.determinism === "subjective"),
+    legacyFindings: findings.filter((finding) => !finding.determinism)
+  };
+}
+
+function implementationAreaFor(finding: Finding): string {
+  switch (finding.category) {
+    case "accessibility":
+      return "semantics";
+    case "responsiveness":
+    case "layout":
+      return "layout";
+    case "interaction":
+      return "interaction state";
+    case "task-fit":
+      return "content";
+    case "hierarchy":
+      return "structure";
+    case "visual-polish":
+      return "visual polish";
+  }
+}
+
+function unique(values: string[]): string[] {
+  return Array.from(new Set(values));
+}
+
+function isString(value: unknown): value is string {
+  return typeof value === "string";
+}
+
+const OVERCLAIM_PATTERNS: Array<{ label: string; pattern: RegExp }> = [
+  { label: "WCAG compliant", pattern: /\bWCAG compliant\b/i },
+  { label: "good design", pattern: /\bgood design\b/i },
+  { label: "best practice violation", pattern: /\bbest practice violation\b/i },
+  { label: "objectively better", pattern: /\bobjectively better\b/i },
+  { label: "unqualified accessible claim", pattern: /\b(?:is|are|was|were|looks|seems|appears)\s+accessible\b/i }
+];
+
+export function validateReportCopyGuardrails(report: string): string[] {
+  return OVERCLAIM_PATTERNS
+    .filter(({ pattern }) => pattern.test(report))
+    .map(({ label }) => label);
 }
