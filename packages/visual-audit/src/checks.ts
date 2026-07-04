@@ -30,6 +30,10 @@ export interface RepeatedLabelSample {
   selectors: string[];
 }
 
+export interface LineLengthSample extends ElementSample {
+  estimatedCharactersPerLine: number;
+}
+
 export interface ViewportMeasurements {
   viewport: string;
   viewportWidth: number;
@@ -46,6 +50,10 @@ export interface ViewportMeasurements {
   headingIssues: HeadingIssueSample[];
   missingMainLandmark: boolean;
   repeatedLabels: RepeatedLabelSample[];
+  fixedWidthRisks: ElementSample[];
+  stickyObstructionRisks: ElementSample[];
+  excessiveLineLength: LineLengthSample[];
+  tapTargetRisks: ElementSample[];
 }
 
 export function findingsFromMeasurements(
@@ -240,6 +248,80 @@ export function findingsFromMeasurements(
     }));
   }
 
+  for (const [index, sample] of measurements.fixedWidthRisks.slice(0, 5).entries()) {
+    findings.push(createFinding({
+      id: `finding-${measurements.viewport}-fixed-width-risk-${index + 1}`,
+      category: "responsiveness",
+      severity: "low",
+      confidence: "low",
+      viewport: measurements.viewport,
+      selector: sample.selector,
+      region: sample.region,
+      evidenceRefs,
+      problem: `Element ${sample.selector} appears wider than the viewport and may create brittle responsive behavior.`,
+      recommendation: "Use responsive max-width, flexible grid/flex sizing, or container-relative units instead of brittle wide sizing.",
+      checkName: "fixed-width-risk",
+      observed: sample.region ?? sample.selector,
+      expected: "Layout-critical elements adapt to the viewport without brittle wide sizing."
+    }));
+  }
+
+  for (const [index, sample] of measurements.stickyObstructionRisks.slice(0, 5).entries()) {
+    findings.push(createFinding({
+      id: `finding-${measurements.viewport}-sticky-obstruction-risk-${index + 1}`,
+      category: "responsiveness",
+      severity: "low",
+      confidence: "low",
+      viewport: measurements.viewport,
+      selector: sample.selector,
+      region: sample.region,
+      evidenceRefs,
+      problem: `Sticky or fixed element ${sample.selector} may obscure too much of the viewport.`,
+      recommendation: "Reduce sticky/fixed element size, reserve space in layout, or avoid covering primary content.",
+      checkName: "sticky-obstruction-risk",
+      observed: sample.region ?? sample.selector,
+      expected: "Sticky and fixed elements leave enough visible space for primary content."
+    }));
+  }
+
+  for (const [index, sample] of measurements.excessiveLineLength.slice(0, 5).entries()) {
+    findings.push(createFinding({
+      id: `finding-${measurements.viewport}-excessive-line-length-${index + 1}`,
+      category: "visual-polish",
+      severity: "low",
+      confidence: "low",
+      viewport: measurements.viewport,
+      selector: sample.selector,
+      region: sample.region,
+      evidenceRefs,
+      problem: `Text in ${sample.selector} may be hard to scan at about ${sample.estimatedCharactersPerLine} characters per line.`,
+      recommendation: "Constrain reading width or split dense content into a more readable layout.",
+      checkName: "excessive-line-length",
+      observed: {
+        estimatedCharactersPerLine: sample.estimatedCharactersPerLine,
+        region: sample.region
+      },
+      expected: "Reading-heavy text stays within a comfortable line length."
+    }));
+  }
+
+  for (const [index, sample] of measurements.tapTargetRisks.slice(0, 5).entries()) {
+    findings.push(createFinding({
+      id: `finding-${measurements.viewport}-tap-target-risk-${index + 1}`,
+      category: "accessibility",
+      severity: "medium",
+      viewport: measurements.viewport,
+      selector: sample.selector,
+      region: sample.region,
+      evidenceRefs,
+      problem: `Interactive target ${sample.selector} appears smaller than the configured minimum target size.`,
+      recommendation: "Increase the control hit area or spacing so the target is easier to activate.",
+      checkName: "tap-target-risk",
+      observed: sample.region ?? sample.selector,
+      expected: "Interactive targets are at least 24 by 24 CSS pixels unless an exception applies."
+    }));
+  }
+
   return findings;
 }
 
@@ -285,7 +367,7 @@ function createFinding(input: {
   return {
     ...input,
     ...metadata,
-    confidence: input.confidence ?? (input.checkName === "blank-render" || input.checkName === "render-failure" ? "high" : "medium")
+    confidence: input.confidence ?? metadata?.confidence ?? (input.checkName === "blank-render" || input.checkName === "render-failure" ? "high" : "medium")
   };
 }
 

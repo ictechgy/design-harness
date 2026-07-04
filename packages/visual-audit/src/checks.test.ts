@@ -16,7 +16,11 @@ const baseMeasurements: ViewportMeasurements = {
   missingImageAlt: [],
   headingIssues: [],
   missingMainLandmark: false,
-  repeatedLabels: []
+  repeatedLabels: [],
+  fixedWidthRisks: [],
+  stickyObstructionRisks: [],
+  excessiveLineLength: [],
+  tapTargetRisks: []
 };
 
 describe("findingsFromMeasurements", () => {
@@ -93,6 +97,36 @@ describe("findingsFromMeasurements", () => {
       resultKind: "needs-review",
       confidence: "low",
       humanReviewRecommended: true
+    });
+  });
+
+  it("emits responsive readability and target-size risks with low-confidence heuristics", () => {
+    const findings = findingsFromMeasurements(
+      {
+        ...baseMeasurements,
+        fixedWidthRisks: [{ selector: ".wide-panel", region: { x: 0, y: 0, width: 390, height: 200 } }],
+        stickyObstructionRisks: [{ selector: ".sticky-banner", region: { x: 0, y: 0, width: 390, height: 220 } }],
+        excessiveLineLength: [{ selector: "p.lede", estimatedCharactersPerLine: 112, region: { x: 0, y: 0, width: 900, height: 160 } }],
+        tapTargetRisks: [{ selector: "button.tiny", region: { x: 12, y: 12, width: 18, height: 18 } }]
+      },
+      ["screenshot-desktop", "measurement-desktop"]
+    );
+
+    expect(findings.map((finding) => finding.checkName)).toEqual(expect.arrayContaining([
+      "fixed-width-risk",
+      "sticky-obstruction-risk",
+      "excessive-line-length",
+      "tap-target-risk"
+    ]));
+    expect(findings.find((finding) => finding.checkName === "fixed-width-risk")).toMatchObject({
+      determinism: "heuristic",
+      confidence: "low",
+      resultKind: "risk",
+      humanReviewRecommended: true
+    });
+    expect(findings.find((finding) => finding.checkName === "tap-target-risk")).toMatchObject({
+      determinism: "deterministic",
+      resultKind: "risk"
     });
   });
 });

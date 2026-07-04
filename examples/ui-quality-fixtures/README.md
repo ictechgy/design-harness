@@ -7,5 +7,7 @@ Small pages used to calibrate source-backed criteria and report wording.
 - `heuristic-needs-review.html`: suggestive UX risks that should be review prompts instead of hard failures.
 - `semantic-a11y-good.html`: semantic structure and labels that should avoid the semantic accessibility risks.
 - `semantic-a11y-bad.html`: missing names, labels, alt text, heading order, landmark, and repeated-label risks.
+- `responsive-readability-good.html`: responsive layout, readable measure, and adequate targets.
+- `responsive-readability-bad.html`: fixed width, sticky obstruction, long lines, and small target risks.
 
 These fixtures intentionally stay framework-free so checks can isolate DOM, style, viewport, and report behavior.

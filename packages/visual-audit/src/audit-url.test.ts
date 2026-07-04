@@ -145,6 +145,10 @@ function measurementFor(name: string): ViewportMeasurements {
     missingImageAlt: [],
     headingIssues: [],
     missingMainLandmark: false,
-    repeatedLabels: []
+    repeatedLabels: [],
+    fixedWidthRisks: [],
+    stickyObstructionRisks: [],
+    excessiveLineLength: [],
+    tapTargetRisks: []
   };
 }
