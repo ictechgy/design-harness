@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Semantic Accessibility Good Fixture</title>
+  </head>
+  <body>
+    <header>
+      <nav aria-label="Primary navigation">
+        <a href="#orders">Orders</a>
+      </nav>
+    </header>
+    <main>
+      <h1>Orders</h1>
+      <section aria-labelledby="filters-heading">
+        <h2 id="filters-heading">Filters</h2>
+        <label for="query">Search orders</label>
+        <input id="query" name="query" type="search">
+        <button type="button" aria-label="Clear order search">Clear</button>
+      </section>
+      <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==" alt="Order volume trend">
+      <button type="button">View order A100</button>
+      <button type="button">View order A101</button>
+    </main>
+  </body>
+</html>

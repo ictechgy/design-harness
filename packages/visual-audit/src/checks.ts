@@ -1,4 +1,4 @@
-import { findingMetadataForCheck, type Finding, type FindingObservation, type RubricCategory, type Severity } from "@design-harness/core";
+import { findingMetadataForCheck, type Confidence, type Finding, type FindingObservation, type RubricCategory, type Severity } from "@design-harness/core";
 
 export interface ElementSample {
   selector: string;
@@ -18,6 +18,18 @@ export interface ContrastRiskSample extends ElementSample {
   backgroundColor: string;
 }
 
+export interface HeadingIssueSample extends ElementSample {
+  level: number;
+  issue: "empty-heading" | "heading-level-skip" | "duplicate-h1";
+  previousLevel?: number;
+}
+
+export interface RepeatedLabelSample {
+  label: string;
+  count: number;
+  selectors: string[];
+}
+
 export interface ViewportMeasurements {
   viewport: string;
   viewportWidth: number;
@@ -28,6 +40,12 @@ export interface ViewportMeasurements {
   meaningfulElementCount: number;
   clippedText: ElementSample[];
   contrastRisks: ContrastRiskSample[];
+  missingAccessibleNames: ElementSample[];
+  missingFormLabels: ElementSample[];
+  missingImageAlt: ElementSample[];
+  headingIssues: HeadingIssueSample[];
+  missingMainLandmark: boolean;
+  repeatedLabels: RepeatedLabelSample[];
 }
 
 export function findingsFromMeasurements(
@@ -52,6 +70,7 @@ export function findingsFromMeasurements(
       },
       expected: "Meaningful visible content is present."
     }));
+    return findings;
   }
 
   if (hasHorizontalOverflow(measurements)) {
@@ -113,6 +132,114 @@ export function findingsFromMeasurements(
     }));
   }
 
+  for (const [index, sample] of measurements.missingAccessibleNames.slice(0, 5).entries()) {
+    findings.push(createFinding({
+      id: `finding-${measurements.viewport}-missing-accessible-name-${index + 1}`,
+      category: "accessibility",
+      severity: "medium",
+      viewport: measurements.viewport,
+      selector: sample.selector,
+      region: sample.region,
+      evidenceRefs,
+      problem: `Interactive element ${sample.selector} may not expose a usable accessible name.`,
+      recommendation: "Add visible text, aria-label, aria-labelledby, or use a native control with a clear label.",
+      checkName: "missing-accessible-name",
+      observed: sample.text ? { text: sample.text, region: sample.region } : sample.region ?? sample.selector,
+      expected: "Interactive controls expose a non-empty accessible name."
+    }));
+  }
+
+  for (const [index, sample] of measurements.missingFormLabels.slice(0, 5).entries()) {
+    findings.push(createFinding({
+      id: `finding-${measurements.viewport}-missing-form-label-${index + 1}`,
+      category: "accessibility",
+      severity: "medium",
+      viewport: measurements.viewport,
+      selector: sample.selector,
+      region: sample.region,
+      evidenceRefs,
+      problem: `Form control ${sample.selector} may not have a programmatic label.`,
+      recommendation: "Associate the control with a visible label, aria-label, or aria-labelledby.",
+      checkName: "missing-form-label",
+      observed: sample.region ?? sample.selector,
+      expected: "Form controls have programmatic labels."
+    }));
+  }
+
+  for (const [index, sample] of measurements.missingImageAlt.slice(0, 5).entries()) {
+    findings.push(createFinding({
+      id: `finding-${measurements.viewport}-missing-image-alt-${index + 1}`,
+      category: "accessibility",
+      severity: "medium",
+      viewport: measurements.viewport,
+      selector: sample.selector,
+      region: sample.region,
+      evidenceRefs,
+      problem: `Image ${sample.selector} does not declare alt text or an intentional decorative alt attribute.`,
+      recommendation: "Add meaningful alt text for informative images, or use alt=\"\" for decorative images.",
+      checkName: "missing-image-alt",
+      observed: sample.region ?? sample.selector,
+      expected: "Informative images provide text alternatives or decorative images are explicitly marked."
+    }));
+  }
+
+  for (const [index, sample] of measurements.headingIssues.slice(0, 5).entries()) {
+    findings.push(createFinding({
+      id: `finding-${measurements.viewport}-${sample.issue}-${index + 1}`,
+      category: "hierarchy",
+      severity: sample.issue === "duplicate-h1" ? "low" : "medium",
+      viewport: measurements.viewport,
+      selector: sample.selector,
+      region: sample.region,
+      evidenceRefs,
+      problem: headingProblem(sample),
+      recommendation: "Use headings to describe page and section structure in a clear order.",
+      checkName: sample.issue,
+      observed: {
+        level: sample.level,
+        previousLevel: sample.previousLevel,
+        text: sample.text
+      },
+      expected: "Heading levels progress clearly without empty headings or ambiguous top-level structure."
+    }));
+  }
+
+  if (measurements.missingMainLandmark) {
+    findings.push(createFinding({
+      id: `finding-${measurements.viewport}-missing-main-landmark`,
+      category: "hierarchy",
+      severity: "medium",
+      viewport: measurements.viewport,
+      selector: "body",
+      evidenceRefs,
+      problem: "The page does not expose a main landmark in the captured DOM.",
+      recommendation: "Wrap primary page content in a <main> element or role=\"main\" landmark.",
+      checkName: "missing-main-landmark",
+      observed: false,
+      expected: "A main landmark is present."
+    }));
+  }
+
+  for (const [index, sample] of measurements.repeatedLabels.slice(0, 5).entries()) {
+    findings.push(createFinding({
+      id: `finding-${measurements.viewport}-ambiguous-repeated-label-${index + 1}`,
+      category: "task-fit",
+      severity: "low",
+      confidence: "low",
+      viewport: measurements.viewport,
+      evidenceRefs,
+      problem: `The label "${sample.label}" is reused by ${sample.count} interactive elements, which may be ambiguous.`,
+      recommendation: "Make repeated action labels more specific with visible text or accessible-name context.",
+      checkName: "ambiguous-repeated-label",
+      observed: {
+        label: sample.label,
+        count: sample.count,
+        selectors: sample.selectors
+      },
+      expected: "Repeated interactive labels are specific enough to distinguish actions."
+    }));
+  }
+
   return findings;
 }
 
@@ -152,11 +279,13 @@ function createFinding(input: {
   checkName: string;
   observed?: FindingObservation;
   expected?: FindingObservation;
+  confidence?: Confidence;
 }): Finding {
+  const metadata = findingMetadataForCheck(input.checkName);
   return {
     ...input,
-    ...findingMetadataForCheck(input.checkName),
-    confidence: input.checkName === "blank-render" || input.checkName === "render-failure" ? "high" : "medium"
+    ...metadata,
+    confidence: input.confidence ?? (input.checkName === "blank-render" || input.checkName === "render-failure" ? "high" : "medium")
   };
 }
 
@@ -167,4 +296,15 @@ function isLikelyBlank(measurements: ViewportMeasurements): boolean {
 function hasHorizontalOverflow(measurements: ViewportMeasurements): boolean {
   const widestDocument = Math.max(measurements.documentScrollWidth, measurements.bodyScrollWidth);
   return widestDocument > measurements.viewportWidth + 2;
+}
+
+function headingProblem(sample: HeadingIssueSample): string {
+  switch (sample.issue) {
+    case "empty-heading":
+      return `Heading ${sample.selector} is empty.`;
+    case "heading-level-skip":
+      return `Heading ${sample.selector} jumps from level ${sample.previousLevel} to level ${sample.level}.`;
+    case "duplicate-h1":
+      return `Additional H1 ${sample.selector} may make the page top-level structure ambiguous.`;
+  }
 }

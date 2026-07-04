@@ -45,6 +45,50 @@ export async function collectViewportMeasurements(page: {
       .filter((sample) => Number.isFinite(sample.ratio) && sample.ratio < sample.requiredRatio)
       .slice(0, 10);
 
+    const interactiveElements = Array.from(document.body.querySelectorAll<HTMLElement>([
+      "a[href]",
+      "button",
+      "input:not([type='hidden'])",
+      "select",
+      "textarea",
+      "[role='button']",
+      "[role='link']",
+      "[role='checkbox']",
+      "[role='radio']",
+      "[role='switch']",
+      "[role='tab']",
+      "[role='menuitem']",
+      "[tabindex]:not([tabindex='-1'])"
+    ].join(","))).filter(isElementVisible);
+
+    const missingAccessibleNames = interactiveElements
+      .filter((element) => !requiresProgrammaticFormLabel(element))
+      .filter((element) => !accessibleNameFor(element))
+      .slice(0, 10)
+      .map((element) => sampleElement(element));
+
+    const formControls = Array.from(document.body.querySelectorAll<HTMLElement>([
+      "input:not([type='hidden']):not([type='button']):not([type='submit']):not([type='reset'])",
+      "select",
+      "textarea"
+    ].join(","))).filter(isElementVisible);
+
+    const missingFormLabels = formControls
+      .filter((element) => !accessibleNameFor(element))
+      .slice(0, 10)
+      .map((element) => sampleElement(element));
+
+    const missingImageAlt = Array.from(document.body.querySelectorAll<HTMLImageElement>("img"))
+      .filter(isElementVisible)
+      .filter((element) => element.getAttribute("role") !== "presentation" && element.getAttribute("aria-hidden") !== "true")
+      .filter((element) => !element.hasAttribute("alt"))
+      .slice(0, 10)
+      .map((element) => sampleElement(element));
+
+    const headingIssues = collectHeadingIssues();
+    const missingMainLandmark = document.body.querySelector("main,[role='main']") === null;
+    const repeatedLabels = collectRepeatedLabels(interactiveElements);
+
     return {
       viewport: document.documentElement.dataset.designHarnessViewport || "unknown",
       viewportWidth: viewport.width,
@@ -54,7 +98,13 @@ export async function collectViewportMeasurements(page: {
       textLength: document.body.innerText.trim().length,
       meaningfulElementCount: textElements.length,
       clippedText,
-      contrastRisks
+      contrastRisks,
+      missingAccessibleNames,
+      missingFormLabels,
+      missingImageAlt,
+      headingIssues,
+      missingMainLandmark,
+      repeatedLabels
     };
 
     function sampleElement(element: HTMLElement) {
@@ -96,6 +146,139 @@ export async function collectViewportMeasurements(page: {
         current = parent;
       }
       return parts.join(" > ") || element.tagName.toLowerCase();
+    }
+
+    function isElementVisible(element: Element): boolean {
+      const style = window.getComputedStyle(element);
+      const rect = element.getBoundingClientRect();
+      return style.display !== "none" && style.visibility !== "hidden" && rect.width > 0 && rect.height > 0;
+    }
+
+    function accessibleNameFor(element: HTMLElement): string {
+      const ariaLabel = element.getAttribute("aria-label")?.trim();
+      if (ariaLabel) {
+        return ariaLabel;
+      }
+
+      const labelledBy = element.getAttribute("aria-labelledby");
+      if (labelledBy) {
+        const text = labelledBy
+          .split(/\s+/)
+          .map((id) => document.getElementById(id)?.innerText.trim() ?? "")
+          .filter(Boolean)
+          .join(" ")
+          .trim();
+        if (text) {
+          return text;
+        }
+      }
+
+      if (element instanceof HTMLInputElement && ["button", "submit", "reset"].includes(element.type) && element.value.trim()) {
+        return element.value.trim();
+      }
+
+      if (element instanceof HTMLImageElement && element.alt.trim()) {
+        return element.alt.trim();
+      }
+
+      const labelText = labelTextFor(element);
+      if (labelText) {
+        return labelText;
+      }
+
+      const ownText = element.innerText?.trim();
+      if (ownText) {
+        return ownText;
+      }
+
+      const title = element.getAttribute("title")?.trim();
+      return title ?? "";
+    }
+
+    function labelTextFor(element: HTMLElement): string {
+      if ("labels" in element) {
+        const labels = Array.from((element as HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement).labels ?? []);
+        const text = labels.map((label) => label.innerText.trim()).filter(Boolean).join(" ").trim();
+        if (text) {
+          return text;
+        }
+      }
+
+      const id = element.id;
+      if (id) {
+        const explicitLabel = document.querySelector<HTMLLabelElement>(`label[for="${CSS.escape(id)}"]`);
+        if (explicitLabel?.innerText.trim()) {
+          return explicitLabel.innerText.trim();
+        }
+      }
+
+      const wrappingLabel = element.closest("label");
+      return wrappingLabel?.innerText.trim() ?? "";
+    }
+
+    function requiresProgrammaticFormLabel(element: HTMLElement): boolean {
+      if (element instanceof HTMLTextAreaElement || element instanceof HTMLSelectElement) {
+        return true;
+      }
+      return element instanceof HTMLInputElement && !["hidden", "button", "submit", "reset", "image"].includes(element.type);
+    }
+
+    function collectHeadingIssues() {
+      const headings = Array.from(document.body.querySelectorAll<HTMLHeadingElement>("h1,h2,h3,h4,h5,h6")).filter(isElementVisible);
+      const issues: Array<ReturnType<typeof sampleElement> & {
+        level: number;
+        issue: "empty-heading" | "heading-level-skip" | "duplicate-h1";
+        previousLevel?: number;
+      }> = [];
+      let previousLevel = 0;
+      let h1Count = 0;
+
+      for (const heading of headings) {
+        const level = Number(heading.tagName.slice(1));
+        const text = heading.innerText.trim();
+        if (level === 1) {
+          h1Count += 1;
+          if (h1Count > 1) {
+            issues.push({ ...sampleElement(heading), level, issue: "duplicate-h1" });
+          }
+        }
+
+        if (!text) {
+          issues.push({ ...sampleElement(heading), level, issue: "empty-heading" });
+        }
+
+        if (previousLevel > 0 && level > previousLevel + 1) {
+          issues.push({ ...sampleElement(heading), level, issue: "heading-level-skip", previousLevel });
+        }
+
+        previousLevel = level;
+      }
+
+      return issues.slice(0, 10);
+    }
+
+    function collectRepeatedLabels(elements: HTMLElement[]) {
+      const labelGroups = new Map<string, string[]>();
+      for (const element of elements) {
+        const label = accessibleNameFor(element);
+        if (!label || label.length > 40) {
+          continue;
+        }
+
+        const normalized = label.toLowerCase();
+        const selectors = labelGroups.get(normalized) ?? [];
+        selectors.push(selectorFor(element));
+        labelGroups.set(normalized, selectors);
+      }
+
+      return Array.from(labelGroups.entries())
+        .filter(([, selectors]) => selectors.length >= 3)
+        .slice(0, 10)
+        .map(([label, selectors]) => ({
+          label,
+          count: selectors.length,
+          selectors
+        }));
     }
 
     function findEffectiveBackgroundColor(element: HTMLElement): string {
