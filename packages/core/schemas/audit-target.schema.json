@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://design-harness.dev/schemas/audit-target.schema.json",
+  "title": "AuditTarget",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "kind",
+    "url"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "type": "string",
+      "const": "0.1"
+    },
+    "kind": {
+      "type": "string",
+      "enum": [
+        "url"
+      ]
+    },
+    "url": {
+      "type": "string",
+      "pattern": "^https?://"
+    },
+    "name": {
+      "type": "string"
+    }
+  }
+}

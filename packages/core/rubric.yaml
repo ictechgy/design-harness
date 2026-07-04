@@ -1,0 +1,16 @@
+schemaVersion: "0.1"
+categories:
+  layout:
+    description: "Spatial structure, alignment, density, and overflow behavior."
+  hierarchy:
+    description: "Visual priority, headings, grouping, and scan path."
+  interaction:
+    description: "Controls, affordances, states, and workflow clarity."
+  accessibility:
+    description: "Contrast, semantics, keyboard and assistive technology risks."
+  responsiveness:
+    description: "Viewport adaptation and mobile/desktop stability."
+  visual-polish:
+    description: "Fit, finish, typography, spacing, and visual refinement."
+  task-fit:
+    description: "How well the interface supports the stated user task."
