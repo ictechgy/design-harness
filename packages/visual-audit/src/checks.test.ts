@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { findingsFromMeasurements, type ViewportMeasurements } from "./checks.js";
+import { createRenderFailureFinding, findingsFromMeasurements, type ViewportMeasurements } from "./checks.js";
 
 const baseMeasurements: ViewportMeasurements = {
   viewport: "desktop",
@@ -17,8 +17,7 @@ describe("findingsFromMeasurements", () => {
   it("detects likely blank renders", () => {
     const findings = findingsFromMeasurements(
       { ...baseMeasurements, textLength: 0, meaningfulElementCount: 0 },
-      "screenshot-desktop",
-      "measurement-desktop"
+      ["screenshot-desktop", "measurement-desktop"]
     );
     expect(findings.some((finding) => finding.checkName === "blank-render")).toBe(true);
   });
@@ -26,8 +25,7 @@ describe("findingsFromMeasurements", () => {
   it("detects horizontal overflow", () => {
     const findings = findingsFromMeasurements(
       { ...baseMeasurements, documentScrollWidth: 1500 },
-      "screenshot-desktop",
-      "measurement-desktop"
+      ["screenshot-desktop", "measurement-desktop"]
     );
     expect(findings.some((finding) => finding.checkName === "horizontal-overflow")).toBe(true);
   });
@@ -43,10 +41,21 @@ describe("findingsFromMeasurements", () => {
     }));
     const findings = findingsFromMeasurements(
       { ...baseMeasurements, clippedText, contrastRisks },
-      "screenshot-desktop",
-      "measurement-desktop"
+      ["screenshot-desktop", "measurement-desktop"]
     );
     expect(findings.filter((finding) => finding.checkName === "text-clipping")).toHaveLength(5);
     expect(findings.filter((finding) => finding.checkName === "dom-contrast-risk")).toHaveLength(5);
+  });
+
+  it("creates render-failure findings with evidence", () => {
+    const finding = createRenderFailureFinding({
+      id: "finding-desktop-render-failure",
+      viewport: "desktop",
+      evidenceRefs: ["navigation-error-desktop"],
+      problem: "Navigation failed."
+    });
+    expect(finding.severity).toBe("critical");
+    expect(finding.confidence).toBe("high");
+    expect(finding.evidenceRefs).toEqual(["navigation-error-desktop"]);
   });
 });

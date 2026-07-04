@@ -1,4 +1,5 @@
 export * from "./fixtures.js";
+export * from "./integrity.js";
 export * from "./report.js";
 export * from "./schema-registry.js";
 export * from "./scoring.js";

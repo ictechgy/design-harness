@@ -35,6 +35,7 @@ runs/<run-id>/
   metadata.json
   audit.json
   report.md
+  report-manifest.json
   screenshots/
     desktop.png
     mobile.png

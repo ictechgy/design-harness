@@ -104,6 +104,7 @@ export interface AuditResult {
   advisoryScore: AdvisoryScore;
   timings: AuditTimings;
   status: RunStatus;
+  failedChecks: string[];
 }
 
 export interface Critique {

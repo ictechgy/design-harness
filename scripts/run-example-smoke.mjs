@@ -11,7 +11,11 @@ rmSync(outDir, { recursive: true, force: true });
 
 const server = createServer((request, response) => {
   const requestUrl = new URL(request.url ?? "/", `http://${request.headers.host ?? "localhost"}`);
-  const candidate = safeJoin(root, requestUrl.pathname === "/" ? "/index.html" : decodeURIComponent(requestUrl.pathname));
+  const pathname = decodePathname(requestUrl.pathname, response);
+  if (!pathname) {
+    return;
+  }
+  const candidate = safeJoin(root, pathname === "/" ? "/index.html" : pathname);
   if (!candidate || !existsSync(candidate) || !statSync(candidate).isFile()) {
     response.writeHead(404, { "content-type": "text/plain; charset=utf-8" });
     response.end("Not found");
@@ -20,6 +24,16 @@ const server = createServer((request, response) => {
   response.writeHead(200, { "content-type": mimeType(candidate) });
   createReadStream(candidate).pipe(response);
 });
+
+function decodePathname(pathname, response) {
+  try {
+    return decodeURIComponent(pathname);
+  } catch {
+    response.writeHead(400, { "content-type": "text/plain; charset=utf-8" });
+    response.end("Bad request");
+    return null;
+  }
+}
 
 await new Promise((resolveListen) => {
   server.listen(port, "127.0.0.1", resolveListen);

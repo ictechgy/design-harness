@@ -29,6 +29,7 @@ runs/demo/
   metadata.json
   audit.json
   report.md
+  report-manifest.json
   screenshots/
     desktop.png
     mobile.png
@@ -68,8 +69,10 @@ pnpm design-harness -- audit --url http://localhost:4173 --out runs/merchant-das
 If Chromium is not installed for Playwright, run:
 
 ```bash
-pnpm exec playwright install chromium
+pnpm playwright:install
 ```
+
+Partial audits still write artifacts but exit with code `2` by default. Use `--allow-partial` when a debugging workflow should treat partial artifacts as success.
 
 ## Adapters And Specs
 

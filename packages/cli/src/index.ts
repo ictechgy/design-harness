@@ -32,8 +32,13 @@ async function main(argv: string[]): Promise<number> {
       auditResult: result.auditResult,
       metadata: result.metadata
     });
+    const partial = result.auditResult.status === "partial";
     console.log(`Design Harness audit ${result.auditResult.status}: ${args.outDir}`);
     console.log(`Report: ${args.outDir}/report.md`);
+    if (partial && !args.allowPartial) {
+      console.error("Audit completed with partial artifacts. Re-run with --allow-partial to treat this as success.");
+      return 2;
+    }
     return 0;
   } catch (error) {
     if (error instanceof BrowserUnavailableError) {

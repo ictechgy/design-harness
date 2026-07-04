@@ -8,8 +8,25 @@ describe("parseArgs", () => {
       command: "audit",
       url: "http://localhost:3000",
       outDir: "runs/demo",
-      timeoutMs: undefined
+      timeoutMs: undefined,
+      allowPartial: false
     });
+  });
+
+  it("parses allow-partial", () => {
+    expect(parseArgs(["audit", "--url", "http://localhost:3000", "--out", "runs/demo", "--allow-partial"])).toMatchObject({
+      command: "audit",
+      allowPartial: true
+    });
+  });
+
+  it("rejects invalid timeout values", () => {
+    expect(() => parseArgs(["audit", "--url", "http://localhost:3000", "--out", "runs/demo", "--timeout-ms", "NaN"])).toThrow(
+      "Invalid --timeout-ms"
+    );
+    expect(() => parseArgs(["audit", "--url", "http://localhost:3000", "--out", "runs/demo", "--timeout-ms", "0"])).toThrow(
+      "Invalid --timeout-ms"
+    );
   });
 
   it("rejects missing values", () => {

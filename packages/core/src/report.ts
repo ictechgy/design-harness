@@ -11,6 +11,7 @@ export function renderMarkdownReport(input: RenderReportInput): string {
   const sections = [
     "# Design Harness Audit Report",
     renderRunSummary(auditResult),
+    renderFailedChecks(auditResult),
     renderScore(auditResult),
     renderFindings(auditResult.findings),
     renderEvidence(auditResult),
@@ -20,6 +21,18 @@ export function renderMarkdownReport(input: RenderReportInput): string {
   ];
 
   return `${sections.filter(Boolean).join("\n\n")}\n`;
+}
+
+function renderFailedChecks(auditResult: AuditResult): string {
+  if (auditResult.failedChecks.length === 0) {
+    return "";
+  }
+
+  return [
+    "## Failed Checks",
+    "",
+    ...auditResult.failedChecks.map((failedCheck) => `- ${failedCheck}`)
+  ].join("\n");
 }
 
 export function buildIterationPrompt(auditResult: AuditResult): string {
