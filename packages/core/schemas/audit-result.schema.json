@@ -1,0 +1,341 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://design-harness.dev/schemas/audit-result.schema.json",
+  "title": "AuditResult",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "harnessVersion",
+    "runId",
+    "target",
+    "viewportPresets",
+    "evidenceAssets",
+    "findings",
+    "advisoryScore",
+    "timings",
+    "status",
+    "failedChecks"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "type": "string",
+      "const": "0.1"
+    },
+    "harnessVersion": {
+      "type": "string",
+      "minLength": 1
+    },
+    "runId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "target": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schemaVersion",
+        "kind",
+        "url"
+      ],
+      "properties": {
+        "schemaVersion": {
+          "type": "string",
+          "const": "0.1"
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "url"
+          ]
+        },
+        "url": {
+          "type": "string",
+          "pattern": "^https?://"
+        },
+        "name": {
+          "type": "string"
+        }
+      }
+    },
+    "viewportPresets": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "name",
+          "width",
+          "height",
+          "deviceScaleFactor",
+          "isMobile"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "width": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "height": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "deviceScaleFactor": {
+            "type": "number",
+            "minimum": 0.1
+          },
+          "isMobile": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    "evidenceAssets": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "type",
+          "createdAt"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "screenshot",
+              "dom-summary",
+              "console-summary",
+              "network-summary",
+              "measurement"
+            ]
+          },
+          "path": {
+            "type": "string"
+          },
+          "data": {
+            "type": "object"
+          },
+          "viewport": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "category",
+          "severity",
+          "confidence",
+          "viewport",
+          "evidenceRefs",
+          "problem",
+          "recommendation",
+          "checkName"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "category": {
+            "type": "string",
+            "enum": [
+              "layout",
+              "hierarchy",
+              "interaction",
+              "accessibility",
+              "responsiveness",
+              "visual-polish",
+              "task-fit"
+            ]
+          },
+          "severity": {
+            "type": "string",
+            "enum": [
+              "low",
+              "medium",
+              "high",
+              "critical"
+            ]
+          },
+          "confidence": {
+            "type": "string",
+            "enum": [
+              "low",
+              "medium",
+              "high"
+            ]
+          },
+          "viewport": {
+            "type": "string",
+            "minLength": 1
+          },
+          "selector": {
+            "type": "string"
+          },
+          "region": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "x",
+              "y",
+              "width",
+              "height"
+            ],
+            "properties": {
+              "x": {
+                "type": "number"
+              },
+              "y": {
+                "type": "number"
+              },
+              "width": {
+                "type": "number",
+                "minimum": 0
+              },
+              "height": {
+                "type": "number",
+                "minimum": 0
+              }
+            }
+          },
+          "evidenceRefs": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "problem": {
+            "type": "string",
+            "minLength": 1
+          },
+          "recommendation": {
+            "type": "string",
+            "minLength": 1
+          },
+          "checkName": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "advisoryScore": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "value",
+        "max",
+        "band",
+        "deductions",
+        "explanation"
+      ],
+      "properties": {
+        "value": {
+          "type": "number",
+          "minimum": 0
+        },
+        "max": {
+          "type": "number",
+          "minimum": 1
+        },
+        "band": {
+          "type": "string",
+          "enum": [
+            "strong",
+            "usable",
+            "needs-work",
+            "blocked"
+          ]
+        },
+        "deductions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "findingId",
+              "points",
+              "reason"
+            ],
+            "properties": {
+              "findingId": {
+                "type": "string"
+              },
+              "points": {
+                "type": "number",
+                "minimum": 0
+              },
+              "reason": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "explanation": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "timings": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "startedAt",
+        "finishedAt",
+        "durationMs"
+      ],
+      "properties": {
+        "startedAt": {
+          "type": "string",
+          "minLength": 1
+        },
+        "finishedAt": {
+          "type": "string",
+          "minLength": 1
+        },
+        "durationMs": {
+          "type": "number",
+          "minimum": 0
+        }
+      }
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "success",
+        "partial",
+        "failed"
+      ]
+    },
+    "failedChecks": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    }
+  }
+}

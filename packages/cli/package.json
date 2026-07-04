@@ -1,0 +1,22 @@
+{
+  "name": "@design-harness/cli",
+  "version": "0.1.0",
+  "description": "Design Harness command-line interface.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "bin": {
+    "design-harness": "dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json && node scripts/fix-bin-mode.mjs",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "start": "node dist/index.js"
+  },
+  "dependencies": {
+    "@design-harness/core": "workspace:*",
+    "@design-harness/visual-audit": "workspace:*"
+  }
+}
