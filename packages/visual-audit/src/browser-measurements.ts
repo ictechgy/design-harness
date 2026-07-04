@@ -92,6 +92,13 @@ export async function collectViewportMeasurements(page: {
     const stickyObstructionRisks = collectStickyObstructionRisks();
     const excessiveLineLength = collectExcessiveLineLength(textElements);
     const tapTargetRisks = collectTapTargetRisks(interactiveElements);
+    const formErrorAssociationRisks = collectFormErrorAssociationRisks(formControls);
+    const colorOnlyStateRisks = collectColorOnlyStateRisks();
+    const disabledWithoutExplanation = collectDisabledWithoutExplanation();
+    const statusLiveRegionRisks = collectStatusLiveRegionRisks();
+    const modalFocusRisks = collectModalFocusRisks();
+    const customControlSemanticsRisks = collectCustomControlSemanticsRisks();
+    const movingContentControlRisks = collectMovingContentControlRisks();
 
     return {
       viewport: document.documentElement.dataset.designHarnessViewport || "unknown",
@@ -112,7 +119,14 @@ export async function collectViewportMeasurements(page: {
       fixedWidthRisks,
       stickyObstructionRisks,
       excessiveLineLength,
-      tapTargetRisks
+      tapTargetRisks,
+      formErrorAssociationRisks,
+      colorOnlyStateRisks,
+      disabledWithoutExplanation,
+      statusLiveRegionRisks,
+      modalFocusRisks,
+      customControlSemanticsRisks,
+      movingContentControlRisks
     };
 
     function sampleElement(element: HTMLElement) {
@@ -355,6 +369,134 @@ export async function collectViewportMeasurements(page: {
         })
         .slice(0, 10)
         .map((element) => sampleElement(element));
+    }
+
+    function collectFormErrorAssociationRisks(elements: HTMLElement[]) {
+      return elements
+        .filter((element) => element.getAttribute("aria-invalid") === "true")
+        .filter((element) => !element.getAttribute("aria-describedby") && !element.getAttribute("aria-errormessage"))
+        .slice(0, 10)
+        .map((element) => sampleElement(element));
+    }
+
+    function collectColorOnlyStateRisks() {
+      return Array.from(document.body.querySelectorAll<HTMLElement>([
+        "[class*='error']",
+        "[class*='danger']",
+        "[class*='success']",
+        "[class*='warning']",
+        "[data-state='error']",
+        "[data-state='success']",
+        "[data-state='warning']"
+      ].join(",")))
+        .filter(isElementVisible)
+        .filter((element) => !element.innerText.trim())
+        .filter((element) => !accessibleNameFor(element))
+        .filter((element) => !element.getAttribute("role") && !element.getAttribute("aria-live"))
+        .slice(0, 10)
+        .map((element) => sampleElement(element));
+    }
+
+    function collectDisabledWithoutExplanation() {
+      return Array.from(document.body.querySelectorAll<HTMLElement>("button:disabled,input:disabled,select:disabled,textarea:disabled,[aria-disabled='true']"))
+        .filter(isElementVisible)
+        .filter((element) => !element.getAttribute("aria-describedby") && !element.getAttribute("title"))
+        .filter((element) => {
+          const parentText = element.parentElement?.innerText.trim() ?? "";
+          const ownText = element.innerText?.trim() ?? "";
+          const nearbyText = parentText.replace(ownText, "").trim();
+          return nearbyText.length < 12;
+        })
+        .slice(0, 10)
+        .map((element) => sampleElement(element));
+    }
+
+    function collectStatusLiveRegionRisks() {
+      return Array.from(document.body.querySelectorAll<HTMLElement>([
+        "[class*='status']",
+        "[class*='toast']",
+        "[class*='alert']",
+        "[class*='loading']",
+        "[class*='saving']",
+        "[aria-busy='true']",
+        "[data-state]"
+      ].join(",")))
+        .filter(isElementVisible)
+        .filter((element) => /\b(loading|saving|saved|success|error|failed|complete)\b/i.test(element.innerText))
+        .filter((element) => !hasStatusSemantics(element))
+        .slice(0, 10)
+        .map((element) => sampleElement(element));
+    }
+
+    function collectModalFocusRisks() {
+      return Array.from(document.body.querySelectorAll<HTMLElement>("dialog[open],[role='dialog'],[aria-modal='true']"))
+        .filter(isElementVisible)
+        .filter((element) => element.getAttribute("aria-modal") !== "true" || !hasFocusableDescendant(element))
+        .slice(0, 10)
+        .map((element) => sampleElement(element));
+    }
+
+    function collectCustomControlSemanticsRisks() {
+      return Array.from(document.body.querySelectorAll<HTMLElement>("[onclick],[role='button'],[role='link'],[role='checkbox'],[role='switch'],[role='tab']"))
+        .filter(isElementVisible)
+        .filter((element) => !["BUTTON", "A", "INPUT", "SELECT", "TEXTAREA"].includes(element.tagName))
+        .filter((element) => !element.getAttribute("role") || (!element.hasAttribute("tabindex") && element.getAttribute("contenteditable") !== "true") || !accessibleNameFor(element))
+        .slice(0, 10)
+        .map((element) => sampleElement(element));
+    }
+
+    function collectMovingContentControlRisks() {
+      const autoplayMedia = Array.from(document.body.querySelectorAll<HTMLElement>("video[autoplay],audio[autoplay],marquee"))
+        .filter(isElementVisible)
+        .filter((element) => !element.hasAttribute("controls"));
+
+      const animatedElements = Array.from(document.body.querySelectorAll<HTMLElement>("body *"))
+        .filter(isElementVisible)
+        .filter((element) => {
+          const style = window.getComputedStyle(element);
+          const duration = parseCssTime(style.animationDuration);
+          const iterationCount = style.animationIterationCount;
+          return duration > 0 && (iterationCount === "infinite" || Number(iterationCount) > 1);
+        })
+        .filter((element) => !element.closest("[data-design-harness-motion-control]"));
+
+      return [...autoplayMedia, ...animatedElements]
+        .slice(0, 10)
+        .map((element) => sampleElement(element));
+    }
+
+    function hasStatusSemantics(element: HTMLElement): boolean {
+      let current: HTMLElement | null = element;
+      while (current) {
+        const role = current.getAttribute("role");
+        if (role === "status" || role === "alert" || role === "progressbar" || current.getAttribute("aria-live")) {
+          return true;
+        }
+        current = current.parentElement;
+      }
+      return false;
+    }
+
+    function hasFocusableDescendant(element: HTMLElement): boolean {
+      return element.querySelector([
+        "a[href]",
+        "button:not(:disabled)",
+        "input:not(:disabled):not([type='hidden'])",
+        "select:not(:disabled)",
+        "textarea:not(:disabled)",
+        "[tabindex]:not([tabindex='-1'])"
+      ].join(",")) !== null;
+    }
+
+    function parseCssTime(value: string): number {
+      const first = value.split(",")[0]?.trim() ?? "0s";
+      if (first.endsWith("ms")) {
+        return Number.parseFloat(first) / 1000;
+      }
+      if (first.endsWith("s")) {
+        return Number.parseFloat(first);
+      }
+      return 0;
     }
 
     function findEffectiveBackgroundColor(element: HTMLElement): string {

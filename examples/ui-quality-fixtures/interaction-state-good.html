@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Interaction State Good Fixture</title>
+  </head>
+  <body>
+    <main>
+      <h1>Checkout</h1>
+      <label for="email">Email</label>
+      <input id="email" aria-invalid="true" aria-describedby="email-error">
+      <p id="email-error">Enter a valid email address.</p>
+      <button type="button" aria-describedby="save-help" disabled>Save</button>
+      <p id="save-help">Enter an email address before saving.</p>
+      <p role="status">Saving draft</p>
+      <dialog open aria-modal="true">
+        <p>Confirm changes</p>
+        <button type="button">Close</button>
+      </dialog>
+      <button type="button">Open menu</button>
+      <video controls></video>
+    </main>
+  </body>
+</html>
