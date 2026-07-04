@@ -1,0 +1,28 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build and package output
+dist/
+build/
+coverage/
+*.tsbuildinfo
+
+# Runtime artifacts
+runs/
+playwright-report/
+test-results/
+.nyc_output/
+
+# Local environment and caches
+.env
+.env.*
+!.env.example
+.DS_Store
+.cache/
+.turbo/
+
+# Local agent planning/state
+.omx/
+.codex/
+.agents/
