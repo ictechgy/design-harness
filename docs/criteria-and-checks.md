@@ -49,6 +49,17 @@ pnpm validate
 pnpm smoke:example
 ```
 
+## Reference-Derived Calibration
+
+Reference images can suggest new fixture ideas, but they are not criteria. When a Midjourney Reference Lab example becomes a harness artifact:
+
+- map deterministic expected findings to existing `criterionId` values with `official-testable` source strength;
+- mark weaker observations as `heuristic-risk`, `human-review`, or `future-criterion`;
+- keep generated assets out of the default commit path;
+- validate the manifest with `pnpm validate:midjourney-lab`.
+
+See [Midjourney Reference Lab Workflow](midjourney-reference-lab/workflow.md).
+
 ## Report Copy Guardrails
 
 Reports should avoid unqualified claims such as:

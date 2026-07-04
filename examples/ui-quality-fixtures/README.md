@@ -11,5 +11,7 @@ Small pages used to calibrate source-backed criteria and report wording.
 - `responsive-readability-bad.html`: fixed width, sticky obstruction, long lines, and small target risks.
 - `interaction-state-good.html`: associated errors, live status, native controls, and controlled motion.
 - `interaction-state-bad.html`: static signals for interaction-state risks.
+- `midjourney-derived/scanability-good.html`: hand-authored dense-dashboard scanability fixture.
+- `midjourney-derived/scanability-bad.html`: hand-authored dense-dashboard scanability stress fixture.
 
 These fixtures intentionally stay framework-free so checks can isolate DOM, style, viewport, and report behavior.

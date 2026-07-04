@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Midjourney-Derived Scanability Good Fixture</title>
+    <style>
+      :root {
+        color-scheme: light;
+        font-family: Arial, sans-serif;
+        line-height: 1.45;
+      }
+
+      body {
+        background: #f6f7f9;
+        color: #1f2933;
+        margin: 0;
+      }
+
+      main {
+        margin: 0 auto;
+        max-width: 1120px;
+        padding: 24px;
+      }
+
+      header {
+        display: grid;
+        gap: 8px;
+        margin-bottom: 20px;
+      }
+
+      h1,
+      h2,
+      p {
+        margin: 0;
+      }
+
+      .summary {
+        display: grid;
+        gap: 12px;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        margin-bottom: 20px;
+      }
+
+      .metric,
+      .panel {
+        background: #ffffff;
+        border: 1px solid #d9e2ec;
+        border-radius: 6px;
+        padding: 16px;
+      }
+
+      .metric strong {
+        display: block;
+        font-size: 1.45rem;
+        margin-top: 4px;
+      }
+
+      .layout {
+        display: grid;
+        gap: 16px;
+        grid-template-columns: minmax(0, 2fr) minmax(240px, 1fr);
+      }
+
+      .toolbar {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-bottom: 12px;
+      }
+
+      button {
+        background: #1f6feb;
+        border: 0;
+        border-radius: 6px;
+        color: #ffffff;
+        min-height: 44px;
+        min-width: 44px;
+        padding: 10px 14px;
+      }
+
+      table {
+        border-collapse: collapse;
+        width: 100%;
+      }
+
+      th,
+      td {
+        border-bottom: 1px solid #e5e7eb;
+        padding: 12px 8px;
+        text-align: left;
+      }
+
+      .status {
+        border-radius: 999px;
+        display: inline-block;
+        font-size: 0.875rem;
+        padding: 4px 8px;
+      }
+
+      .status.good {
+        background: #d1fae5;
+        color: #065f46;
+      }
+
+      .status.watch {
+        background: #fef3c7;
+        color: #92400e;
+      }
+
+      .notes {
+        display: grid;
+        gap: 12px;
+      }
+
+      @media (max-width: 760px) {
+        main {
+          padding: 16px;
+        }
+
+        .layout {
+          grid-template-columns: 1fr;
+        }
+
+        th,
+        td {
+          padding: 10px 6px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <h1>Inventory review</h1>
+        <p>Compact operations view with grouped metrics, clear table labels, and usable controls.</p>
+      </header>
+
+      <section class="summary" aria-label="Inventory summary">
+        <article class="metric">
+          <span>Items ready</span>
+          <strong>128</strong>
+        </article>
+        <article class="metric">
+          <span>Needs reorder</span>
+          <strong>14</strong>
+        </article>
+        <article class="metric">
+          <span>Blocked orders</span>
+          <strong>3</strong>
+        </article>
+      </section>
+
+      <section class="layout">
+        <article class="panel">
+          <h2>Priority items</h2>
+          <div class="toolbar" aria-label="Inventory actions">
+            <button type="button">Export</button>
+            <button type="button">Review low stock</button>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th scope="col">Item</th>
+                <th scope="col">Status</th>
+                <th scope="col">Owner</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Morning pastry set</td>
+                <td><span class="status watch">Reorder</span></td>
+                <td>Kitchen</td>
+              </tr>
+              <tr>
+                <td>Gift card sleeve</td>
+                <td><span class="status good">Ready</span></td>
+                <td>Front desk</td>
+              </tr>
+              <tr>
+                <td>Cold brew bottles</td>
+                <td><span class="status watch">Review</span></td>
+                <td>Storage</td>
+              </tr>
+            </tbody>
+          </table>
+        </article>
+
+        <aside class="panel notes" aria-label="Review notes">
+          <h2>Next checks</h2>
+          <p>Group review by blocked order first, then inspect low-stock items before the afternoon run.</p>
+          <button type="button">Open review queue</button>
+        </aside>
+      </section>
+    </main>
+  </body>
+</html>
