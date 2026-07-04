@@ -19,7 +19,7 @@ This repository is in early v0.1 implementation. The required path is a local CL
 ```bash
 pnpm install
 pnpm build
-pnpm design-harness audit --url http://localhost:3000 --out runs/demo
+pnpm design-harness -- audit --url http://localhost:3000 --out runs/demo
 ```
 
 Expected output:
@@ -50,6 +50,26 @@ The first deterministic checks are conservative:
 - DOM-computed contrast risk
 
 Every finding includes severity, confidence, viewport, category, evidence references, and a recommendation.
+
+## Example Fixture
+
+Run the merchant-dashboard fixture in one terminal:
+
+```bash
+pnpm example:serve
+```
+
+Then audit it:
+
+```bash
+pnpm design-harness -- audit --url http://localhost:4173 --out runs/merchant-dashboard
+```
+
+If Chromium is not installed for Playwright, run:
+
+```bash
+pnpm exec playwright install chromium
+```
 
 ## Adapters And Specs
 
