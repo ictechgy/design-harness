@@ -9,5 +9,7 @@ Small pages used to calibrate source-backed criteria and report wording.
 - `semantic-a11y-bad.html`: missing names, labels, alt text, heading order, landmark, and repeated-label risks.
 - `responsive-readability-good.html`: responsive layout, readable measure, and adequate targets.
 - `responsive-readability-bad.html`: fixed width, sticky obstruction, long lines, and small target risks.
+- `interaction-state-good.html`: associated errors, live status, native controls, and controlled motion.
+- `interaction-state-bad.html`: static signals for interaction-state risks.
 
 These fixtures intentionally stay framework-free so checks can isolate DOM, style, viewport, and report behavior.

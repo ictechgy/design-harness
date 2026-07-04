@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Interaction State Bad Fixture</title>
+    <style>
+      @keyframes slide {
+        from { transform: translateX(0); }
+        to { transform: translateX(40px); }
+      }
+
+      .ticker {
+        animation: slide 2s infinite;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Checkout</h1>
+      <label for="email">Email</label>
+      <input id="email" aria-invalid="true">
+      <span class="error-dot"></span>
+      <button type="button" disabled>Save</button>
+      <p class="toast">Saving</p>
+      <div role="dialog">Confirm changes</div>
+      <div onclick="void 0">Open menu</div>
+      <div class="ticker">Daily offer</div>
+      <video autoplay></video>
+    </main>
+  </body>
+</html>

@@ -20,7 +20,14 @@ const baseMeasurements: ViewportMeasurements = {
   fixedWidthRisks: [],
   stickyObstructionRisks: [],
   excessiveLineLength: [],
-  tapTargetRisks: []
+  tapTargetRisks: [],
+  formErrorAssociationRisks: [],
+  colorOnlyStateRisks: [],
+  disabledWithoutExplanation: [],
+  statusLiveRegionRisks: [],
+  modalFocusRisks: [],
+  customControlSemanticsRisks: [],
+  movingContentControlRisks: []
 };
 
 describe("findingsFromMeasurements", () => {
@@ -127,6 +134,38 @@ describe("findingsFromMeasurements", () => {
     expect(findings.find((finding) => finding.checkName === "tap-target-risk")).toMatchObject({
       determinism: "deterministic",
       resultKind: "risk"
+    });
+  });
+
+  it("emits interaction state and feedback risks", () => {
+    const findings = findingsFromMeasurements(
+      {
+        ...baseMeasurements,
+        formErrorAssociationRisks: [{ selector: "#email", region: { x: 0, y: 0, width: 240, height: 36 } }],
+        colorOnlyStateRisks: [{ selector: ".error-dot", region: { x: 10, y: 10, width: 10, height: 10 } }],
+        disabledWithoutExplanation: [{ selector: "button[disabled]", text: "Save" }],
+        statusLiveRegionRisks: [{ selector: ".toast", text: "Saving" }],
+        modalFocusRisks: [{ selector: "[role=\"dialog\"]", text: "Confirm" }],
+        customControlSemanticsRisks: [{ selector: ".fake-button", text: "Open" }],
+        movingContentControlRisks: [{ selector: ".ticker", text: "News" }]
+      },
+      ["screenshot-desktop", "measurement-desktop"]
+    );
+
+    expect(findings.map((finding) => finding.checkName)).toEqual(expect.arrayContaining([
+      "form-error-association-risk",
+      "color-only-state-risk",
+      "disabled-without-explanation",
+      "status-live-region-risk",
+      "modal-focus-risk",
+      "custom-control-semantics-risk",
+      "moving-content-control-risk"
+    ]));
+    expect(findings.find((finding) => finding.checkName === "disabled-without-explanation")).toMatchObject({
+      determinism: "heuristic",
+      resultKind: "needs-review",
+      confidence: "low",
+      humanReviewRecommended: true
     });
   });
 });

@@ -54,6 +54,13 @@ export interface ViewportMeasurements {
   stickyObstructionRisks: ElementSample[];
   excessiveLineLength: LineLengthSample[];
   tapTargetRisks: ElementSample[];
+  formErrorAssociationRisks: ElementSample[];
+  colorOnlyStateRisks: ElementSample[];
+  disabledWithoutExplanation: ElementSample[];
+  statusLiveRegionRisks: ElementSample[];
+  modalFocusRisks: ElementSample[];
+  customControlSemanticsRisks: ElementSample[];
+  movingContentControlRisks: ElementSample[];
 }
 
 export function findingsFromMeasurements(
@@ -319,6 +326,129 @@ export function findingsFromMeasurements(
       checkName: "tap-target-risk",
       observed: sample.region ?? sample.selector,
       expected: "Interactive targets are at least 24 by 24 CSS pixels unless an exception applies."
+    }));
+  }
+
+  for (const [index, sample] of measurements.formErrorAssociationRisks.slice(0, 5).entries()) {
+    findings.push(createFinding({
+      id: `finding-${measurements.viewport}-form-error-association-risk-${index + 1}`,
+      category: "accessibility",
+      severity: "medium",
+      viewport: measurements.viewport,
+      selector: sample.selector,
+      region: sample.region,
+      evidenceRefs,
+      problem: `Invalid form control ${sample.selector} may not be associated with error text.`,
+      recommendation: "Connect invalid controls to visible error messages with aria-describedby, aria-errormessage, or equivalent labeling.",
+      checkName: "form-error-association-risk",
+      observed: sample.region ?? sample.selector,
+      expected: "Invalid form controls expose associated error guidance."
+    }));
+  }
+
+  for (const [index, sample] of measurements.colorOnlyStateRisks.slice(0, 5).entries()) {
+    findings.push(createFinding({
+      id: `finding-${measurements.viewport}-color-only-state-risk-${index + 1}`,
+      category: "accessibility",
+      severity: "low",
+      confidence: "low",
+      viewport: measurements.viewport,
+      selector: sample.selector,
+      region: sample.region,
+      evidenceRefs,
+      problem: `State indicator ${sample.selector} may rely on color or decoration without text or programmatic state.`,
+      recommendation: "Add visible state text, accessible names, or programmatic state so color is not the only cue.",
+      checkName: "color-only-state-risk",
+      observed: sample.region ?? sample.selector,
+      expected: "State is communicated with more than color alone."
+    }));
+  }
+
+  for (const [index, sample] of measurements.disabledWithoutExplanation.slice(0, 5).entries()) {
+    findings.push(createFinding({
+      id: `finding-${measurements.viewport}-disabled-without-explanation-${index + 1}`,
+      category: "interaction",
+      severity: "low",
+      confidence: "low",
+      viewport: measurements.viewport,
+      selector: sample.selector,
+      region: sample.region,
+      evidenceRefs,
+      problem: `Disabled control ${sample.selector} may not explain why the action is unavailable.`,
+      recommendation: "Provide nearby explanatory text, tooltip content, or validation guidance for disabled controls.",
+      checkName: "disabled-without-explanation",
+      observed: sample.text ? { text: sample.text, region: sample.region } : sample.region ?? sample.selector,
+      expected: "Disabled controls include enough context to understand the blocked action."
+    }));
+  }
+
+  for (const [index, sample] of measurements.statusLiveRegionRisks.slice(0, 5).entries()) {
+    findings.push(createFinding({
+      id: `finding-${measurements.viewport}-status-live-region-risk-${index + 1}`,
+      category: "interaction",
+      severity: "low",
+      confidence: "low",
+      viewport: measurements.viewport,
+      selector: sample.selector,
+      region: sample.region,
+      evidenceRefs,
+      problem: `Dynamic status text in ${sample.selector} may not be exposed as a status, alert, progressbar, or live region.`,
+      recommendation: "Use visible status text plus role=\"status\", role=\"alert\", progressbar, or aria-live where dynamic updates occur.",
+      checkName: "status-live-region-risk",
+      observed: sample.text ? { text: sample.text, region: sample.region } : sample.region ?? sample.selector,
+      expected: "Dynamic status feedback is visibly and programmatically perceivable."
+    }));
+  }
+
+  for (const [index, sample] of measurements.modalFocusRisks.slice(0, 5).entries()) {
+    findings.push(createFinding({
+      id: `finding-${measurements.viewport}-modal-focus-risk-${index + 1}`,
+      category: "interaction",
+      severity: "medium",
+      viewport: measurements.viewport,
+      selector: sample.selector,
+      region: sample.region,
+      evidenceRefs,
+      problem: `Dialog ${sample.selector} may not expose complete modal or focus structure.`,
+      recommendation: "Use native dialog semantics, aria-modal for modal dialogs, and focusable close/action controls.",
+      checkName: "modal-focus-risk",
+      observed: sample.text ? { text: sample.text, region: sample.region } : sample.region ?? sample.selector,
+      expected: "Visible dialogs expose modal semantics and focusable controls."
+    }));
+  }
+
+  for (const [index, sample] of measurements.customControlSemanticsRisks.slice(0, 5).entries()) {
+    findings.push(createFinding({
+      id: `finding-${measurements.viewport}-custom-control-semantics-risk-${index + 1}`,
+      category: "accessibility",
+      severity: "medium",
+      viewport: measurements.viewport,
+      selector: sample.selector,
+      region: sample.region,
+      evidenceRefs,
+      problem: `Custom interactive element ${sample.selector} may not expose native control semantics.`,
+      recommendation: "Prefer native controls, or add role, keyboard focus, keyboard handlers, and accessible naming for custom controls.",
+      checkName: "custom-control-semantics-risk",
+      observed: sample.text ? { text: sample.text, region: sample.region } : sample.region ?? sample.selector,
+      expected: "Custom controls expose names, roles, focusability, and keyboard behavior."
+    }));
+  }
+
+  for (const [index, sample] of measurements.movingContentControlRisks.slice(0, 5).entries()) {
+    findings.push(createFinding({
+      id: `finding-${measurements.viewport}-moving-content-control-risk-${index + 1}`,
+      category: "accessibility",
+      severity: "low",
+      confidence: "low",
+      viewport: measurements.viewport,
+      selector: sample.selector,
+      region: sample.region,
+      evidenceRefs,
+      problem: `Moving or autoplaying content ${sample.selector} may not provide visible pause, stop, hide, or control affordances.`,
+      recommendation: "Provide pause/stop/hide controls for moving content or avoid non-essential motion.",
+      checkName: "moving-content-control-risk",
+      observed: sample.text ? { text: sample.text, region: sample.region } : sample.region ?? sample.selector,
+      expected: "Moving or autoplaying content has user controls."
     }));
   }
 

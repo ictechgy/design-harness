@@ -149,6 +149,13 @@ function measurementFor(name: string): ViewportMeasurements {
     fixedWidthRisks: [],
     stickyObstructionRisks: [],
     excessiveLineLength: [],
-    tapTargetRisks: []
+    tapTargetRisks: [],
+    formErrorAssociationRisks: [],
+    colorOnlyStateRisks: [],
+    disabledWithoutExplanation: [],
+    statusLiveRegionRisks: [],
+    modalFocusRisks: [],
+    customControlSemanticsRisks: [],
+    movingContentControlRisks: []
   };
 }
