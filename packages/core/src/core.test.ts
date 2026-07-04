@@ -1,11 +1,15 @@
 import { describe, expect, it } from "vitest";
 import {
   buildIterationPrompt,
+  assertAuditResultIntegrity,
   createExampleAuditResult,
   createExampleBrief,
   createExampleFinding,
+  createExampleMetadata,
+  createExampleReportManifest,
   renderMarkdownReport,
   scoreFindings,
+  validateAuditResultIntegrity,
   validateSchema
 } from "./index.js";
 
@@ -31,6 +35,33 @@ describe("core schemas", () => {
   it("validates an audit result with schema and harness versions", () => {
     const result = validateSchema("audit-result", createExampleAuditResult());
     expect(result.valid).toBe(true);
+  });
+
+  it("validates metadata and report manifests", () => {
+    expect(validateSchema("metadata", createExampleMetadata()).valid).toBe(true);
+    expect(validateSchema("report", createExampleReportManifest()).valid).toBe(true);
+  });
+});
+
+describe("artifact integrity", () => {
+  it("accepts a schema-valid audit result with linked evidence", () => {
+    expect(() => assertAuditResultIntegrity(createExampleAuditResult())).not.toThrow();
+  });
+
+  it("rejects finding evidence refs that do not exist", () => {
+    const auditResult = createExampleAuditResult();
+    auditResult.findings[0].evidenceRefs = ["missing-evidence"];
+    const result = validateAuditResultIntegrity(auditResult);
+    expect(result.valid).toBe(false);
+    expect(result.issues[0]?.path).toContain("evidenceRefs");
+  });
+
+  it("rejects score deductions that do not reference findings", () => {
+    const auditResult = createExampleAuditResult();
+    auditResult.advisoryScore.deductions[0].findingId = "missing-finding";
+    const result = validateAuditResultIntegrity(auditResult);
+    expect(result.valid).toBe(false);
+    expect(result.issues[0]?.path).toContain("deductions");
   });
 });
 

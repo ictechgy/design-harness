@@ -1,5 +1,5 @@
 import { HARNESS_VERSION, SCHEMA_VERSION } from "./version.js";
-import type { AuditResult, DesignBrief, Finding } from "./types.js";
+import type { AuditResult, DesignBrief, Finding, ReportManifest, RunMetadata } from "./types.js";
 import { DEFAULT_VIEWPORT_PRESETS } from "./viewport-presets.js";
 import { scoreFindings } from "./scoring.js";
 
@@ -68,6 +68,49 @@ export function createExampleAuditResult(): AuditResult {
       finishedAt: "2026-01-01T00:00:01.000Z",
       durationMs: 1000
     },
-    status: "success"
+    status: "success",
+    failedChecks: []
+  };
+}
+
+export function createExampleMetadata(): RunMetadata {
+  const auditResult = createExampleAuditResult();
+  return {
+    schemaVersion: SCHEMA_VERSION,
+    harnessVersion: HARNESS_VERSION,
+    runId: auditResult.runId,
+    status: auditResult.status,
+    targetUrl: auditResult.target.url,
+    startedAt: auditResult.timings.startedAt,
+    finishedAt: auditResult.timings.finishedAt,
+    durationMs: auditResult.timings.durationMs,
+    viewportPresets: auditResult.viewportPresets,
+    toolVersions: {
+      "@design-harness/core": HARNESS_VERSION
+    },
+    browserVersion: "example",
+    outputFiles: ["metadata.json", "audit.json", "report.md", "report-manifest.json", "screenshots/desktop.png"],
+    failedChecks: []
+  };
+}
+
+export function createExampleReportManifest(): ReportManifest {
+  return {
+    schemaVersion: SCHEMA_VERSION,
+    harnessVersion: HARNESS_VERSION,
+    runId: "example-run",
+    format: "markdown",
+    reportPath: "report.md",
+    sourceAuditPath: "audit.json",
+    sections: [
+      "Run Summary",
+      "Advisory Score",
+      "Deterministic Findings",
+      "Evidence Links",
+      "Recommendations",
+      "Iteration Prompt Scaffold",
+      "Optional Subjective Critique"
+    ],
+    createdAt: "2026-01-01T00:00:00.000Z"
   };
 }

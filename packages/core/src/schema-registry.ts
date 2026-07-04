@@ -7,6 +7,7 @@ export type SchemaName =
   | "viewport-preset"
   | "finding"
   | "audit-result"
+  | "metadata"
   | "critique"
   | "report";
 

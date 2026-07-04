@@ -32,10 +32,8 @@ export interface ViewportMeasurements {
 
 export function findingsFromMeasurements(
   measurements: ViewportMeasurements,
-  screenshotEvidenceId: string,
-  measurementEvidenceId: string
+  evidenceRefs: string[]
 ): Finding[] {
-  const evidenceRefs = [screenshotEvidenceId, measurementEvidenceId];
   const findings: Finding[] = [];
 
   if (isLikelyBlank(measurements)) {
@@ -97,6 +95,27 @@ export function findingsFromMeasurements(
   return findings;
 }
 
+export function createRenderFailureFinding(input: {
+  id: string;
+  viewport: string;
+  evidenceRefs: string[];
+  problem: string;
+  recommendation?: string;
+}): Finding {
+  return createFinding({
+    id: input.id,
+    category: "layout",
+    severity: "critical",
+    viewport: input.viewport,
+    evidenceRefs: input.evidenceRefs,
+    problem: input.problem,
+    recommendation:
+      input.recommendation ??
+      "Fix navigation, render, or capture failures before relying on visual audit output.",
+    checkName: "render-failure"
+  });
+}
+
 function createFinding(input: {
   id: string;
   category: RubricCategory;
@@ -111,7 +130,7 @@ function createFinding(input: {
 }): Finding {
   return {
     ...input,
-    confidence: input.checkName === "blank-render" ? "high" : "medium"
+    confidence: input.checkName === "blank-render" || input.checkName === "render-failure" ? "high" : "medium"
   };
 }
 

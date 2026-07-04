@@ -3,6 +3,7 @@ export interface AuditCommandArgs {
   url: string;
   outDir: string;
   timeoutMs?: number;
+  allowPartial: boolean;
 }
 
 export type ParsedArgs = AuditCommandArgs | { command: "help" };
@@ -19,10 +20,15 @@ export function parseArgs(argv: string[]): ParsedArgs {
   }
 
   const values = new Map<string, string>();
+  const flags = new Set<string>();
   for (let index = 0; index < rest.length; index += 1) {
     const token = rest[index];
     if (!token.startsWith("--")) {
       throw new Error(`Unexpected argument: ${token}`);
+    }
+    if (token === "--allow-partial") {
+      flags.add(token.slice(2));
+      continue;
     }
     const next = rest[index + 1];
     if (!next || next.startsWith("--")) {
@@ -42,11 +48,13 @@ export function parseArgs(argv: string[]): ParsedArgs {
   }
 
   const timeout = values.get("timeout-ms");
+  const timeoutMs = timeout ? parseTimeout(timeout) : undefined;
   return {
     command: "audit",
     url,
     outDir,
-    timeoutMs: timeout ? Number(timeout) : undefined
+    timeoutMs,
+    allowPartial: flags.has("allow-partial")
   };
 }
 
@@ -55,12 +63,21 @@ export function helpText(): string {
     "Design Harness",
     "",
     "Usage:",
-    "  design-harness audit --url <local-url> --out <directory> [--timeout-ms <ms>]",
+    "  design-harness audit --url <local-url> --out <directory> [--timeout-ms <ms>] [--allow-partial]",
     "",
     "Commands:",
     "  audit    Capture desktop/mobile screenshots and write audit artifacts.",
     "",
     "Notes:",
-    "  v0.1 only accepts local http(s) URLs such as http://localhost:3000."
+    "  v0.1 only accepts local http(s) URLs such as http://localhost:3000.",
+    "  Partial audits write artifacts and exit 2 unless --allow-partial is set."
   ].join("\n");
+}
+
+function parseTimeout(value: string): number {
+  const timeoutMs = Number(value);
+  if (!Number.isInteger(timeoutMs) || timeoutMs < 100 || timeoutMs > 120_000) {
+    throw new Error(`Invalid --timeout-ms ${value}. Use an integer from 100 to 120000.`);
+  }
+  return timeoutMs;
 }

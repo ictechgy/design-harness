@@ -14,7 +14,8 @@
     "findings",
     "advisoryScore",
     "timings",
-    "status"
+    "status",
+    "failedChecks"
   ],
   "properties": {
     "schemaVersion": {
@@ -328,6 +329,13 @@
         "partial",
         "failed"
       ]
+    },
+    "failedChecks": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
     }
   }
 }
