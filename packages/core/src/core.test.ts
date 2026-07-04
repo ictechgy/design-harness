@@ -115,6 +115,9 @@ describe("report rendering", () => {
     expect(report).toContain("Findings");
     expect(report).toContain("Deterministic Findings: Risks");
     expect(report).toContain("Source-Backed Criteria");
+    expect(report).toContain("[Web Content Accessibility Guidelines 2.2](https://www.w3.org/TR/WCAG22/)");
+    expect(report).toContain("Criterion: `responsive.horizontal-overflow.none`");
+    expect(report).toContain("Evidence: `screenshot-desktop`, `measurement-desktop`");
     expect(report).toContain("Evidence Links");
     expect(report).toContain("Iteration Prompt Scaffold");
     expect(validateReportCopyGuardrails(report)).toEqual([]);
