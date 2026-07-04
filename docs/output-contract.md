@@ -1,6 +1,6 @@
 # Output Contract
 
-The v0.1 CLI command:
+The local CLI command:
 
 ```bash
 design-harness audit --url <local-url> --out runs/<timestamp>
@@ -20,6 +20,35 @@ runs/<timestamp>/
 ```
 
 `audit.json` must validate against `packages/core/schemas/audit-result.schema.json`.
+
+## Finding Shape
+
+The original v0.1 finding fields remain valid:
+
+- `id`
+- `category`
+- `severity`
+- `confidence`
+- `viewport`
+- `selector`
+- `region`
+- `evidenceRefs`
+- `problem`
+- `recommendation`
+- `checkName`
+
+v0.2 findings can also include:
+
+- `criterionId`: stable source-backed criterion ID.
+- `sourceRefs`: source IDs from the criterion registry.
+- `determinism`: `deterministic`, `heuristic`, or `subjective`.
+- `resultKind`: `failure`, `risk`, or `needs-review`.
+- `runtime`: `static-dom`, `computed-style`, `viewport-sweep`, `interaction-simulation`, or `human-review`.
+- `observed`: measured value or sampled evidence.
+- `expected`: threshold, pattern, or expected behavior.
+- `humanReviewRecommended`: whether a human should review the finding before treating it as a fix requirement.
+
+Reports group findings by determinism/result kind and include source-backed criteria when attached.
 
 ## Failure Behavior
 
