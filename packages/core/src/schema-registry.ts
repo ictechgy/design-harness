@@ -3,6 +3,7 @@ import { basename } from "node:path";
 
 export type SchemaName =
   | "brief"
+  | "criterion"
   | "audit-target"
   | "viewport-preset"
   | "finding"

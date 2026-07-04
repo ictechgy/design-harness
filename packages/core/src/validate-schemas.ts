@@ -1,6 +1,13 @@
 import { loadAllSchemas } from "./schema-registry.js";
 import { assertValidSchema } from "./validation.js";
-import { createExampleAuditResult, createExampleBrief, createExampleFinding, createExampleMetadata, createExampleReportManifest } from "./fixtures.js";
+import {
+  createExampleAuditResult,
+  createExampleBrief,
+  createExampleCriterion,
+  createExampleFinding,
+  createExampleMetadata,
+  createExampleReportManifest
+} from "./fixtures.js";
 import { assertAuditResultIntegrity } from "./integrity.js";
 
 const schemas = loadAllSchemas();
@@ -11,6 +18,7 @@ for (const [name, schema] of Object.entries(schemas)) {
 }
 
 assertValidSchema("brief", createExampleBrief());
+assertValidSchema("criterion", createExampleCriterion());
 assertValidSchema("finding", createExampleFinding());
 assertValidSchema("audit-result", createExampleAuditResult());
 assertValidSchema("metadata", createExampleMetadata());

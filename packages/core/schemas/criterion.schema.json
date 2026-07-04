@@ -1,0 +1,111 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://design-harness.dev/schemas/criterion.schema.json",
+  "title": "Criterion",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "category",
+    "title",
+    "description",
+    "sourceRefs",
+    "sourceStrength",
+    "determinism",
+    "resultKind",
+    "confidenceDefault",
+    "runtime",
+    "checkNames",
+    "remediationHint"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "layout",
+        "hierarchy",
+        "interaction",
+        "accessibility",
+        "responsiveness",
+        "visual-polish",
+        "task-fit"
+      ]
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1
+    },
+    "description": {
+      "type": "string",
+      "minLength": 1
+    },
+    "sourceRefs": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "sourceStrength": {
+      "type": "string",
+      "enum": [
+        "official-testable",
+        "official-pattern",
+        "industry-heuristic",
+        "research-emerging",
+        "philosophical"
+      ]
+    },
+    "determinism": {
+      "type": "string",
+      "enum": [
+        "deterministic",
+        "heuristic",
+        "subjective"
+      ]
+    },
+    "resultKind": {
+      "type": "string",
+      "enum": [
+        "failure",
+        "risk",
+        "needs-review"
+      ]
+    },
+    "confidenceDefault": {
+      "type": "string",
+      "enum": [
+        "low",
+        "medium",
+        "high"
+      ]
+    },
+    "runtime": {
+      "type": "string",
+      "enum": [
+        "static-dom",
+        "computed-style",
+        "viewport-sweep",
+        "interaction-simulation",
+        "human-review"
+      ]
+    },
+    "checkNames": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "remediationHint": {
+      "type": "string",
+      "minLength": 1
+    }
+  }
+}

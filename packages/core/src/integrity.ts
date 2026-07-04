@@ -1,3 +1,4 @@
+import { getCriterion, getSource } from "./criteria.js";
 import type { AuditResult, Critique } from "./types.js";
 
 export interface IntegrityIssue {
@@ -60,6 +61,56 @@ export function validateAuditResultIntegrity(auditResult: AuditResult): Integrit
         issues.push({ path: `$.findings[${index}].evidenceRefs[${refIndex}]`, message: `references unknown evidence asset ${evidenceRef}` });
       }
     });
+
+    if (finding.criterionId) {
+      const criterion = getCriterion(finding.criterionId);
+      if (!criterion) {
+        issues.push({ path: `$.findings[${index}].criterionId`, message: `references unknown criterion ${finding.criterionId}` });
+      } else {
+        if (finding.checkName && !criterion.checkNames.includes(finding.checkName)) {
+          issues.push({
+            path: `$.findings[${index}].checkName`,
+            message: `does not match criterion ${finding.criterionId}`
+          });
+        }
+
+        finding.sourceRefs?.forEach((sourceRef, sourceIndex) => {
+          if (!criterion.sourceRefs.includes(sourceRef)) {
+            issues.push({
+              path: `$.findings[${index}].sourceRefs[${sourceIndex}]`,
+              message: `is not declared by criterion ${finding.criterionId}`
+            });
+          }
+        });
+      }
+
+      if (!finding.sourceRefs || finding.sourceRefs.length === 0) {
+        issues.push({ path: `$.findings[${index}].sourceRefs`, message: "is required when criterionId is present" });
+      }
+
+      if (!finding.determinism) {
+        issues.push({ path: `$.findings[${index}].determinism`, message: "is required when criterionId is present" });
+      }
+
+      if (!finding.resultKind) {
+        issues.push({ path: `$.findings[${index}].resultKind`, message: "is required when criterionId is present" });
+      }
+
+    }
+
+    finding.sourceRefs?.forEach((sourceRef, sourceIndex) => {
+      if (!getSource(sourceRef)) {
+        issues.push({ path: `$.findings[${index}].sourceRefs[${sourceIndex}]`, message: `references unknown source ${sourceRef}` });
+      }
+    });
+
+    if (finding.determinism === "subjective" && finding.resultKind === "failure") {
+      issues.push({ path: `$.findings[${index}].resultKind`, message: "subjective findings cannot be failures" });
+    }
+
+    if (finding.determinism === "heuristic" && finding.resultKind === "failure") {
+      issues.push({ path: `$.findings[${index}].resultKind`, message: "heuristic findings must be risks or needs-review" });
+    }
   });
 
   auditResult.advisoryScore.deductions.forEach((deduction, index) => {

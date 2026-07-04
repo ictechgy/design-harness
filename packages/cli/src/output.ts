@@ -37,7 +37,8 @@ export async function writeAuditArtifacts(input: WriteAuditArtifactsInput): Prom
     sections: [
       "Run Summary",
       "Advisory Score",
-      "Deterministic Findings",
+      "Findings",
+      "Source-Backed Criteria",
       "Evidence Links",
       "Recommendations",
       "Iteration Prompt Scaffold",

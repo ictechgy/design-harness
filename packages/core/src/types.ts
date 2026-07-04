@@ -10,6 +10,45 @@ export type RubricCategory =
 export type Severity = "low" | "medium" | "high" | "critical";
 export type Confidence = "low" | "medium" | "high";
 export type RunStatus = "success" | "partial" | "failed";
+export type SourceStrength =
+  | "official-testable"
+  | "official-pattern"
+  | "industry-heuristic"
+  | "research-emerging"
+  | "philosophical";
+export type FindingDeterminism = "deterministic" | "heuristic" | "subjective";
+export type FindingResultKind = "failure" | "risk" | "needs-review";
+export type CheckRuntime =
+  | "static-dom"
+  | "computed-style"
+  | "viewport-sweep"
+  | "interaction-simulation"
+  | "human-review";
+
+export type FindingObservation = string | number | boolean | null | Record<string, unknown> | unknown[];
+
+export interface CriterionSource {
+  id: string;
+  title: string;
+  url: string;
+  strength: SourceStrength;
+  note?: string;
+}
+
+export interface Criterion {
+  id: string;
+  category: RubricCategory;
+  title: string;
+  description: string;
+  sourceRefs: string[];
+  sourceStrength: SourceStrength;
+  determinism: FindingDeterminism;
+  resultKind: FindingResultKind;
+  confidenceDefault: Confidence;
+  runtime: CheckRuntime;
+  checkNames: string[];
+  remediationHint: string;
+}
 
 export interface DesignBrief {
   schemaVersion: string;
@@ -55,6 +94,14 @@ export interface Finding {
   problem: string;
   recommendation: string;
   checkName: string;
+  criterionId?: string;
+  sourceRefs?: string[];
+  determinism?: FindingDeterminism;
+  resultKind?: FindingResultKind;
+  runtime?: CheckRuntime;
+  observed?: FindingObservation;
+  expected?: FindingObservation;
+  humanReviewRecommended?: boolean;
 }
 
 export type EvidenceAssetType =

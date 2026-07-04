@@ -1,5 +1,6 @@
 import { HARNESS_VERSION, SCHEMA_VERSION } from "./version.js";
-import type { AuditResult, DesignBrief, Finding, ReportManifest, RunMetadata } from "./types.js";
+import { CRITERIA } from "./criteria.js";
+import type { AuditResult, Criterion, DesignBrief, Finding, ReportManifest, RunMetadata } from "./types.js";
 import { DEFAULT_VIEWPORT_PRESETS } from "./viewport-presets.js";
 import { scoreFindings } from "./scoring.js";
 
@@ -25,8 +26,23 @@ export function createExampleFinding(): Finding {
     evidenceRefs: ["screenshot-desktop", "measurement-desktop"],
     problem: "The document width appears wider than the desktop viewport.",
     recommendation: "Constrain wide content and remove unintended horizontal overflow.",
-    checkName: "horizontal-overflow"
+    checkName: "horizontal-overflow",
+    criterionId: "responsive.horizontal-overflow.none",
+    sourceRefs: ["wcag-2-2", "govuk-layout"],
+    determinism: "deterministic",
+    resultKind: "risk",
+    runtime: "viewport-sweep",
+    observed: {
+      documentScrollWidth: 1500,
+      viewportWidth: 1440
+    },
+    expected: "Document and body scroll widths stay within the viewport width.",
+    humanReviewRecommended: false
   };
+}
+
+export function createExampleCriterion(): Criterion {
+  return CRITERIA[0];
 }
 
 export function createExampleAuditResult(): AuditResult {
@@ -105,7 +121,8 @@ export function createExampleReportManifest(): ReportManifest {
     sections: [
       "Run Summary",
       "Advisory Score",
-      "Deterministic Findings",
+      "Findings",
+      "Source-Backed Criteria",
       "Evidence Links",
       "Recommendations",
       "Iteration Prompt Scaffold",

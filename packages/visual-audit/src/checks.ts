@@ -1,4 +1,4 @@
-import type { Finding, RubricCategory, Severity } from "@design-harness/core";
+import { findingMetadataForCheck, type Finding, type FindingObservation, type RubricCategory, type Severity } from "@design-harness/core";
 
 export interface ElementSample {
   selector: string;
@@ -45,7 +45,12 @@ export function findingsFromMeasurements(
       evidenceRefs,
       problem: "The page appears to have rendered with no meaningful visible content.",
       recommendation: "Check client-side errors, loading states, and root layout rendering before evaluating visual quality.",
-      checkName: "blank-render"
+      checkName: "blank-render",
+      observed: {
+        textLength: measurements.textLength,
+        meaningfulElementCount: measurements.meaningfulElementCount
+      },
+      expected: "Meaningful visible content is present."
     }));
   }
 
@@ -58,7 +63,13 @@ export function findingsFromMeasurements(
       evidenceRefs,
       problem: `The document width (${measurements.documentScrollWidth}px) exceeds the ${measurements.viewportWidth}px viewport.`,
       recommendation: "Constrain wide content, tables, media, or fixed-width containers so the page does not require horizontal scrolling.",
-      checkName: "horizontal-overflow"
+      checkName: "horizontal-overflow",
+      observed: {
+        documentScrollWidth: measurements.documentScrollWidth,
+        bodyScrollWidth: measurements.bodyScrollWidth,
+        viewportWidth: measurements.viewportWidth
+      },
+      expected: "Document and body scroll widths stay within the viewport width."
     }));
   }
 
@@ -73,7 +84,9 @@ export function findingsFromMeasurements(
       evidenceRefs,
       problem: `Text may be clipped in ${sample.selector}.`,
       recommendation: "Allow the container to grow, wrap text, reduce copy length, or adjust overflow styling.",
-      checkName: "text-clipping"
+      checkName: "text-clipping",
+      observed: sample.text ? { text: sample.text, region: sample.region } : sample.region ?? sample.selector,
+      expected: "Visible text fits within its container without clipping."
     }));
   }
 
@@ -88,7 +101,15 @@ export function findingsFromMeasurements(
       evidenceRefs,
       problem: `DOM-computed text contrast may be low in ${sample.selector} (${sample.ratio.toFixed(2)}:1, target ${sample.requiredRatio}:1).`,
       recommendation: "Increase foreground/background contrast or adjust font size and weight for readable text.",
-      checkName: "dom-contrast-risk"
+      checkName: "dom-contrast-risk",
+      observed: {
+        ratio: Number(sample.ratio.toFixed(2)),
+        color: sample.color,
+        backgroundColor: sample.backgroundColor
+      },
+      expected: {
+        ratio: sample.requiredRatio
+      }
     }));
   }
 
@@ -112,7 +133,9 @@ export function createRenderFailureFinding(input: {
     recommendation:
       input.recommendation ??
       "Fix navigation, render, or capture failures before relying on visual audit output.",
-    checkName: "render-failure"
+    checkName: "render-failure",
+    observed: input.problem,
+    expected: "The page can be navigated and rendered before audit checks run."
   });
 }
 
@@ -127,9 +150,12 @@ function createFinding(input: {
   problem: string;
   recommendation: string;
   checkName: string;
+  observed?: FindingObservation;
+  expected?: FindingObservation;
 }): Finding {
   return {
     ...input,
+    ...findingMetadataForCheck(input.checkName),
     confidence: input.checkName === "blank-render" || input.checkName === "render-failure" ? "high" : "medium"
   };
 }
