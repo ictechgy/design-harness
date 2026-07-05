@@ -1,0 +1,56 @@
+{
+  "schemaVersion": "design-harness-mcp-tools/v1",
+  "adapter": "scripts/mcp-adapter.mjs",
+  "tools": [
+    {
+      "name": "design_harness_render_pr_comment",
+      "description": "Render a compact pull request comment from an existing Design Harness run directory.",
+      "inputSchema": {
+        "type": "object",
+        "required": ["runDir"],
+        "properties": {
+          "runDir": {
+            "type": "string",
+            "description": "Directory containing audit.json and report.md."
+          },
+          "maxCharacters": {
+            "type": "integer",
+            "minimum": 1000,
+            "maximum": 60000,
+            "description": "Maximum Markdown comment length."
+          }
+        },
+        "additionalProperties": false
+      },
+      "safeDefaults": {
+        "network": "none",
+        "reads": ["audit.json", "report.md"],
+        "writes": []
+      }
+    },
+    {
+      "name": "design_harness_run_scenarios",
+      "description": "Run a local-only scenario audit config through the Design Harness CLI and write aggregate scenario artifacts.",
+      "inputSchema": {
+        "type": "object",
+        "required": ["configPath", "outDir"],
+        "properties": {
+          "configPath": {
+            "type": "string",
+            "description": "Path to a design-harness-scenarios/v1 JSON file."
+          },
+          "outDir": {
+            "type": "string",
+            "description": "Output directory for scenario-summary.json, scenario-report.md, and per-scenario audit runs."
+          }
+        },
+        "additionalProperties": false
+      },
+      "safeDefaults": {
+        "network": "local-http-only",
+        "reads": ["scenario config"],
+        "writes": ["scenario output directory"]
+      }
+    }
+  ]
+}

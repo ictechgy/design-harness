@@ -5,7 +5,7 @@ Evidence for AI-made interfaces.
 Design Harness is an open-source, model-agnostic UI/UX QA loop for AI coding agents. Point it at a local URL and it captures desktop/mobile screenshots, runs conservative source-backed checks, and writes an agent-friendly report you can hand back to Codex, Claude Code, Gemini CLI, or a human reviewer.
 
 ```text
-local URL -> screenshots -> audit.json -> report.md -> iteration prompt scaffold
+local URL -> screenshots -> audit.json -> report.md -> PR comment / agent loop / scenario summary
 ```
 
 It is not a black-box design judge, a hosted LLM product, or a visual regression replacement. The goal is simpler and more useful: make UI feedback repeatable enough that humans and agents can improve the same screen from the same evidence.
@@ -101,13 +101,15 @@ Checks are conservative and source-backed:
 - responsive readability risks: wide content, sticky obstruction, excessive line length, target size,
 - interaction state risks: error association, color-only states, disabled controls, live status, dialogs, custom controls, moving content.
 
-Every finding includes severity, confidence, viewport, category, evidence references, and a recommendation. v0.2 findings may also include `criterionId`, `sourceRefs`, `determinism`, `resultKind`, runtime type, observed evidence, and expected behavior.
+Every finding includes severity, confidence, viewport, category, evidence references, and a recommendation. v0.3 findings may also include `criterionId`, `sourceRefs`, `determinism`, `resultKind`, runtime type, observed evidence, and expected behavior.
 
 See [Criteria And Checks](docs/criteria-and-checks.md), [Output Contract](docs/output-contract.md), and [Fixture Catalog](docs/fixtures.md).
 
 ## Recipes
 
 - [GitHub Actions](docs/recipes/github-actions.md): run the harness in CI, upload artifacts, and optionally comment on pull requests.
+- [Pull Request Comment Bot](docs/recipes/pr-comment-bot.md): render a compact PR comment from an audit run.
+- [Scenario Audit](docs/recipes/scenario-audit.md): run multiple local URL scenarios and aggregate the results.
 - [npm Execution](docs/recipes/npm-execution.md): verify the packed CLI and understand the post-publish `npx` path.
 - [Agent Loop Recipes](docs/recipes/agent-loop.md): prompts for Codex, Claude Code, Gemini CLI, and human reviewers.
 - [Release Checklist](docs/recipes/release-checklist.md): package checks to run before publishing a public version.
@@ -169,14 +171,14 @@ Implemented:
 - source-backed criteria registry,
 - example fixtures,
 - Midjourney Reference Lab manifest and policy validators.
+- PR comment renderer, scenario audit runner, and MCP adapter manifest.
 
 In progress or planned:
 
 - first npm publish,
-- richer hosted/action adapters,
 - more fixture coverage,
-- promotion of reference-derived `needs-review` signals into measured checks where evidence supports it,
-- MCP and Open Design integrations beyond the current specs.
+- deeper hosted/action adapters,
+- Open Design integrations beyond the current specs.
 
 ## Contributing
 

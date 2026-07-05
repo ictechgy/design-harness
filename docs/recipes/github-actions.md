@@ -74,24 +74,28 @@ jobs:
 
 ## Optional Pull Request Comment
 
-Keep the first version simple: post a compact pointer to the artifact and the top of the report. For noisy repositories, replace this with a sticky-comment action later.
+Use the v0.3 comment renderer (`scripts/render-pr-comment.mjs`, exposed as `pnpm comment:pr`) to post a compact pointer to the artifact, finding counts, and a short report preview. For noisy repositories, replace this with a sticky-comment action later.
 
 ```yaml
+      - name: Render Design Harness PR comment
+        if: always() && github.event_name == 'pull_request'
+        run: |
+          if [ -f runs/design-harness/audit.json ] && [ -f runs/design-harness/report.md ]; then
+            pnpm comment:pr -- --run-dir runs/design-harness --out runs/design-harness/pr-comment.md
+          fi
+
       - uses: actions/github-script@v7
         if: always() && github.event_name == 'pull_request'
         with:
           script: |
             const fs = require("node:fs");
-            const reportPath = "runs/design-harness/report.md";
-            if (!fs.existsSync(reportPath)) return;
-
-            const report = fs.readFileSync(reportPath, "utf8");
-            const preview = report.length > 5000 ? `${report.slice(0, 5000)}\n\n...` : report;
+            if (!fs.existsSync("runs/design-harness/pr-comment.md")) return;
+            const body = fs.readFileSync("runs/design-harness/pr-comment.md", "utf8");
             await github.rest.issues.createComment({
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: context.issue.number,
-              body: `## Design Harness\n\nFull artifacts are attached to the workflow run.\n\n${preview}`
+              body
             });
 ```
 
