@@ -76,7 +76,7 @@ export async function auditUrl(options: AuditUrlOptions): Promise<AuditUrlResult
     throw new BrowserUnavailableError(
       [
         "Playwright Chromium could not be launched.",
-        "Run `pnpm playwright:install` and try again.",
+        "Install Chromium for Playwright with `npx playwright install chromium`, or run `pnpm playwright:install` from a Design Harness checkout.",
         `Original error: ${error instanceof Error ? error.message : String(error)}`
       ].join(" ")
     );
