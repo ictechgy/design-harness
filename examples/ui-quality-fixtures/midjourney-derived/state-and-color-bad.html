@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Midjourney-Derived State And Color Bad Fixture</title>
+    <style>
+      body {
+        background: #f7f8fa;
+        color: #172033;
+        font-family: Arial, sans-serif;
+        margin: 0;
+      }
+
+      main {
+        padding: 24px;
+      }
+
+      .board {
+        background: #ffffff;
+        border: 1px solid #d8dee8;
+        border-radius: 6px;
+        padding: 18px;
+      }
+
+      .color-grid {
+        display: grid;
+        gap: 8px;
+        grid-template-columns: repeat(5, minmax(90px, 1fr));
+        margin: 18px 0;
+      }
+
+      .swatch {
+        border-radius: 6px;
+        color: #ffffff;
+        min-height: 52px;
+        padding: 10px;
+      }
+
+      .c1 { background: #ef4444; }
+      .c2 { background: #f97316; }
+      .c3 { background: #eab308; color: #1f2933; }
+      .c4 { background: #22c55e; }
+      .c5 { background: #06b6d4; }
+      .c6 { background: #3b82f6; }
+      .c7 { background: #6366f1; }
+      .c8 { background: #a855f7; }
+      .c9 { background: #ec4899; }
+      .c10 { background: #14b8a6; }
+
+      .checklist {
+        display: grid;
+        gap: 8px;
+        list-style: none;
+        margin: 0;
+        padding: 0;
+      }
+
+      .step {
+        align-items: center;
+        border: 1px solid #d8dee8;
+        border-radius: 6px;
+        display: grid;
+        gap: 10px;
+        grid-template-columns: 28px 1fr;
+        min-height: 44px;
+        padding: 10px 12px;
+      }
+
+      .done-a { background: #fee2e2; color: #991b1b; }
+      .done-b { background: #dcfce7; color: #166534; }
+      .done-c { background: #e0e7ff; color: #3730a3; }
+      .waiting { background: #f8fafc; color: #334155; }
+
+      [role="checkbox"] {
+        align-items: center;
+        border: 2px solid currentColor;
+        border-radius: 999px;
+        display: inline-grid;
+        height: 22px;
+        justify-content: center;
+        width: 22px;
+      }
+
+      [aria-checked="true"]::before {
+        content: "✓";
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <section class="board" aria-labelledby="setup-title">
+        <h1 id="setup-title">Launch checklist</h1>
+        <p>Color is intentionally overused, and completed checklist rows use competing state treatments.</p>
+        <div class="color-grid" aria-label="Competing status colors">
+          <div class="swatch c1">Payment</div>
+          <div class="swatch c2">Setup</div>
+          <div class="swatch c3">Invite</div>
+          <div class="swatch c4">Ready</div>
+          <div class="swatch c5">Sync</div>
+          <div class="swatch c6">Stock</div>
+          <div class="swatch c7">Review</div>
+          <div class="swatch c8">Warning</div>
+          <div class="swatch c9">Promo</div>
+          <div class="swatch c10">Status</div>
+        </div>
+        <ul class="checklist">
+          <li class="step done-a">
+            <span role="checkbox" aria-checked="true" aria-label="Profile complete"></span>
+            <span>Complete business profile</span>
+          </li>
+          <li class="step done-b">
+            <span role="checkbox" aria-checked="true" aria-label="Catalog complete"></span>
+            <span>Add starter catalog</span>
+          </li>
+          <li class="step done-c">
+            <span role="checkbox" aria-checked="true" aria-label="Delivery complete"></span>
+            <span>Choose delivery window</span>
+          </li>
+          <li class="step waiting">
+            <span role="checkbox" aria-checked="false" aria-label="Invite pending"></span>
+            <span>Invite team member</span>
+          </li>
+          <li class="step waiting">
+            <span role="checkbox" aria-checked="false" aria-label="Publish pending"></span>
+            <span>Publish first offer</span>
+          </li>
+        </ul>
+      </section>
+    </main>
+  </body>
+</html>

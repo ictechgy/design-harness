@@ -217,6 +217,34 @@ export const CRITERIA: Criterion[] = [
     remediationHint: "Create a clearer primary/secondary scan path with grouping, size contrast, sectioning, or reduced equal-weight repetition."
   },
   {
+    id: "color.hierarchy.saturation-discipline",
+    category: "hierarchy",
+    title: "Saturated color preserves priority meaning",
+    description: "Highly saturated colors should not appear across many unrelated regions in a way that makes every area compete for attention.",
+    sourceRefs: ["iso-9241-210", "nng-usability-heuristics"],
+    sourceStrength: "industry-heuristic",
+    determinism: "heuristic",
+    resultKind: "needs-review",
+    confidenceDefault: "low",
+    runtime: "computed-style",
+    checkNames: ["saturated-color-noise-risk"],
+    remediationHint: "Reserve saturated color for stable status, brand, grouping, or primary-action meaning instead of broad decoration."
+  },
+  {
+    id: "state.checklist.activation-visibility",
+    category: "interaction",
+    title: "Checklist state is visible and consistent",
+    description: "Checklist completed, active, and inactive states should be visually distinct while using consistent state treatment.",
+    sourceRefs: ["nng-usability-heuristics", "polaris-accessibility"],
+    sourceStrength: "industry-heuristic",
+    determinism: "heuristic",
+    resultKind: "needs-review",
+    confidenceDefault: "low",
+    runtime: "computed-style",
+    checkNames: ["checklist-state-visibility-risk"],
+    remediationHint: "Use stable color, icon, text, and row treatment so users can quickly identify completed, active, and inactive checklist items."
+  },
+  {
     id: "readability.line-length.reasonable",
     category: "visual-polish",
     title: "Reading line length remains reasonable",

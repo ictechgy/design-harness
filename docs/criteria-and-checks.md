@@ -60,6 +60,16 @@ Reference images can suggest new fixture ideas, but they are not criteria. When 
 
 See [Midjourney Reference Lab Workflow](midjourney-reference-lab/workflow.md).
 
+### Promoted Reference-Derived Heuristics
+
+The first promoted Midjourney-derived heuristics are intentionally conservative. They emit `needs-review` findings, not deterministic failures:
+
+- `hierarchy.visual-weight.priority-risk` via `repeated-visual-weight-risk`: flags many similarly sized modules that may flatten the scan path.
+- `color.hierarchy.saturation-discipline` via `saturated-color-noise-risk`: flags many saturated color regions across several hue groups that may make color stop working as a priority signal.
+- `state.checklist.activation-visibility` via `checklist-state-visibility-risk`: flags checklist state treatments that are inconsistent or too visually similar across checked and unchecked items.
+
+These checks are useful prompts for reviewer attention. They should be interpreted alongside product context, user task priority, and any intentional brand or status system.
+
 ## Report Copy Guardrails
 
 Reports should avoid unqualified claims such as:
@@ -82,6 +92,6 @@ Use scoped language:
 - Responsiveness and overflow.
 - Text clipping and contrast.
 - Semantic accessibility: names, labels, images, headings, landmarks.
-- Hierarchy review prompts: repeated equal-weight modules that may flatten priority.
+- Hierarchy review prompts: repeated equal-weight modules and saturated color noise that may flatten priority.
 - Responsive readability: wide content, sticky obstruction, line length, target size.
-- Interaction state: error association, color-only states, disabled controls, live status, dialogs, custom controls, moving content.
+- Interaction state: error association, color-only states, checklist state visibility, disabled controls, live status, dialogs, custom controls, moving content.
