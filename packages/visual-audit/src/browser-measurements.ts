@@ -89,6 +89,8 @@ export async function collectViewportMeasurements(page: {
     const missingMainLandmark = document.body.querySelector("main,[role='main']") === null;
     const repeatedLabels = collectRepeatedLabels(interactiveElements);
     const repeatedVisualWeightRisks = collectRepeatedVisualWeightRisks();
+    const saturatedColorNoiseRisks = collectSaturatedColorNoiseRisks();
+    const checklistStateVisibilityRisks = collectChecklistStateVisibilityRisks();
     const fixedWidthRisks = collectFixedWidthRisks();
     const stickyObstructionRisks = collectStickyObstructionRisks();
     const excessiveLineLength = collectExcessiveLineLength(textElements);
@@ -118,6 +120,8 @@ export async function collectViewportMeasurements(page: {
       missingMainLandmark,
       repeatedLabels,
       repeatedVisualWeightRisks,
+      saturatedColorNoiseRisks,
+      checklistStateVisibilityRisks,
       fixedWidthRisks,
       stickyObstructionRisks,
       excessiveLineLength,
@@ -353,6 +357,148 @@ export async function collectViewportMeasurements(page: {
       return [];
     }
 
+    function collectSaturatedColorNoiseRisks() {
+      const samples = Array.from(document.body.querySelectorAll<HTMLElement>("body *"))
+        .filter(isElementVisible)
+        .map((element) => {
+          const style = window.getComputedStyle(element);
+          const rect = element.getBoundingClientRect();
+          const color = parseRgb(style.backgroundColor);
+          const hsl = rgbToHsl(color);
+          return {
+            element,
+            rect,
+            hueBucket: (Math.round(hsl.hue / 30) * 30) % 360,
+            saturation: hsl.saturation,
+            lightness: hsl.lightness,
+            alpha: color.alpha
+          };
+        })
+        .filter(({ rect }) => rect.width >= 32 && rect.height >= 18 && rect.width * rect.height >= 1_500)
+        .filter(({ rect }) => rect.top < viewport.height * 1.25 && rect.bottom > -viewport.height * 0.1)
+        .filter(({ alpha, saturation, lightness }) => alpha > 0 && saturation >= 0.55 && lightness >= 0.22 && lightness <= 0.86);
+
+      const hueBuckets = Array.from(new Set(samples.map((sample) => sample.hueBucket))).sort((left, right) => left - right);
+      if (samples.length < 8 || hueBuckets.length < 4) {
+        return [];
+      }
+
+      return [{
+        count: samples.length,
+        hueBucketCount: hueBuckets.length,
+        hueBuckets,
+        selectors: samples.slice(0, 10).map(({ element }) => selectorFor(element))
+      }];
+    }
+
+    function collectChecklistStateVisibilityRisks() {
+      const controls = Array.from(document.body.querySelectorAll<HTMLElement>("input[type='checkbox'],[role='checkbox'],[aria-checked]"))
+        .filter(isElementVisible)
+        .filter(isChecklistLikeControl)
+        .map((control) => {
+          const row = checklistRowFor(control);
+          return {
+            control,
+            row,
+            checked: isCheckedState(control),
+            signature: visualSignature(row),
+            hasCustomStateTreatment: hasCustomChecklistStateTreatment(control, row)
+          };
+        });
+
+      const checked = controls.filter((sample) => sample.checked);
+      const unchecked = controls.filter((sample) => !sample.checked);
+      const findings: Array<{
+        reason: "inconsistent-checked-styles" | "checked-unchecked-styles-too-similar";
+        checkedCount: number;
+        uncheckedCount: number;
+        selectors: string[];
+      }> = [];
+
+      if (checked.length >= 3) {
+        const checkedSignatures = new Set(checked.map((sample) => sample.signature));
+        if (checkedSignatures.size >= Math.min(checked.length, 3)) {
+          findings.push({
+            reason: "inconsistent-checked-styles",
+            checkedCount: checked.length,
+            uncheckedCount: unchecked.length,
+            selectors: checked.slice(0, 8).map(({ row }) => selectorFor(row))
+          });
+        }
+      }
+
+      const checkedWithStateTreatment = checked.filter((sample) => sample.hasCustomStateTreatment);
+      const uncheckedWithStateTreatment = unchecked.filter((sample) => sample.hasCustomStateTreatment);
+      if (checkedWithStateTreatment.length >= 2 && uncheckedWithStateTreatment.length >= 2) {
+        const uncheckedSignatures = new Set(uncheckedWithStateTreatment.map((sample) => sample.signature));
+        const hasSharedSignature = checkedWithStateTreatment.some((sample) => uncheckedSignatures.has(sample.signature));
+        if (hasSharedSignature) {
+          findings.push({
+            reason: "checked-unchecked-styles-too-similar",
+            checkedCount: checked.length,
+            uncheckedCount: unchecked.length,
+            selectors: controls.slice(0, 8).map(({ row }) => selectorFor(row))
+          });
+        }
+      }
+
+      return findings.slice(0, 2);
+    }
+
+    function isChecklistLikeControl(control: HTMLElement): boolean {
+      if (control instanceof HTMLInputElement && control.type === "checkbox") {
+        return true;
+      }
+
+      if (control.getAttribute("role") === "checkbox") {
+        return true;
+      }
+
+      const row = checklistRowFor(control);
+      return /\b(check|checklist|complete|completed|done|task|todo|step)\b/i.test(`${classNameFor(control)} ${classNameFor(row)}`);
+    }
+
+    function checklistRowFor(control: HTMLElement): HTMLElement {
+      return control.closest<HTMLElement>("li,[role='listitem'],label,[class*='item'],[class*='row'],[class*='step'],[class*='check']") ?? control.parentElement ?? control;
+    }
+
+    function isCheckedState(control: HTMLElement): boolean {
+      if (control instanceof HTMLInputElement && control.type === "checkbox") {
+        return control.checked;
+      }
+
+      const ariaChecked = control.getAttribute("aria-checked");
+      if (ariaChecked === "true") {
+        return true;
+      }
+
+      return /\b(active|checked|complete|completed|done|selected)\b/i.test(control.className);
+    }
+
+    function hasCustomChecklistStateTreatment(control: HTMLElement, row: HTMLElement): boolean {
+      return /\b(active|checked|complete|completed|done|selected|current|pending|waiting)\b/i.test(`${classNameFor(control)} ${classNameFor(row)}`);
+    }
+
+    function classNameFor(element: HTMLElement): string {
+      return typeof element.className === "string" ? element.className : "";
+    }
+
+    function visualSignature(element: HTMLElement): string {
+      const style = window.getComputedStyle(element);
+      const fontWeight = Number.parseInt(style.fontWeight || "400", 10) >= 600 ? "bold" : "normal";
+      return [
+        normalizedColor(style.backgroundColor),
+        normalizedColor(style.borderTopColor),
+        normalizedColor(style.color),
+        fontWeight
+      ].join("|");
+    }
+
+    function normalizedColor(value: string): string {
+      const color = parseRgb(value);
+      return `${Math.round(color.red)},${Math.round(color.green)},${Math.round(color.blue)},${Number(color.alpha.toFixed(2))}`;
+    }
+
     function collectFixedWidthRisks() {
       if (viewport.width > 480) {
         return [];
@@ -586,6 +732,35 @@ export async function collectViewportMeasurements(page: {
         green: Number(green),
         blue: Number(blue),
         alpha: Number(alpha)
+      };
+    }
+
+    function rgbToHsl(color: { red: number; green: number; blue: number }) {
+      const red = color.red / 255;
+      const green = color.green / 255;
+      const blue = color.blue / 255;
+      const max = Math.max(red, green, blue);
+      const min = Math.min(red, green, blue);
+      const lightness = (max + min) / 2;
+      const delta = max - min;
+      if (delta === 0) {
+        return { hue: 0, saturation: 0, lightness };
+      }
+
+      const saturation = delta / (1 - Math.abs(2 * lightness - 1));
+      let hue = 0;
+      if (max === red) {
+        hue = 60 * (((green - blue) / delta) % 6);
+      } else if (max === green) {
+        hue = 60 * ((blue - red) / delta + 2);
+      } else {
+        hue = 60 * ((red - green) / delta + 4);
+      }
+
+      return {
+        hue: hue < 0 ? hue + 360 : hue,
+        saturation,
+        lightness
       };
     }
 

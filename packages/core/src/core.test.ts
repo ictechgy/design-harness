@@ -59,6 +59,18 @@ describe("criteria registry", () => {
       determinism: "deterministic",
       resultKind: "risk"
     });
+    expect(findingMetadataForCheck("saturated-color-noise-risk")).toMatchObject({
+      criterionId: "color.hierarchy.saturation-discipline",
+      determinism: "heuristic",
+      resultKind: "needs-review",
+      humanReviewRecommended: true
+    });
+    expect(findingMetadataForCheck("checklist-state-visibility-risk")).toMatchObject({
+      criterionId: "state.checklist.activation-visibility",
+      determinism: "heuristic",
+      resultKind: "needs-review",
+      humanReviewRecommended: true
+    });
   });
 });
 

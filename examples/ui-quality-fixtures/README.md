@@ -13,5 +13,7 @@ Small pages used to calibrate source-backed criteria and report wording.
 - `interaction-state-bad.html`: static signals for interaction-state risks.
 - `midjourney-derived/scanability-good.html`: hand-authored dense-dashboard scanability fixture.
 - `midjourney-derived/scanability-bad.html`: hand-authored dense-dashboard scanability stress fixture.
+- `midjourney-derived/state-and-color-good.html`: hand-authored checklist and color hierarchy fixture that should preserve clear state meaning.
+- `midjourney-derived/state-and-color-bad.html`: hand-authored checklist and color hierarchy stress fixture for saturated color and state-visibility review prompts.
 
 These fixtures intentionally stay framework-free so checks can isolate DOM, style, viewport, and report behavior.

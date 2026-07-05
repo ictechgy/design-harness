@@ -18,6 +18,8 @@ const baseMeasurements: ViewportMeasurements = {
   missingMainLandmark: false,
   repeatedLabels: [],
   repeatedVisualWeightRisks: [],
+  saturatedColorNoiseRisks: [],
+  checklistStateVisibilityRisks: [],
   fixedWidthRisks: [],
   stickyObstructionRisks: [],
   excessiveLineLength: [],
@@ -154,6 +156,42 @@ describe("findingsFromMeasurements", () => {
 
     expect(findings.find((finding) => finding.checkName === "repeated-visual-weight-risk")).toMatchObject({
       criterionId: "hierarchy.visual-weight.priority-risk",
+      determinism: "heuristic",
+      resultKind: "needs-review",
+      confidence: "low",
+      humanReviewRecommended: true
+    });
+  });
+
+  it("emits reference-derived color and checklist state review prompts", () => {
+    const findings = findingsFromMeasurements(
+      {
+        ...baseMeasurements,
+        saturatedColorNoiseRisks: [{
+          count: 9,
+          hueBucketCount: 5,
+          hueBuckets: [0, 60, 120, 210, 300],
+          selectors: [".red", ".yellow", ".green", ".blue", ".purple"]
+        }],
+        checklistStateVisibilityRisks: [{
+          reason: "inconsistent-checked-styles",
+          checkedCount: 4,
+          uncheckedCount: 2,
+          selectors: [".step-1", ".step-2", ".step-3", ".step-4"]
+        }]
+      },
+      ["screenshot-desktop", "measurement-desktop"]
+    );
+
+    expect(findings.find((finding) => finding.checkName === "saturated-color-noise-risk")).toMatchObject({
+      criterionId: "color.hierarchy.saturation-discipline",
+      determinism: "heuristic",
+      resultKind: "needs-review",
+      confidence: "low",
+      humanReviewRecommended: true
+    });
+    expect(findings.find((finding) => finding.checkName === "checklist-state-visibility-risk")).toMatchObject({
+      criterionId: "state.checklist.activation-visibility",
       determinism: "heuristic",
       resultKind: "needs-review",
       confidence: "low",

@@ -37,6 +37,20 @@ export interface RepeatedVisualWeightSample {
   areaVariation: number;
 }
 
+export interface SaturatedColorNoiseSample {
+  count: number;
+  hueBucketCount: number;
+  hueBuckets: number[];
+  selectors: string[];
+}
+
+export interface ChecklistStateVisibilitySample {
+  reason: "inconsistent-checked-styles" | "checked-unchecked-styles-too-similar";
+  checkedCount: number;
+  uncheckedCount: number;
+  selectors: string[];
+}
+
 export interface LineLengthSample extends ElementSample {
   estimatedCharactersPerLine: number;
 }
@@ -58,6 +72,8 @@ export interface ViewportMeasurements {
   missingMainLandmark: boolean;
   repeatedLabels: RepeatedLabelSample[];
   repeatedVisualWeightRisks: RepeatedVisualWeightSample[];
+  saturatedColorNoiseRisks: SaturatedColorNoiseSample[];
+  checklistStateVisibilityRisks: ChecklistStateVisibilitySample[];
   fixedWidthRisks: ElementSample[];
   stickyObstructionRisks: ElementSample[];
   excessiveLineLength: LineLengthSample[];
@@ -281,6 +297,48 @@ export function findingsFromMeasurements(
         areaVariation: sample.areaVariation
       },
       expected: "Repeated panels either communicate intentional equal priority or provide clear visual hierarchy."
+    }));
+  }
+
+  for (const [index, sample] of measurements.saturatedColorNoiseRisks.slice(0, 3).entries()) {
+    findings.push(createFinding({
+      id: `finding-${measurements.viewport}-saturated-color-noise-risk-${index + 1}`,
+      category: "hierarchy",
+      severity: "low",
+      confidence: "low",
+      viewport: measurements.viewport,
+      evidenceRefs,
+      problem: `${sample.count} saturated color regions across ${sample.hueBucketCount} hue groups may be competing for attention.`,
+      recommendation: "Reserve saturated colors for stable status, brand, or primary-action meaning; reduce decorative color variety where it weakens scan priority.",
+      checkName: "saturated-color-noise-risk",
+      observed: {
+        count: sample.count,
+        hueBucketCount: sample.hueBucketCount,
+        hueBuckets: sample.hueBuckets,
+        selectors: sample.selectors
+      },
+      expected: "Saturated color is used sparingly and maps to clear priority, grouping, or status meaning."
+    }));
+  }
+
+  for (const [index, sample] of measurements.checklistStateVisibilityRisks.slice(0, 3).entries()) {
+    findings.push(createFinding({
+      id: `finding-${measurements.viewport}-checklist-state-visibility-risk-${index + 1}`,
+      category: "interaction",
+      severity: "low",
+      confidence: "low",
+      viewport: measurements.viewport,
+      evidenceRefs,
+      problem: checklistStateProblem(sample),
+      recommendation: "Make checked, active, and inactive checklist states visually consistent and distinct through stable color, icon, text, or row treatment.",
+      checkName: "checklist-state-visibility-risk",
+      observed: {
+        reason: sample.reason,
+        checkedCount: sample.checkedCount,
+        uncheckedCount: sample.uncheckedCount,
+        selectors: sample.selectors
+      },
+      expected: "Checklist state treatment makes completed/current/inactive items easy to distinguish."
     }));
   }
 
@@ -548,4 +606,12 @@ function headingProblem(sample: HeadingIssueSample): string {
     case "duplicate-h1":
       return `Additional H1 ${sample.selector} may make the page top-level structure ambiguous.`;
   }
+}
+
+function checklistStateProblem(sample: ChecklistStateVisibilitySample): string {
+  if (sample.reason === "inconsistent-checked-styles") {
+    return `${sample.checkedCount} checked checklist items use inconsistent visual treatment, which may weaken completion-state meaning.`;
+  }
+
+  return "Checked and unchecked checklist items use very similar visual treatment, which may make progress state hard to scan.";
 }
