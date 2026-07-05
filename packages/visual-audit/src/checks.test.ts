@@ -17,6 +17,7 @@ const baseMeasurements: ViewportMeasurements = {
   headingIssues: [],
   missingMainLandmark: false,
   repeatedLabels: [],
+  repeatedVisualWeightRisks: [],
   fixedWidthRisks: [],
   stickyObstructionRisks: [],
   excessiveLineLength: [],
@@ -134,6 +135,29 @@ describe("findingsFromMeasurements", () => {
     expect(findings.find((finding) => finding.checkName === "tap-target-risk")).toMatchObject({
       determinism: "deterministic",
       resultKind: "risk"
+    });
+  });
+
+  it("emits reference-derived hierarchy review prompts for repeated visual weight", () => {
+    const findings = findingsFromMeasurements(
+      {
+        ...baseMeasurements,
+        repeatedVisualWeightRisks: [{
+          count: 6,
+          selectors: [".card-1", ".card-2", ".card-3", ".card-4", ".card-5", ".card-6"],
+          averageArea: 27_500,
+          areaVariation: 0.04
+        }]
+      },
+      ["screenshot-desktop", "measurement-desktop"]
+    );
+
+    expect(findings.find((finding) => finding.checkName === "repeated-visual-weight-risk")).toMatchObject({
+      criterionId: "hierarchy.visual-weight.priority-risk",
+      determinism: "heuristic",
+      resultKind: "needs-review",
+      confidence: "low",
+      humanReviewRecommended: true
     });
   });
 

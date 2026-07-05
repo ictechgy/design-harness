@@ -146,6 +146,7 @@ function measurementFor(name: string): ViewportMeasurements {
     headingIssues: [],
     missingMainLandmark: false,
     repeatedLabels: [],
+    repeatedVisualWeightRisks: [],
     fixedWidthRisks: [],
     stickyObstructionRisks: [],
     excessiveLineLength: [],

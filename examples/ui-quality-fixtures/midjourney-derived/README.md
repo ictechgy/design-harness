@@ -5,7 +5,7 @@ These fixtures are hand-authored examples distilled from generic reference obser
 ## Fixture Pair
 
 - `scanability-good.html`: dense operational dashboard with responsive layout, readable grouping, and adequate target size. It should not trigger overflow, target-size, or line-length risks.
-- `scanability-bad.html`: dense operational dashboard stress case with fixed width, tiny actions, long rows, and overloaded hierarchy. It is expected to trigger responsive/readability risks and remain a human-review candidate for future density criteria.
+- `scanability-bad.html`: dense operational dashboard stress case with fixed width, tiny actions, long rows, and repeated equal-weight modules. It is expected to trigger responsive, target-size, and hierarchy `needs-review` signals.
 
 ## Expected Findings
 
@@ -16,3 +16,4 @@ Important claim rules:
 - deterministic findings require an existing official-testable `criterionId`,
 - heuristic risks should stay risk language,
 - subjective scanability judgments should stay `human-review` or `future-criterion`.
+- repeated visual weight is measured from layout geometry, but still stays `needs-review` because priority hierarchy depends on product context.

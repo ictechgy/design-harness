@@ -88,6 +88,7 @@ export async function collectViewportMeasurements(page: {
     const headingIssues = collectHeadingIssues();
     const missingMainLandmark = document.body.querySelector("main,[role='main']") === null;
     const repeatedLabels = collectRepeatedLabels(interactiveElements);
+    const repeatedVisualWeightRisks = collectRepeatedVisualWeightRisks();
     const fixedWidthRisks = collectFixedWidthRisks();
     const stickyObstructionRisks = collectStickyObstructionRisks();
     const excessiveLineLength = collectExcessiveLineLength(textElements);
@@ -116,6 +117,7 @@ export async function collectViewportMeasurements(page: {
       headingIssues,
       missingMainLandmark,
       repeatedLabels,
+      repeatedVisualWeightRisks,
       fixedWidthRisks,
       stickyObstructionRisks,
       excessiveLineLength,
@@ -303,6 +305,54 @@ export async function collectViewportMeasurements(page: {
         }));
     }
 
+    function collectRepeatedVisualWeightRisks() {
+      const candidates = Array.from(document.body.querySelectorAll<HTMLElement>([
+        "article",
+        "aside",
+        "section",
+        "[class*='card']",
+        "[class*='panel']",
+        "[class*='tile']",
+        "[class*='metric']"
+      ].join(",")))
+        .filter(isElementVisible)
+        .filter((element) => element.innerText.trim().length >= 8)
+        .map((element) => {
+          const rect = element.getBoundingClientRect();
+          return {
+            element,
+            area: Math.round(rect.width * rect.height),
+            rect
+          };
+        })
+        .filter(({ area, rect }) => rect.width >= 120 && rect.height >= 72 && area >= 8_000)
+        .filter(({ rect }) => rect.top < viewport.height * 1.25)
+        .sort((left, right) => left.area - right.area);
+
+      for (const candidate of candidates) {
+        const similar = candidates.filter(({ area }) => area >= candidate.area * 0.8 && area <= candidate.area * 1.25);
+        if (similar.length < 6) {
+          continue;
+        }
+
+        const areas = similar.map(({ area }) => area);
+        const averageArea = Math.round(areas.reduce((sum, area) => sum + area, 0) / areas.length);
+        const areaVariation = standardDeviation(areas) / Math.max(averageArea, 1);
+        if (areaVariation > 0.18) {
+          continue;
+        }
+
+        return [{
+          count: similar.length,
+          selectors: similar.slice(0, 8).map(({ element }) => selectorFor(element)),
+          averageArea,
+          areaVariation: Number(areaVariation.toFixed(3))
+        }];
+      }
+
+      return [];
+    }
+
     function collectFixedWidthRisks() {
       if (viewport.width > 480) {
         return [];
@@ -338,12 +388,13 @@ export async function collectViewportMeasurements(page: {
 
     function collectExcessiveLineLength(elements: HTMLElement[]) {
       return elements
-        .filter((element) => ["P", "LI", "ARTICLE", "SECTION", "MAIN"].includes(element.tagName))
+        .filter(isReadableTextMeasureCandidate)
         .map((element) => {
           const style = window.getComputedStyle(element);
           const rect = element.getBoundingClientRect();
           const fontSize = Number.parseFloat(style.fontSize || "16");
-          const estimatedCharactersPerLine = Math.round(rect.width / Math.max(fontSize * 0.52, 1));
+          const measuredWidth = style.whiteSpace === "nowrap" ? Math.max(rect.width, element.scrollWidth) : rect.width;
+          const estimatedCharactersPerLine = Math.round(measuredWidth / Math.max(fontSize * 0.52, 1));
           return {
             element,
             estimatedCharactersPerLine
@@ -355,6 +406,18 @@ export async function collectViewportMeasurements(page: {
           ...sampleElement(element),
           estimatedCharactersPerLine
         }));
+    }
+
+    function isReadableTextMeasureCandidate(element: HTMLElement): boolean {
+      if (["P", "LI", "TD", "TH"].includes(element.tagName)) {
+        return true;
+      }
+
+      if (element.tagName !== "ARTICLE") {
+        return false;
+      }
+
+      return element.querySelector("p,li,td,th,article,section,main") === null;
     }
 
     function collectTapTargetRisks(elements: HTMLElement[]) {
@@ -543,6 +606,12 @@ export async function collectViewportMeasurements(page: {
         return value <= 0.03928 ? value / 12.92 : Math.pow((value + 0.055) / 1.055, 2.4);
       });
       return 0.2126 * red + 0.7152 * green + 0.0722 * blue;
+    }
+
+    function standardDeviation(values: number[]): number {
+      const average = values.reduce((sum, value) => sum + value, 0) / Math.max(values.length, 1);
+      const variance = values.reduce((sum, value) => sum + (value - average) ** 2, 0) / Math.max(values.length, 1);
+      return Math.sqrt(variance);
     }
   });
 }

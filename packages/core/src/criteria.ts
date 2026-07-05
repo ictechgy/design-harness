@@ -203,6 +203,20 @@ export const CRITERIA: Criterion[] = [
     remediationHint: "Make repeated labels specific with visible text or accessible-name context."
   },
   {
+    id: "hierarchy.visual-weight.priority-risk",
+    category: "hierarchy",
+    title: "Repeated modules preserve a scan path",
+    description: "Repeated content modules should not flatten priority by giving many unrelated panels the same visual weight.",
+    sourceRefs: ["iso-9241-210", "nng-usability-heuristics"],
+    sourceStrength: "industry-heuristic",
+    determinism: "heuristic",
+    resultKind: "needs-review",
+    confidenceDefault: "low",
+    runtime: "computed-style",
+    checkNames: ["repeated-visual-weight-risk"],
+    remediationHint: "Create a clearer primary/secondary scan path with grouping, size contrast, sectioning, or reduced equal-weight repetition."
+  },
+  {
     id: "readability.line-length.reasonable",
     category: "visual-polish",
     title: "Reading line length remains reasonable",

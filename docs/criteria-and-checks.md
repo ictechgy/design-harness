@@ -82,5 +82,6 @@ Use scoped language:
 - Responsiveness and overflow.
 - Text clipping and contrast.
 - Semantic accessibility: names, labels, images, headings, landmarks.
+- Hierarchy review prompts: repeated equal-weight modules that may flatten priority.
 - Responsive readability: wide content, sticky obstruction, line length, target size.
 - Interaction state: error association, color-only states, disabled controls, live status, dialogs, custom controls, moving content.

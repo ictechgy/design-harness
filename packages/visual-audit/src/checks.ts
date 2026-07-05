@@ -30,6 +30,13 @@ export interface RepeatedLabelSample {
   selectors: string[];
 }
 
+export interface RepeatedVisualWeightSample {
+  count: number;
+  selectors: string[];
+  averageArea: number;
+  areaVariation: number;
+}
+
 export interface LineLengthSample extends ElementSample {
   estimatedCharactersPerLine: number;
 }
@@ -50,6 +57,7 @@ export interface ViewportMeasurements {
   headingIssues: HeadingIssueSample[];
   missingMainLandmark: boolean;
   repeatedLabels: RepeatedLabelSample[];
+  repeatedVisualWeightRisks: RepeatedVisualWeightSample[];
   fixedWidthRisks: ElementSample[];
   stickyObstructionRisks: ElementSample[];
   excessiveLineLength: LineLengthSample[];
@@ -252,6 +260,27 @@ export function findingsFromMeasurements(
         selectors: sample.selectors
       },
       expected: "Repeated interactive labels are specific enough to distinguish actions."
+    }));
+  }
+
+  for (const [index, sample] of measurements.repeatedVisualWeightRisks.slice(0, 3).entries()) {
+    findings.push(createFinding({
+      id: `finding-${measurements.viewport}-repeated-visual-weight-risk-${index + 1}`,
+      category: "hierarchy",
+      severity: "low",
+      confidence: "low",
+      viewport: measurements.viewport,
+      evidenceRefs,
+      problem: `${sample.count} similarly sized content panels may be competing with the same visual weight.`,
+      recommendation: "Create a clearer primary/secondary scan path by grouping secondary panels, enlarging the primary region, or reducing repeated equal-weight modules.",
+      checkName: "repeated-visual-weight-risk",
+      observed: {
+        count: sample.count,
+        selectors: sample.selectors,
+        averageArea: sample.averageArea,
+        areaVariation: sample.areaVariation
+      },
+      expected: "Repeated panels either communicate intentional equal priority or provide clear visual hierarchy."
     }));
   }
 
