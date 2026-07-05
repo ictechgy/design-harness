@@ -1,12 +1,16 @@
 name: CI
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - main
       - "codex/**"
       - "feature/**"
   pull_request:
+
+permissions:
+  contents: read
 
 jobs:
   verify:
@@ -21,11 +25,7 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm build
-      - run: pnpm typecheck
-      - run: pnpm test
-      - run: pnpm validate
-      - run: pnpm pack:dry-run
+      - run: pnpm release:check
 
   example-smoke:
     runs-on: ubuntu-latest
@@ -42,3 +42,11 @@ jobs:
       - run: pnpm --filter @design-harness/visual-audit exec playwright install --with-deps chromium
       - run: pnpm build
       - run: pnpm smoke:example
+      - name: Upload Design Harness example artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: design-harness-example-smoke
+          path: runs/example-smoke
+          if-no-files-found: warn
+          retention-days: 14
