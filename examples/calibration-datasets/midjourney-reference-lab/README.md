@@ -14,6 +14,8 @@ datasets/midjourney-reference-lab/local-assets/
 - `manifest.example.jsonl`: example JSONL records.
 - `validate-manifest.mjs`: dependency-free validator for the example format.
 
+Some records may use `commitPolicy: "local-only"` and point to ignored reference images under `datasets/midjourney-reference-lab/local-assets/`. Those references are private calibration aids; the public repo remains reproducible from the manifest, review notes, and hand-authored fixtures.
+
 ## Validate
 
 ```bash
