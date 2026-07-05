@@ -10,6 +10,13 @@ Design Harness works best in CI when the workflow treats it as an artifact gener
 
 The harness does not start your app for you because every frontend stack has a different preview command.
 
+This repository's own CI workflow is the maintainable reference scaffold:
+
+- `.github/workflows/ci.yml` runs `pnpm release:check`.
+- The `example-smoke` job runs the fixture audit through `pnpm smoke:example`.
+- The generated `runs/example-smoke` directory is uploaded as the `design-harness-example-smoke` artifact, even when the smoke job fails.
+- `pnpm check:github-actions` verifies that the artifact step stays wired into CI.
+
 ## App Repository Example
 
 This example assumes the app already depends on `@design-harness/cli` and exposes a local preview command.

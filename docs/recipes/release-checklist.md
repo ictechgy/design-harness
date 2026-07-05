@@ -29,7 +29,7 @@ pnpm --filter @design-harness/cli publish --access public
 After publish, verify one-off execution from a separate temporary directory:
 
 ```bash
-npx @design-harness/cli@0.1.1 --help
+npx @design-harness/cli@0.1.2 --help
 npx playwright install chromium
 ```
 
