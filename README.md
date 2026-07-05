@@ -1,25 +1,44 @@
 # Design Harness
 
-Design Harness is an open-source, model-agnostic UI/UX critique, visual QA, and iteration harness for AI coding agents and design automation tools.
+Evidence for AI-made interfaces.
 
-The local CLI golden path is intentionally narrow:
+Design Harness is an open-source, model-agnostic UI/UX QA loop for AI coding agents. Point it at a local URL and it captures desktop/mobile screenshots, runs conservative source-backed checks, and writes an agent-friendly report you can hand back to Codex, Claude Code, Gemini CLI, or a human reviewer.
 
 ```text
-local URL -> desktop/mobile screenshots -> schema-valid audit.json -> report.md -> iteration prompt scaffold
+local URL -> screenshots -> audit.json -> report.md -> iteration prompt scaffold
 ```
 
-Design Harness does not train a design model, require a hosted LLM, or claim that a numeric score is objective design quality. It creates repeatable evidence that humans and agents can use to improve UI work.
+It is not a black-box design judge, a hosted LLM product, or a visual regression replacement. The goal is simpler and more useful: make UI feedback repeatable enough that humans and agents can improve the same screen from the same evidence.
 
-## Status
+## Why
 
-This repository has the local CLI audit loop implemented and is expanding the v0.2 research-backed quality model. MCP and Open Design materials remain contracts/specs until verified implementations exist.
+AI coding agents can produce interfaces that look plausible at first glance while still having ordinary, expensive problems:
+
+- mobile overflow,
+- clipped text,
+- weak contrast,
+- unlabeled controls,
+- color-only state changes,
+- hidden or ambiguous errors,
+- unreadable dense layouts,
+- CTA and state hierarchy that "feels off" but has no review artifact.
+
+Design Harness turns those observations into structured output. Deterministic issues stay deterministic. Heuristic risks stay labeled as risks. Subjective or emerging design judgments stay as review prompts instead of being dressed up as objective truth.
 
 ## Quickstart
+
+From a checkout:
 
 ```bash
 pnpm install
 pnpm build
 pnpm design-harness -- audit --url http://localhost:3000 --out runs/demo
+```
+
+If Chromium is not installed for Playwright:
+
+```bash
+pnpm playwright:install
 ```
 
 Expected output:
@@ -35,31 +54,58 @@ runs/demo/
     mobile.png
 ```
 
-## Packages
+Partial audits still write artifacts but exit with code `2` by default. Use `--allow-partial` when a debugging workflow should treat partial artifacts as success.
 
-- `@design-harness/core`: schemas, validation, scoring, report rendering, shared types.
-- `@design-harness/visual-audit`: Playwright screenshot capture and source-backed DOM, layout, accessibility, and interaction checks.
-- `@design-harness/cli`: command-line entry point for the v0.1 audit workflow.
+## Agent Loop
+
+The core workflow is meant to be boring in the best way:
+
+1. Run your app locally.
+2. Audit the local URL.
+3. Give `runs/<name>/report.md` and the screenshots to your coding agent.
+4. Ask it to fix the highest-confidence findings first.
+5. Run the harness again.
+
+Example follow-up prompt:
+
+```text
+Use this Design Harness report as the source of truth.
+Fix deterministic failures first, then medium-confidence risks.
+Do not chase subjective polish unless the report marks it as needs-review.
+After editing, rerun the same audit command and summarize what changed.
+```
+
+This keeps the loop grounded. The agent is not guessing from "make it better"; it is responding to screenshots, evidence references, criteria, and report copy that separate measurement from taste.
 
 ## What Gets Checked
 
 Checks are conservative and source-backed:
 
-- render failure or blank render
-- horizontal overflow
-- likely text clipping
-- DOM-computed contrast risk
-- semantic accessibility risks: missing names, form labels, image alternatives, heading issues, landmarks
-- responsive readability risks: wide content, sticky obstruction, excessive line length, target size
-- interaction state risks: error association, color-only states, disabled controls, live status, dialogs, custom controls, moving content
+- render failure or blank render,
+- horizontal overflow,
+- likely text clipping,
+- DOM-computed contrast risk,
+- semantic accessibility risks: missing names, form labels, image alternatives, heading issues, landmarks,
+- responsive readability risks: wide content, sticky obstruction, excessive line length, target size,
+- interaction state risks: error association, color-only states, disabled controls, live status, dialogs, custom controls, moving content.
 
 Every finding includes severity, confidence, viewport, category, evidence references, and a recommendation. v0.2 findings may also include `criterionId`, `sourceRefs`, `determinism`, `resultKind`, runtime type, observed evidence, and expected behavior.
 
-See [Criteria And Checks](docs/criteria-and-checks.md) and [Fixture Catalog](docs/fixtures.md).
+See [Criteria And Checks](docs/criteria-and-checks.md), [Output Contract](docs/output-contract.md), and [Fixture Catalog](docs/fixtures.md).
+
+## How Findings Speak
+
+Design Harness tries hard not to overclaim.
+
+- `deterministic`: measured evidence supports a concrete failure or risk, such as horizontal overflow.
+- `heuristic`: the signal is probably useful, but context still matters.
+- `needs-review`: the issue is visible to a reviewer, but the harness should not pretend it can prove it automatically.
+
+That distinction matters for design work. A contrast threshold and a weak visual hierarchy should not be reported with the same certainty.
 
 ## Example Fixture
 
-Run the merchant-dashboard fixture in one terminal:
+Run the merchant dashboard fixture in one terminal:
 
 ```bash
 pnpm example:serve
@@ -71,20 +117,57 @@ Then audit it:
 pnpm design-harness -- audit --url http://localhost:4173 --out runs/merchant-dashboard
 ```
 
-If Chromium is not installed for Playwright, run:
+The fixture gives new contributors a stable target for checking the full local loop.
 
-```bash
-pnpm playwright:install
-```
+## Midjourney Reference Lab
 
-Partial audits still write artifacts but exit with code `2` by default. Use `--allow-partial` when a debugging workflow should treat partial artifacts as success.
+The repository also includes a manual calibration workflow for UI quality references:
 
-## Adapters And Specs
+- prompts and manifest records,
+- good/bad labels,
+- expected findings,
+- "should not flag" notes,
+- hand-authored fixtures derived from general observations.
 
-- `adapters/codex-skill`: thin Codex workflow adapter that consumes generated reports.
-- `integrations/mcp-spec`: schema-only tool contract for future MCP clients.
-- `integrations/open-design-spec`: handoff contract for future Open Design integration.
+Generated Midjourney images are local-only by default and are not required to run the project. Design Harness does not call Midjourney, automate Midjourney, require a Midjourney account, or depend on generated assets at runtime.
+
+See [Midjourney Reference Lab Workflow](docs/midjourney-reference-lab/workflow.md).
+
+## Packages
+
+- `@design-harness/core`: schemas, validation, scoring, report rendering, shared types.
+- `@design-harness/visual-audit`: Playwright screenshot capture and source-backed DOM, layout, accessibility, and interaction checks.
+- `@design-harness/cli`: command-line entry point for the local audit workflow.
+
+## Status
+
+Implemented:
+
+- local CLI audit loop,
+- desktop/mobile screenshot capture,
+- schema-valid audit artifacts,
+- Markdown report generation,
+- source-backed criteria registry,
+- example fixtures,
+- Midjourney Reference Lab manifest and policy validators.
+
+In progress or planned:
+
+- npm-friendly one-command usage,
+- GitHub Action and PR comment examples,
+- richer agent adapters,
+- more fixture coverage,
+- promotion of reference-derived `needs-review` signals into measured checks where evidence supports it,
+- MCP and Open Design integrations beyond the current specs.
 
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md). This project is Apache-2.0 licensed.
+Design Harness is Apache-2.0 licensed. See [CONTRIBUTING.md](CONTRIBUTING.md).
+
+The best first contributions are small and evidence-oriented:
+
+- add a good/bad fixture pair,
+- improve a report recommendation,
+- map a check to a stronger source-backed criterion,
+- add a regression test for a real UI failure mode,
+- help turn a `needs-review` calibration signal into a measurable heuristic.
