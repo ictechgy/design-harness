@@ -1,0 +1,14 @@
+{
+  "schemaVersion": "design-harness-scenarios/v1",
+  "name": "merchant-dashboard",
+  "description": "Example scenario set for the static merchant dashboard fixture served by pnpm example:serve.",
+  "scenarios": [
+    {
+      "id": "dashboard-home",
+      "name": "Dashboard home",
+      "url": "http://127.0.0.1:4173/",
+      "timeoutMs": 15000,
+      "allowPartial": false
+    }
+  ]
+}

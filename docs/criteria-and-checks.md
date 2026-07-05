@@ -1,6 +1,6 @@
 # Criteria And Checks
 
-Design Harness v0.2 findings are source-backed. A check should not emit a bare design opinion; it should emit evidence that points to a criterion.
+Design Harness findings are source-backed. A check should not emit a bare design opinion; it should emit evidence that points to a criterion.
 
 ## Criterion Registry
 

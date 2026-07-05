@@ -37,7 +37,7 @@ The original v0.1 finding fields remain valid:
 - `recommendation`
 - `checkName`
 
-v0.2 findings can also include:
+Source-backed findings introduced in v0.2 and used by v0.3 can also include:
 
 - `criterionId`: stable source-backed criterion ID.
 - `sourceRefs`: source IDs from the criterion registry.
