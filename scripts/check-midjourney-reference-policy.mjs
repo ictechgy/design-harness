@@ -11,6 +11,7 @@ if (gitResult.status !== 0) {
 
 const trackedFiles = gitResult.stdout.split(/\r?\n/).filter(Boolean);
 const errors = [];
+const policyScriptPath = "scripts/check-midjourney-reference-policy.mjs";
 const imageAssetPattern = /\.(png|jpe?g|webp|gif)$/i;
 const forbiddenRuntimePatterns = [
   /\bMIDJOURNEY_API_KEY\b/i,
@@ -48,7 +49,10 @@ for (const file of trackedFiles) {
     }
   }
 
-  if (file === "package.json" || file === "pnpm-lock.yaml" || file.startsWith("packages/") || file.startsWith("scripts/") || file.startsWith(".github/")) {
+  if (
+    file !== policyScriptPath &&
+    (file === "package.json" || file === "pnpm-lock.yaml" || file.startsWith("packages/") || file.startsWith("scripts/") || file.startsWith(".github/"))
+  ) {
     const content = readFileSync(file, "utf8");
     for (const pattern of forbiddenRuntimePatterns) {
       if (pattern.test(content)) {
