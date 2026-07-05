@@ -1,0 +1,162 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://design-harness.local/schemas/midjourney-reference-lab/v1",
+  "title": "Midjourney Reference Lab Manifest Record",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "batchId",
+    "createdAt",
+    "prompt",
+    "referenceIntent",
+    "uiArchetype",
+    "qualityTarget",
+    "commitPolicy",
+    "rightsReview",
+    "derivedFixturePath",
+    "expectedFindings",
+    "humanVerdict",
+    "learningUse",
+    "allowedUse",
+    "excludedUse"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": "midjourney-reference-lab/v1"
+    },
+    "batchId": {
+      "type": "string",
+      "pattern": "^mjrl-[a-z0-9-]+$"
+    },
+    "createdAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "operator": {
+      "type": "string"
+    },
+    "midjourneyPlanContext": {
+      "type": "string"
+    },
+    "prompt": {
+      "type": "string",
+      "minLength": 20
+    },
+    "negativePromptNotes": {
+      "type": "string"
+    },
+    "sourcePromptHash": {
+      "type": "string"
+    },
+    "approvedAssetPath": {
+      "type": "string"
+    },
+    "referenceDescription": {
+      "type": "string"
+    },
+    "referenceIntent": {
+      "type": "string"
+    },
+    "uiArchetype": {
+      "type": "string"
+    },
+    "qualityTarget": {
+      "enum": ["good", "bad", "ambiguous", "edge-case"]
+    },
+    "commitPolicy": {
+      "enum": ["no-asset-commit", "local-only", "asset-approved"]
+    },
+    "localAssetPath": {
+      "type": "string"
+    },
+    "rightsReview": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "notes"],
+      "properties": {
+        "status": {
+          "enum": ["not-reviewed", "self-reviewed", "approved", "rejected"]
+        },
+        "reviewer": {
+          "type": "string"
+        },
+        "notes": {
+          "type": "string"
+        }
+      }
+    },
+    "derivedFixturePath": {
+      "type": "string"
+    },
+    "expectedFindings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["summary", "claimType", "expectedResult"],
+        "properties": {
+          "summary": {
+            "type": "string"
+          },
+          "criterionId": {
+            "type": "string"
+          },
+          "futureCriterion": {
+            "type": "string"
+          },
+          "sourceStrength": {
+            "enum": [
+              "official-testable",
+              "official-pattern",
+              "industry-heuristic",
+              "research-emerging",
+              "philosophical"
+            ]
+          },
+          "claimType": {
+            "enum": ["deterministic", "heuristic-risk", "human-review", "future-criterion"]
+          },
+          "expectedResult": {
+            "enum": ["failure", "risk", "needs-review"]
+          },
+          "notes": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "shouldNotFlag": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "humanVerdict": {
+      "enum": ["ship", "needs-review", "do-not-ship"]
+    },
+    "learningUse": {
+      "enum": [
+        "evaluator-calibration",
+        "prompt-tuning",
+        "benchmark",
+        "fine-tune-candidate",
+        "excluded"
+      ]
+    },
+    "allowedUse": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1
+    },
+    "excludedUse": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1
+    }
+  }
+}

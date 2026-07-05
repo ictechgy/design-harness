@@ -13,6 +13,7 @@ runs/
 playwright-report/
 test-results/
 .nyc_output/
+datasets/midjourney-reference-lab/local-assets/
 
 # Local environment and caches
 .env

@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Midjourney-Derived Scanability Bad Fixture</title>
+    <style>
+      :root {
+        color-scheme: light;
+        font-family: Arial, sans-serif;
+      }
+
+      body {
+        background: #f4f5f7;
+        color: #1f2933;
+        margin: 0;
+      }
+
+      main {
+        padding: 16px;
+        width: 1260px;
+      }
+
+      h1 {
+        font-size: 22px;
+        margin: 0 0 8px;
+      }
+
+      .dense-board {
+        display: grid;
+        gap: 6px;
+        grid-template-columns: repeat(6, 196px);
+      }
+
+      .card {
+        background: #ffffff;
+        border: 1px solid #d7dce2;
+        border-radius: 4px;
+        min-height: 128px;
+        padding: 8px;
+      }
+
+      .card h2 {
+        font-size: 13px;
+        margin: 0 0 4px;
+      }
+
+      .card p {
+        font-size: 12px;
+        line-height: 1.2;
+        margin: 0;
+      }
+
+      .tiny-action {
+        background: #dbeafe;
+        border: 1px solid #93c5fd;
+        border-radius: 3px;
+        color: #1e3a8a;
+        height: 22px;
+        margin-top: 6px;
+        width: 22px;
+      }
+
+      table {
+        border-collapse: collapse;
+        margin-top: 12px;
+        table-layout: fixed;
+        width: 1220px;
+      }
+
+      th,
+      td {
+        border: 1px solid #d7dce2;
+        font-size: 12px;
+        padding: 6px;
+        text-align: left;
+      }
+
+      .long-note {
+        white-space: nowrap;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Inventory pressure board</h1>
+      <section class="dense-board" aria-label="Overloaded inventory metrics">
+        <article class="card">
+          <h2>Ready</h2>
+          <p>128 items. Fifteen changed since the last review window.</p>
+          <button type="button" class="tiny-action" aria-label="Open ready items">O</button>
+        </article>
+        <article class="card">
+          <h2>Reorder</h2>
+          <p>Fourteen lines need review before the afternoon vendor call.</p>
+          <button type="button" class="tiny-action" aria-label="Open reorder items">O</button>
+        </article>
+        <article class="card">
+          <h2>Blocked</h2>
+          <p>Three blocked orders share the same missing package issue.</p>
+          <button type="button" class="tiny-action" aria-label="Open blocked orders">O</button>
+        </article>
+        <article class="card">
+          <h2>Late</h2>
+          <p>Seven late confirmations with overlapping owners.</p>
+          <button type="button" class="tiny-action" aria-label="Open late confirmations">O</button>
+        </article>
+        <article class="card">
+          <h2>Returns</h2>
+          <p>Nine items need manual inspection and shelf update.</p>
+          <button type="button" class="tiny-action" aria-label="Open returns">O</button>
+        </article>
+        <article class="card">
+          <h2>Notes</h2>
+          <p>Multiple competing messages have equal visual weight.</p>
+          <button type="button" class="tiny-action" aria-label="Open notes">O</button>
+        </article>
+      </section>
+
+      <table>
+        <thead>
+          <tr>
+            <th scope="col">Item</th>
+            <th scope="col">Owner</th>
+            <th scope="col">Status</th>
+            <th scope="col">Review note</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Morning pastry set</td>
+            <td>Kitchen</td>
+            <td>Reorder</td>
+            <td class="long-note">This row intentionally keeps a very long unwrapped note so the dense board forces repeated horizontal scanning on small viewports.</td>
+          </tr>
+          <tr>
+            <td>Gift card sleeve</td>
+            <td>Front desk</td>
+            <td>Ready</td>
+            <td class="long-note">The action priority is unclear because every card and row has similar weight and nearly identical action affordances.</td>
+          </tr>
+        </tbody>
+      </table>
+    </main>
+  </body>
+</html>
