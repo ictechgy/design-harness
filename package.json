@@ -1,6 +1,6 @@
 {
   "name": "design-harness",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "description": "Model-agnostic UI/UX critique, visual QA, and iteration harness for AI coding agents.",
   "license": "Apache-2.0",
@@ -39,8 +39,9 @@
     "playwright:install": "pnpm --filter @design-harness/visual-audit exec playwright install chromium",
     "example:serve": "node scripts/serve-static.mjs examples/merchant-dashboard 4173",
     "smoke:example": "node scripts/run-example-smoke.mjs",
+    "smoke:packed-cli": "node scripts/verify-packed-cli.mjs",
     "pack:dry-run": "pnpm --filter @design-harness/core pack --dry-run && pnpm --filter @design-harness/visual-audit pack --dry-run && pnpm --filter @design-harness/cli pack --dry-run",
-    "release:check": "pnpm build && pnpm typecheck && pnpm test && pnpm validate && pnpm pack:dry-run"
+    "release:check": "pnpm build && pnpm typecheck && pnpm test && pnpm validate && pnpm pack:dry-run && pnpm smoke:packed-cli"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",

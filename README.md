@@ -62,6 +62,12 @@ The package entry point is prepared as `@design-harness/cli`, which exposes the 
 npx @design-harness/cli@latest audit --url http://localhost:3000 --out runs/demo
 ```
 
+For npm-installed usage, install the Playwright browser once if Chromium is missing:
+
+```bash
+npx playwright install chromium
+```
+
 ## Agent Loop
 
 The core workflow is meant to be boring in the best way:
@@ -102,6 +108,7 @@ See [Criteria And Checks](docs/criteria-and-checks.md), [Output Contract](docs/o
 ## Recipes
 
 - [GitHub Actions](docs/recipes/github-actions.md): run the harness in CI, upload artifacts, and optionally comment on pull requests.
+- [npm Execution](docs/recipes/npm-execution.md): verify the packed CLI and understand the post-publish `npx` path.
 - [Agent Loop Recipes](docs/recipes/agent-loop.md): prompts for Codex, Claude Code, Gemini CLI, and human reviewers.
 - [Release Checklist](docs/recipes/release-checklist.md): package checks to run before publishing a public version.
 
