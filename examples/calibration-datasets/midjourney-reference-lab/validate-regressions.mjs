@@ -53,7 +53,18 @@ try {
   expectInvalid(
     "local-asset-path-escape",
     { commitPolicy: "local-only", localAssetPath: "datasets/midjourney-reference-lab/local-assets/../escaped.png" },
-    "localAssetPath must use the ignored local-assets path unless asset-approved",
+    "localAssetPath must use the ignored local-assets path",
+  );
+  expectInvalid(
+    "asset-approved-local-asset-path-escape",
+    {
+      commitPolicy: "asset-approved",
+      localAssetPath: "datasets/midjourney-reference-lab/local-assets/../escaped.png",
+      approvedAssetPath: "examples/calibration-datasets/midjourney-reference-lab/approved-assets/approved.png",
+      rightsReview: { status: "approved", reviewer: "reviewer", notes: "Approved fixture for regression test." },
+      sourcePromptHash: "sha256:regression",
+    },
+    "localAssetPath must use the ignored local-assets path",
   );
   expectInvalid(
     "approved-asset-path-escape",

@@ -242,8 +242,8 @@ function validateRecord(record, lineNumber) {
   if (record.localAssetPath !== undefined) {
     const localAssetPath = validateRelativePublicPath(lineNumber, "localAssetPath", record.localAssetPath);
     if (localAssetPath !== undefined) {
-      if (record.commitPolicy !== "asset-approved" && !localAssetPath.startsWith(localAssetPrefix)) {
-        addError(lineNumber, "localAssetPath must use the ignored local-assets path unless asset-approved");
+      if (!localAssetPath.startsWith(localAssetPrefix)) {
+        addError(lineNumber, "localAssetPath must use the ignored local-assets path");
       }
       if (imageExtensionPattern.test(localAssetPath) && record.commitPolicy === "asset-approved" && record.rightsReview?.status !== "approved") {
         addError(lineNumber, "asset-approved image paths require rightsReview.status approved");
