@@ -37,7 +37,7 @@ Source summary:
 
 UI archetypes:
 
-- 
+- TBD
 
 Quality targets:
 
@@ -54,7 +54,7 @@ Rights review:
 
 Fixture links:
 
-- 
+- TBD
 
 Expected finding policy:
 
@@ -65,7 +65,7 @@ Expected finding policy:
 
 Known limitations:
 
-- 
+- TBD
 
 Verification:
 
