@@ -71,6 +71,8 @@ Asset-approved exception requirements:
 
 ```bash
 pnpm validate:midjourney-lab
+pnpm check:midjourney-policy
+pnpm validate:calibration-datasets
 pnpm build
 pnpm typecheck
 pnpm test

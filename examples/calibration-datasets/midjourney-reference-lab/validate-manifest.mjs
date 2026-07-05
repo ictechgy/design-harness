@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { readFileSync } from "node:fs";
-import { dirname, resolve } from "node:path";
+import { dirname, posix, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -27,10 +27,19 @@ const expectedResults = new Set(schema.properties.expectedFindings.items.propert
 const learningUses = new Set(schema.properties.learningUse.enum);
 const humanVerdicts = new Set(schema.properties.humanVerdict.enum);
 const imageExtensionPattern = /\.(png|jpe?g|webp|gif)$/i;
+const repoPathProtocolPattern = /^[a-z][a-z0-9+.-]*:/i;
+const rfc3339DateTimePattern = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d+)?(Z|[+-]\d{2}:\d{2})$/;
+const derivedFixturePrefix = "examples/ui-quality-fixtures/midjourney-derived/";
+const localAssetPrefix = "datasets/midjourney-reference-lab/local-assets/";
+const approvedAssetPrefix = "examples/calibration-datasets/midjourney-reference-lab/approved-assets/";
 const criteriaById = loadCriteria(criteriaText);
 
 function addError(lineNumber, message) {
   errors.push(`line ${lineNumber}: ${message}`);
+}
+
+function addGlobalError(message) {
+  errors.push(message);
 }
 
 function isObject(value) {
@@ -40,11 +49,81 @@ function isObject(value) {
 function validateRelativePublicPath(lineNumber, field, value) {
   if (typeof value !== "string") {
     addError(lineNumber, `${field} must be a string`);
+    return undefined;
+  }
+
+  if (value.length === 0 || value.trim() !== value) {
+    addError(lineNumber, `${field} must be a non-empty path without surrounding whitespace`);
+    return undefined;
+  }
+
+  if (value.startsWith("/") || value.startsWith("~") || repoPathProtocolPattern.test(value)) {
+    addError(lineNumber, `${field} must be a relative repo path without private URLs`);
+    return undefined;
+  }
+
+  if (value.includes("\\")) {
+    addError(lineNumber, `${field} must use POSIX forward slashes`);
+    return undefined;
+  }
+
+  const normalized = posix.normalize(value);
+  if (normalized === "." || normalized === ".." || normalized.startsWith("../") || posix.isAbsolute(normalized)) {
+    addError(lineNumber, `${field} must not escape its allowed repo path`);
+    return undefined;
+  }
+
+  return normalized;
+}
+
+function validatePathPrefix(lineNumber, field, value, prefix, message) {
+  const normalized = validateRelativePublicPath(lineNumber, field, value);
+  if (normalized !== undefined && !normalized.startsWith(prefix)) {
+    addError(lineNumber, message);
+  }
+
+  return normalized;
+}
+
+function isLeapYear(year) {
+  return (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;
+}
+
+function daysInMonth(year, month) {
+  return [31, isLeapYear(year) ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][month - 1] ?? 0;
+}
+
+function validateDateTimeString(lineNumber, field, value) {
+  if (typeof value !== "string") {
+    addError(lineNumber, `${field} must be an RFC3339 date-time string`);
     return;
   }
 
-  if (value.startsWith("/") || value.startsWith("~") || value.includes("://")) {
-    addError(lineNumber, `${field} must be a relative repo path without private URLs`);
+  const match = rfc3339DateTimePattern.exec(value);
+  if (!match) {
+    addError(lineNumber, `${field} must be an RFC3339 date-time string`);
+    return;
+  }
+
+  const [, yearText, monthText, dayText, hourText, minuteText, secondText] = match;
+  const year = Number(yearText);
+  const month = Number(monthText);
+  const day = Number(dayText);
+  const hour = Number(hourText);
+  const minute = Number(minuteText);
+  const second = Number(secondText);
+
+  if (
+    month < 1 ||
+    month > 12 ||
+    day < 1 ||
+    day > daysInMonth(year, month) ||
+    hour > 23 ||
+    minute > 59 ||
+    second > 59 ||
+    Number.isNaN(Date.parse(value))
+  ) {
+    addError(lineNumber, `${field} must be a valid RFC3339 date-time string`);
   }
 }
 
@@ -69,6 +148,7 @@ function loadCriteria(sourceText) {
   const criteriaEnd = sourceText.indexOf("const criteriaById", criteriaStart);
 
   if (criteriaStart === -1 || criteriaEnd === -1) {
+    addGlobalError("criteria registry could not be parsed from packages/core/src/criteria.ts");
     return criteria;
   }
 
@@ -77,6 +157,10 @@ function loadCriteria(sourceText) {
 
   for (const match of criteriaSection.matchAll(criterionPattern)) {
     criteria.set(match[1], { sourceStrength: match[2] });
+  }
+
+  if (criteria.size === 0) {
+    addGlobalError("criteria registry parsing produced no criteria");
   }
 
   return criteria;
@@ -108,9 +192,7 @@ function validateRecord(record, lineNumber) {
     addError(lineNumber, "batchId must match mjrl-[a-z0-9-]+");
   }
 
-  if (typeof record.createdAt !== "string" || Number.isNaN(Date.parse(record.createdAt))) {
-    addError(lineNumber, "createdAt must be an ISO date-time string");
-  }
+  validateDateTimeString(lineNumber, "createdAt", record.createdAt);
 
   if (typeof record.prompt !== "string" || record.prompt.trim().length < 20) {
     addError(lineNumber, "prompt must be a descriptive string");
@@ -149,19 +231,21 @@ function validateRecord(record, lineNumber) {
     }
   }
 
-  validateRelativePublicPath(lineNumber, "derivedFixturePath", record.derivedFixturePath);
-
-  if (typeof record.derivedFixturePath === "string" && !record.derivedFixturePath.startsWith("examples/ui-quality-fixtures/midjourney-derived/")) {
-    addError(lineNumber, "derivedFixturePath must point to examples/ui-quality-fixtures/midjourney-derived/");
-  }
+  validatePathPrefix(
+    lineNumber,
+    "derivedFixturePath",
+    record.derivedFixturePath,
+    derivedFixturePrefix,
+    "derivedFixturePath must point to examples/ui-quality-fixtures/midjourney-derived/",
+  );
 
   if (record.localAssetPath !== undefined) {
-    validateRelativePublicPath(lineNumber, "localAssetPath", record.localAssetPath);
-    if (typeof record.localAssetPath === "string") {
-      if (record.commitPolicy !== "asset-approved" && !record.localAssetPath.startsWith("datasets/midjourney-reference-lab/local-assets/")) {
+    const localAssetPath = validateRelativePublicPath(lineNumber, "localAssetPath", record.localAssetPath);
+    if (localAssetPath !== undefined) {
+      if (record.commitPolicy !== "asset-approved" && !localAssetPath.startsWith(localAssetPrefix)) {
         addError(lineNumber, "localAssetPath must use the ignored local-assets path unless asset-approved");
       }
-      if (imageExtensionPattern.test(record.localAssetPath) && record.commitPolicy === "asset-approved" && record.rightsReview?.status !== "approved") {
+      if (imageExtensionPattern.test(localAssetPath) && record.commitPolicy === "asset-approved" && record.rightsReview?.status !== "approved") {
         addError(lineNumber, "asset-approved image paths require rightsReview.status approved");
       }
     }
@@ -173,10 +257,13 @@ function validateRecord(record, lineNumber) {
 
   if (record.commitPolicy === "asset-approved") {
     validateNonEmptyString(lineNumber, "sourcePromptHash", record.sourcePromptHash);
-    validateRelativePublicPath(lineNumber, "approvedAssetPath", record.approvedAssetPath);
-    if (typeof record.approvedAssetPath === "string" && !record.approvedAssetPath.startsWith("examples/calibration-datasets/midjourney-reference-lab/approved-assets/")) {
-      addError(lineNumber, "asset-approved records must use the approved-assets path");
-    }
+    validatePathPrefix(
+      lineNumber,
+      "approvedAssetPath",
+      record.approvedAssetPath,
+      approvedAssetPrefix,
+      "asset-approved records must use the approved-assets path",
+    );
   }
 
   if (record.commitPolicy !== "asset-approved" && record.approvedAssetPath !== undefined) {
