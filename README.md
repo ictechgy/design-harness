@@ -56,6 +56,12 @@ runs/demo/
 
 Partial audits still write artifacts but exit with code `2` by default. Use `--allow-partial` when a debugging workflow should treat partial artifacts as success.
 
+The package entry point is prepared as `@design-harness/cli`, which exposes the `design-harness` binary. Until the first npm publish, use the checkout workflow above. After publish, the intended one-off shape is:
+
+```bash
+npx @design-harness/cli@latest audit --url http://localhost:3000 --out runs/demo
+```
+
 ## Agent Loop
 
 The core workflow is meant to be boring in the best way:
@@ -92,6 +98,12 @@ Checks are conservative and source-backed:
 Every finding includes severity, confidence, viewport, category, evidence references, and a recommendation. v0.2 findings may also include `criterionId`, `sourceRefs`, `determinism`, `resultKind`, runtime type, observed evidence, and expected behavior.
 
 See [Criteria And Checks](docs/criteria-and-checks.md), [Output Contract](docs/output-contract.md), and [Fixture Catalog](docs/fixtures.md).
+
+## Recipes
+
+- [GitHub Actions](docs/recipes/github-actions.md): run the harness in CI, upload artifacts, and optionally comment on pull requests.
+- [Agent Loop Recipes](docs/recipes/agent-loop.md): prompts for Codex, Claude Code, Gemini CLI, and human reviewers.
+- [Release Checklist](docs/recipes/release-checklist.md): package checks to run before publishing a public version.
 
 ## How Findings Speak
 
@@ -153,9 +165,8 @@ Implemented:
 
 In progress or planned:
 
-- npm-friendly one-command usage,
-- GitHub Action and PR comment examples,
-- richer agent adapters,
+- first npm publish,
+- richer hosted/action adapters,
 - more fixture coverage,
 - promotion of reference-derived `needs-review` signals into measured checks where evidence supports it,
 - MCP and Open Design integrations beyond the current specs.

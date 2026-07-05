@@ -21,10 +21,10 @@ importers:
   packages/cli:
     dependencies:
       '@design-harness/core':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../core
       '@design-harness/visual-audit':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../visual-audit
 
   packages/core: {}
@@ -32,7 +32,7 @@ importers:
   packages/visual-audit:
     dependencies:
       '@design-harness/core':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../core
       playwright:
         specifier: ^1.49.1

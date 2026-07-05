@@ -4,19 +4,46 @@
   "description": "Design Harness command-line interface.",
   "license": "Apache-2.0",
   "type": "module",
+  "homepage": "https://github.com/ictechgy/design-harness#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ictechgy/design-harness.git",
+    "directory": "packages/cli"
+  },
+  "bugs": {
+    "url": "https://github.com/ictechgy/design-harness/issues"
+  },
+  "keywords": [
+    "ui-ux",
+    "visual-qa",
+    "ai-agents",
+    "cli",
+    "playwright",
+    "accessibility"
+  ],
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "bin": {
     "design-harness": "dist/index.js"
   },
+  "files": [
+    "dist",
+    "README.md"
+  ],
   "scripts": {
-    "build": "tsc -p tsconfig.json && node scripts/fix-bin-mode.mjs",
+    "build": "node ../../scripts/clean-dist.mjs dist && tsc -p tsconfig.build.json && node scripts/fix-bin-mode.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
     "start": "node dist/index.js"
   },
   "dependencies": {
-    "@design-harness/core": "workspace:*",
-    "@design-harness/visual-audit": "workspace:*"
+    "@design-harness/core": "workspace:^",
+    "@design-harness/visual-audit": "workspace:^"
   }
 }

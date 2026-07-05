@@ -4,6 +4,28 @@
   "description": "Playwright-based visual audit runner for Design Harness.",
   "license": "Apache-2.0",
   "type": "module",
+  "homepage": "https://github.com/ictechgy/design-harness#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ictechgy/design-harness.git",
+    "directory": "packages/visual-audit"
+  },
+  "bugs": {
+    "url": "https://github.com/ictechgy/design-harness/issues"
+  },
+  "keywords": [
+    "ui-ux",
+    "visual-qa",
+    "ai-agents",
+    "playwright",
+    "accessibility"
+  ],
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "exports": {
@@ -12,13 +34,17 @@
       "import": "./dist/index.js"
     }
   },
+  "files": [
+    "dist",
+    "README.md"
+  ],
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "build": "node ../../scripts/clean-dist.mjs dist && tsc -p tsconfig.build.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run"
   },
   "dependencies": {
-    "@design-harness/core": "workspace:*",
+    "@design-harness/core": "workspace:^",
     "playwright": "^1.49.1"
   }
 }

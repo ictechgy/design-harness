@@ -5,6 +5,27 @@
   "description": "Model-agnostic UI/UX critique, visual QA, and iteration harness for AI coding agents.",
   "license": "Apache-2.0",
   "type": "module",
+  "homepage": "https://github.com/ictechgy/design-harness#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ictechgy/design-harness.git"
+  },
+  "bugs": {
+    "url": "https://github.com/ictechgy/design-harness/issues"
+  },
+  "keywords": [
+    "ui-ux",
+    "visual-qa",
+    "ai-agents",
+    "frontend",
+    "playwright",
+    "accessibility",
+    "design-systems"
+  ],
+  "engines": {
+    "node": ">=22.0.0",
+    "pnpm": ">=11.0.0"
+  },
   "packageManager": "pnpm@11.7.0",
   "scripts": {
     "build": "pnpm -r build",
@@ -17,7 +38,9 @@
     "design-harness": "pnpm --filter @design-harness/cli start",
     "playwright:install": "pnpm --filter @design-harness/visual-audit exec playwright install chromium",
     "example:serve": "node scripts/serve-static.mjs examples/merchant-dashboard 4173",
-    "smoke:example": "node scripts/run-example-smoke.mjs"
+    "smoke:example": "node scripts/run-example-smoke.mjs",
+    "pack:dry-run": "pnpm --filter @design-harness/core pack --dry-run && pnpm --filter @design-harness/visual-audit pack --dry-run && pnpm --filter @design-harness/cli pack --dry-run",
+    "release:check": "pnpm build && pnpm typecheck && pnpm test && pnpm validate && pnpm pack:dry-run"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",
