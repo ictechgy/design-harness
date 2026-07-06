@@ -15,8 +15,7 @@ runs/<timestamp>/
   report.md
   report-manifest.json
   screenshots/
-    desktop.png
-    mobile.png
+    <viewport-name>.png
 ```
 
 `audit.json` must validate against `packages/core/schemas/audit-result.schema.json`.

@@ -5,7 +5,7 @@ Evidence for AI-made interfaces.
 Design Harness is an open-source, model-agnostic UI/UX QA loop for AI coding agents. Point it at a local URL and it captures desktop/mobile screenshots, runs conservative source-backed checks, and writes an agent-friendly report you can hand back to Codex, Claude Code, Gemini CLI, or a human reviewer.
 
 ```text
-local URL -> screenshots -> audit.json -> report.md -> PR comment / agent loop / scenario summary
+local URL -> screenshots -> audit.json -> report.md -> agent loop
 ```
 
 It is not a black-box design judge, a hosted LLM product, or a visual regression replacement. The goal is simpler and more useful: make UI feedback repeatable enough that humans and agents can improve the same screen from the same evidence.
@@ -50,13 +50,12 @@ runs/demo/
   report.md
   report-manifest.json
   screenshots/
-    desktop.png
-    mobile.png
+    <viewport-name>.png
 ```
 
 Partial audits still write artifacts but exit with code `2` by default. Use `--allow-partial` when a debugging workflow should treat partial artifacts as success.
 
-The package entry point is prepared as `@design-harness/cli`, which exposes the `design-harness` binary. Until the first npm publish, use the checkout workflow above. After publish, the intended one-off shape is:
+The package entry point is prepared as `@design-harness/cli`, which exposes the `design-harness` binary for the audit workflow. Until the first npm publish, use the checkout workflow above. After publish, the intended one-off audit shape is:
 
 ```bash
 npx @design-harness/cli@latest audit --url http://localhost:3000 --out runs/demo
@@ -67,6 +66,8 @@ For npm-installed usage, install the Playwright browser once if Chromium is miss
 ```bash
 npx playwright install chromium
 ```
+
+The first npm publish is audit-CLI focused. The PR comment renderer, scenario audit runner, and MCP adapter are checkout-local recipes/scaffolding in this repository until they are promoted to shipped package APIs.
 
 ## Agent Loop
 
@@ -108,8 +109,8 @@ See [Criteria And Checks](docs/criteria-and-checks.md), [Output Contract](docs/o
 ## Recipes
 
 - [GitHub Actions](docs/recipes/github-actions.md): run the harness in CI, upload artifacts, and optionally comment on pull requests.
-- [Pull Request Comment Bot](docs/recipes/pr-comment-bot.md): render a compact PR comment from an audit run.
-- [Scenario Audit](docs/recipes/scenario-audit.md): run multiple local URL scenarios and aggregate the results.
+- [Pull Request Comment Bot](docs/recipes/pr-comment-bot.md): checkout-local recipe to render a compact PR comment from an audit run.
+- [Scenario Audit](docs/recipes/scenario-audit.md): checkout-local recipe to run multiple local URL scenarios and aggregate the results.
 - [npm Execution](docs/recipes/npm-execution.md): verify the packed CLI and understand the post-publish `npx` path.
 - [Agent Loop Recipes](docs/recipes/agent-loop.md): prompts for Codex, Claude Code, Gemini CLI, and human reviewers.
 - [Release Checklist](docs/recipes/release-checklist.md): package checks to run before publishing a public version.
@@ -171,11 +172,17 @@ Implemented:
 - source-backed criteria registry,
 - example fixtures,
 - Midjourney Reference Lab manifest and policy validators.
-- PR comment renderer, scenario audit runner, and MCP adapter manifest.
+
+Checkout-local recipes/scaffolding:
+
+- PR comment renderer,
+- scenario audit runner,
+- MCP adapter manifest and local dispatcher.
 
 In progress or planned:
 
 - first npm publish,
+- package-installed PR comment/scenario/MCP command surface,
 - more fixture coverage,
 - deeper hosted/action adapters,
 - Open Design integrations beyond the current specs.

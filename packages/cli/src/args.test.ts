@@ -41,9 +41,16 @@ describe("parseArgs", () => {
 describe("assertLocalHttpUrl", () => {
   it("accepts localhost URLs", () => {
     expect(assertLocalHttpUrl("http://localhost:3000")).toBe("http://localhost:3000/");
+    expect(assertLocalHttpUrl("http://preview.localhost:3000")).toBe("http://preview.localhost:3000/");
+    expect(assertLocalHttpUrl("http://127.0.0.1:3000")).toBe("http://127.0.0.1:3000/");
+    expect(assertLocalHttpUrl("http://[::1]:3000")).toBe("http://[::1]:3000/");
   });
 
   it("rejects remote URLs", () => {
-    expect(() => assertLocalHttpUrl("https://example.com")).toThrow("only audits local");
+    expect(() => assertLocalHttpUrl("https://example.com")).toThrow("Only local http(s)");
+  });
+
+  it("rejects embedded credentials", () => {
+    expect(() => assertLocalHttpUrl("http://user:pass@localhost:3000")).toThrow("must not include credentials");
   });
 });

@@ -1,6 +1,6 @@
 # Scenario Audit
 
-Scenario audit lets one command run the same local harness against several local URLs. It is useful when a product has separate states such as empty, loaded, error, mobile-preview, or admin screens.
+Scenario audit is a checkout-local recipe that runs the same local harness against several local URLs. It is useful when a product has separate states such as empty, loaded, error, mobile-preview, or admin screens.
 
 Create a `design-harness-scenarios/v1` file:
 
@@ -32,4 +32,4 @@ Outputs:
 - `scenario-report.md`: compact Markdown table for reviewers.
 - one full Design Harness run directory per scenario.
 
-Scenario URLs are restricted to local `http` or `https` hosts: `localhost`, `127.0.0.1`, or `::1`.
+Scenario URLs are restricted to local `http` or `https` hosts: `localhost`, `.localhost` subdomains, `127.0.0.1`, or bracketed IPv6 loopback such as `[::1]`. Credentials in URLs are rejected.

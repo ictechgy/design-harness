@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildIterationPrompt,
   assertAuditResultIntegrity,
+  assertLocalHttpUrl,
   createExampleAuditResult,
   createExampleBrief,
   createExampleCriterion,
@@ -11,7 +12,9 @@ import {
   CRITERIA,
   findingMetadataForCheck,
   renderMarkdownReport,
+  resolveWorkspacePath,
   scoreFindings,
+  tailText,
   validateReportCopyGuardrails,
   validateAuditResultIntegrity,
   validateSchema
@@ -144,5 +147,33 @@ describe("report rendering", () => {
   it("flags overclaiming report language", () => {
     expect(validateReportCopyGuardrails("This UI is WCAG compliant and objectively better.")).toContain("WCAG compliant");
     expect(validateReportCopyGuardrails("This captured DOM may lack an accessible name.")).toEqual([]);
+  });
+});
+
+describe("input policy", () => {
+  it("accepts local URL forms consistently", () => {
+    expect(assertLocalHttpUrl("http://localhost:3000")).toBe("http://localhost:3000/");
+    expect(assertLocalHttpUrl("http://preview.localhost:3000")).toBe("http://preview.localhost:3000/");
+    expect(assertLocalHttpUrl("http://127.0.0.1:3000")).toBe("http://127.0.0.1:3000/");
+    expect(assertLocalHttpUrl("http://[::1]:3000")).toBe("http://[::1]:3000/");
+  });
+
+  it("rejects remote URLs and embedded credentials", () => {
+    expect(() => assertLocalHttpUrl("https://example.com")).toThrow("Only local http(s)");
+    expect(() => assertLocalHttpUrl("http://user:pass@localhost:3000")).toThrow("must not include credentials");
+  });
+
+  it("resolves workspace-relative paths and rejects traversal or absolute paths by default", () => {
+    expect(resolveWorkspacePath("runs/demo", { rootDir: "/workspace", fieldName: "outDir" })).toMatchObject({
+      absolutePath: "/workspace/runs/demo",
+      relativePath: "runs/demo"
+    });
+    expect(() => resolveWorkspacePath("../secret", { rootDir: "/workspace", fieldName: "runDir" })).toThrow("workspace root");
+    expect(() => resolveWorkspacePath("/tmp/secret", { rootDir: "/workspace", fieldName: "runDir" })).toThrow("relative");
+  });
+
+  it("keeps compact output tails", () => {
+    expect(tailText("short", 10)).toBe("short");
+    expect(tailText("0123456789abcdef", 6)).toBe("[output truncated to last 6 characters]\nabcdef");
   });
 });

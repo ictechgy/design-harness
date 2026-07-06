@@ -1,6 +1,12 @@
 #!/usr/bin/env node
-import { readFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { spawnSync } from "node:child_process";
+import { join, relative } from "node:path";
+import { fileURLToPath } from "node:url";
 import { renderPrComment } from "./render-pr-comment.mjs";
+
+const MCP_ADAPTER_PATH = fileURLToPath(new URL("./mcp-adapter.mjs", import.meta.url));
+const SCENARIO_AUDIT_PATH = fileURLToPath(new URL("./run-scenario-audit.mjs", import.meta.url));
 
 const requiredFiles = [
   "scripts/render-pr-comment.mjs",
@@ -61,6 +67,71 @@ const comment = renderPrComment({
 
 if (!comment.includes("Design Harness") || !comment.includes("Artifact directory") || !comment.includes("finding-check")) {
   throw new Error("PR comment renderer did not include expected sections.");
+}
+
+const tempRoot = await mkdtemp(join(process.cwd(), ".tmp-v0-3-integrations-"));
+try {
+  const runDir = join(tempRoot, "run");
+  await mkdir(runDir, { recursive: true });
+  await writeFile(join(runDir, "audit.json"), `${JSON.stringify({
+    status: "success",
+    advisoryScore: { value: 100, max: 100, band: "strong" },
+    findings: []
+  }, null, 2)}\n`);
+  await writeFile(join(runDir, "report.md"), "# Tiny Report\n\nNo findings.\n");
+
+  const adapterResult = spawnSync(process.execPath, [
+    MCP_ADAPTER_PATH,
+    "call",
+    "design_harness_render_pr_comment",
+    JSON.stringify({ runDir: relative(process.cwd(), runDir), maxCharacters: 3000 })
+  ], {
+    cwd: process.cwd(),
+    encoding: "utf8",
+    timeout: 10_000,
+    maxBuffer: 1_000_000
+  });
+
+  if (adapterResult.status !== 0) {
+    throw new Error(`MCP adapter call failed: ${adapterResult.stderr || adapterResult.stdout}`);
+  }
+  const adapterResponse = JSON.parse(adapterResult.stdout);
+  if (!adapterResponse.content?.includes("Design Harness") || !adapterResponse.content.includes("Tiny Report")) {
+    throw new Error("MCP adapter call did not render the expected PR comment content.");
+  }
+
+  const rejectedAdapterPath = spawnSync(process.execPath, [
+    MCP_ADAPTER_PATH,
+    "call",
+    "design_harness_render_pr_comment",
+    JSON.stringify({ runDir: "../outside" })
+  ], {
+    cwd: process.cwd(),
+    encoding: "utf8",
+    timeout: 10_000,
+    maxBuffer: 1_000_000
+  });
+  if (rejectedAdapterPath.status === 0 || !rejectedAdapterPath.stderr.includes("workspace root")) {
+    throw new Error("MCP adapter did not reject runDir traversal.");
+  }
+
+  const rejectedScenarioPath = spawnSync(process.execPath, [
+    SCENARIO_AUDIT_PATH,
+    "--config",
+    "../outside.json",
+    "--out",
+    "runs/scenarios/rejected"
+  ], {
+    cwd: process.cwd(),
+    encoding: "utf8",
+    timeout: 10_000,
+    maxBuffer: 1_000_000
+  });
+  if (rejectedScenarioPath.status === 0 || !rejectedScenarioPath.stderr.includes("workspace root")) {
+    throw new Error("Scenario audit did not reject configPath traversal.");
+  }
+} finally {
+  await rm(tempRoot, { recursive: true, force: true });
 }
 
 for (const [path, token] of [

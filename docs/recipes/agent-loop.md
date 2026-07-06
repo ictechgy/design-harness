@@ -12,8 +12,7 @@ Audit command: <exact command that produced this run>
 Artifacts:
 - runs/<name>/report.md
 - runs/<name>/audit.json
-- runs/<name>/screenshots/desktop.png
-- runs/<name>/screenshots/mobile.png
+- runs/<name>/screenshots/<viewport-name>.png
 Rule: deterministic findings first, heuristic risks second, needs-review notes only when screenshot evidence supports them.
 ```
 

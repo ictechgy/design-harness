@@ -1,6 +1,7 @@
 export * from "./criteria.js";
 export * from "./fixtures.js";
 export * from "./integrity.js";
+export * from "./input-policy.js";
 export * from "./report.js";
 export * from "./schema-registry.js";
 export * from "./scoring.js";
