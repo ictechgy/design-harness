@@ -1,6 +1,6 @@
 # npm Execution
 
-Design Harness publishes the runnable CLI from `@design-harness/cli`.
+Design Harness publishes the runnable audit CLI from `@design-harness/cli`. The PR-comment, scenario-audit, and MCP adapter workflows are checkout-local recipes until they are promoted to package APIs.
 
 Before the first npm publish, use the checkout flow:
 
@@ -10,7 +10,7 @@ pnpm build
 pnpm design-harness -- audit --url http://localhost:3000 --out runs/demo
 ```
 
-After publish, the intended one-off flow is:
+After publish, the intended one-off audit flow is:
 
 ```bash
 npx @design-harness/cli@0.3.0 --help

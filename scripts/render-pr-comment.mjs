@@ -56,7 +56,7 @@ export async function renderPrCommentFromRunDir(options) {
   return renderPrComment({
     auditResult,
     report,
-    runDir,
+    runDir: options.displayRunDir ?? runDir,
     maxCharacters: options.maxCharacters
   });
 }

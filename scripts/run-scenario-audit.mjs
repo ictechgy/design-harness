@@ -4,13 +4,19 @@ import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { assertLocalHttpUrl, resolveWorkspacePath, tailText } from "../packages/core/dist/index.js";
 
 const CLI_PATH = fileURLToPath(new URL("../packages/cli/dist/index.js", import.meta.url));
+const CHILD_TIMEOUT_GRACE_MS = 5_000;
+const CHILD_MAX_BUFFER_BYTES = 1_000_000;
+const OUTPUT_TAIL_CHARACTERS = 12_000;
 
 export async function runScenarioAudit(options) {
-  const config = JSON.parse(await readFile(options.configPath, "utf8"));
+  const configPath = resolveWorkspacePath(options.configPath, { fieldName: "configPath" });
+  const outDir = resolveWorkspacePath(options.outDir, { fieldName: "outDir" });
+  const config = JSON.parse(await readFile(configPath.absolutePath, "utf8"));
   validateScenarioConfig(config);
-  await mkdir(options.outDir, { recursive: true });
+  await mkdir(outDir.absolutePath, { recursive: true });
 
   if (!existsSync(CLI_PATH)) {
     throw new Error("Design Harness CLI dist is missing. Run `pnpm build` before running scenario audits.");
@@ -20,12 +26,14 @@ export async function runScenarioAudit(options) {
     schemaVersion: "design-harness-scenario-summary/v1",
     name: config.name,
     startedAt: new Date().toISOString(),
-    outDir: options.outDir,
+    outDir: outDir.relativePath,
     scenarios: []
   };
 
   for (const scenario of config.scenarios) {
-    const scenarioOutDir = join(options.outDir, sanitizeId(scenario.id));
+    const scenarioDirectoryName = sanitizeId(scenario.id);
+    const scenarioOutDir = join(outDir.absolutePath, scenarioDirectoryName);
+    const scenarioOutDirRelative = join(outDir.relativePath, scenarioDirectoryName);
     await mkdir(scenarioOutDir, { recursive: true });
     const args = [
       CLI_PATH,
@@ -44,7 +52,9 @@ export async function runScenarioAudit(options) {
 
     const result = spawnSync(process.execPath, args, {
       encoding: "utf8",
-      cwd: process.cwd()
+      cwd: process.cwd(),
+      timeout: childTimeoutForScenario(scenario),
+      maxBuffer: CHILD_MAX_BUFFER_BYTES
     });
     const auditPath = join(scenarioOutDir, "audit.json");
     const auditResult = existsSync(auditPath) ? JSON.parse(await readFile(auditPath, "utf8")) : undefined;
@@ -52,20 +62,21 @@ export async function runScenarioAudit(options) {
       id: scenario.id,
       name: scenario.name ?? scenario.id,
       url: scenario.url,
-      outDir: scenarioOutDir,
+      outDir: scenarioOutDirRelative,
       exitCode: result.status ?? 1,
+      timedOut: result.error?.code === "ETIMEDOUT",
       status: auditResult?.status ?? "failed",
       findingCount: Array.isArray(auditResult?.findings) ? auditResult.findings.length : 0,
       failedChecks: auditResult?.failedChecks ?? [],
-      stdout: result.stdout.trim(),
-      stderr: result.stderr.trim()
+      stdout: tailText(result.stdout.trim(), OUTPUT_TAIL_CHARACTERS),
+      stderr: tailText(result.stderr.trim(), OUTPUT_TAIL_CHARACTERS)
     });
   }
 
   summary.finishedAt = new Date().toISOString();
   summary.status = summary.scenarios.every((scenario) => scenario.exitCode === 0) ? "success" : "failed";
-  await writeFile(join(options.outDir, "scenario-summary.json"), `${JSON.stringify(summary, null, 2)}\n`);
-  await writeFile(join(options.outDir, "scenario-report.md"), `${renderScenarioReport(summary)}\n`);
+  await writeFile(join(outDir.absolutePath, "scenario-summary.json"), `${JSON.stringify(summary, null, 2)}\n`);
+  await writeFile(join(outDir.absolutePath, "scenario-report.md"), `${renderScenarioReport(summary)}\n`);
   return summary;
 }
 
@@ -97,6 +108,10 @@ function validateScenarioConfig(config) {
   }
 }
 
+function childTimeoutForScenario(scenario) {
+  return (scenario.timeoutMs ?? 30_000) + CHILD_TIMEOUT_GRACE_MS;
+}
+
 function renderScenarioReport(summary) {
   const rows = summary.scenarios.map((scenario) => {
     return `| ${escapeTableCell(scenario.id)} | ${escapeTableCell(scenario.status)} | ${scenario.exitCode} | ${scenario.findingCount} | \`${relativeArtifactPath(scenario.outDir)}\` |`;
@@ -119,18 +134,6 @@ function escapeTableCell(value) {
 
 function relativeArtifactPath(value) {
   return value.replace(`${process.cwd()}/`, "");
-}
-
-function assertLocalHttpUrl(value) {
-  const url = new URL(value);
-  const localHosts = new Set(["localhost", "127.0.0.1", "::1", "[::1]"]);
-  if (!["http:", "https:"].includes(url.protocol) || !localHosts.has(url.hostname)) {
-    throw new Error(`Scenario URLs must be local http(s) URLs. Rejected: ${value}`);
-  }
-  if (url.username || url.password) {
-    throw new Error(`Scenario URLs must not include credentials. Rejected: ${value}`);
-  }
-  return url.toString();
 }
 
 function sanitizeId(value) {

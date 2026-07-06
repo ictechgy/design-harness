@@ -2,10 +2,14 @@
 import { readFile } from "node:fs/promises";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
+import { resolveWorkspacePath, tailText } from "../packages/core/dist/index.js";
 import { renderPrCommentFromRunDir } from "./render-pr-comment.mjs";
 
 const MANIFEST_PATH = fileURLToPath(new URL("../integrations/mcp/design-harness.tools.json", import.meta.url));
 const SCENARIO_SCRIPT = fileURLToPath(new URL("./run-scenario-audit.mjs", import.meta.url));
+const SCENARIO_TOOL_TIMEOUT_MS = 130_000;
+const CHILD_MAX_BUFFER_BYTES = 1_000_000;
+const OUTPUT_TAIL_CHARACTERS = 12_000;
 
 async function loadManifest() {
   return JSON.parse(await readFile(MANIFEST_PATH, "utf8"));
@@ -18,29 +22,36 @@ async function listTools() {
 
 async function callTool(name, input) {
   if (name === "design_harness_render_pr_comment") {
+    const runDir = resolveWorkspacePath(requireString(input.runDir, "runDir"), { fieldName: "runDir" });
     return {
       content: await renderPrCommentFromRunDir({
-        runDir: requireString(input.runDir, "runDir"),
-        maxCharacters: input.maxCharacters
+        runDir: runDir.absolutePath,
+        displayRunDir: runDir.relativePath,
+        maxCharacters: optionalIntegerInRange(input.maxCharacters, "maxCharacters", 1000, 60_000)
       })
     };
   }
 
   if (name === "design_harness_run_scenarios") {
+    const configPath = resolveWorkspacePath(requireString(input.configPath, "configPath"), { fieldName: "configPath" });
+    const outDir = resolveWorkspacePath(requireString(input.outDir, "outDir"), { fieldName: "outDir" });
     const result = spawnSync(process.execPath, [
       SCENARIO_SCRIPT,
       "--config",
-      requireString(input.configPath, "configPath"),
+      configPath.relativePath,
       "--out",
-      requireString(input.outDir, "outDir")
+      outDir.relativePath
     ], {
       encoding: "utf8",
-      cwd: process.cwd()
+      cwd: process.cwd(),
+      timeout: SCENARIO_TOOL_TIMEOUT_MS,
+      maxBuffer: CHILD_MAX_BUFFER_BYTES
     });
     return {
       exitCode: result.status ?? 1,
-      stdout: result.stdout,
-      stderr: result.stderr
+      timedOut: result.error?.code === "ETIMEDOUT",
+      stdout: tailText(result.stdout, OUTPUT_TAIL_CHARACTERS),
+      stderr: tailText(result.stderr, OUTPUT_TAIL_CHARACTERS)
     };
   }
 
@@ -50,6 +61,16 @@ async function callTool(name, input) {
 function requireString(value, fieldName) {
   if (!value || typeof value !== "string") {
     throw new Error(`Missing required string input: ${fieldName}`);
+  }
+  return value;
+}
+
+function optionalIntegerInRange(value, fieldName, min, max) {
+  if (value === undefined) {
+    return undefined;
+  }
+  if (!Number.isInteger(value) || value < min || value > max) {
+    throw new Error(`Invalid ${fieldName}. Use an integer from ${min} to ${max}.`);
   }
   return value;
 }

@@ -1,6 +1,6 @@
 # Pull Request Comment Bot
 
-The v0.3 comment bot is a local renderer, not a hosted service. CI runs an audit, uploads the full artifact directory, then uses `scripts/render-pr-comment.mjs` to create a compact Markdown summary for a pull request comment.
+The v0.3 comment bot is a checkout-local renderer, not a hosted service or npm-shipped command surface. CI runs an audit, uploads the full artifact directory, then uses `scripts/render-pr-comment.mjs` to create a compact Markdown summary for a pull request comment.
 
 ```bash
 pnpm comment:pr -- --run-dir runs/design-harness --out runs/design-harness/pr-comment.md

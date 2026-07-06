@@ -18,7 +18,7 @@ pnpm release:check
 
 ## First npm Publish
 
-The initial public package should publish the workspace packages in dependency order:
+The initial public package should publish the audit CLI surface and its workspace dependencies in dependency order:
 
 ```bash
 pnpm --filter @design-harness/core publish --access public
@@ -31,6 +31,9 @@ After publish, verify one-off execution from a separate temporary directory:
 ```bash
 npx @design-harness/cli@0.3.0 --help
 npx playwright install chromium
+npx @design-harness/cli@0.3.0 audit --url http://localhost:3000 --out runs/demo
 ```
+
+PR comment rendering, scenario audit, and MCP adapter usage remain checkout-local recipes for this release.
 
 Do not publish generated Midjourney reference images. They are local-only calibration assets and are intentionally excluded from git and package artifacts.
