@@ -1,21 +1,26 @@
 # AGENTS.md — Working Guide for AI Agents
 
-Design Harness is an open-source, model-agnostic UI/UX QA loop for AI coding agents: local URL → Playwright screenshots → source-backed checks → `audit.json` / `report.md` → coding agent fixes. Monorepo: `@design-harness/core` (criteria, schemas, scoring, report), `@design-harness/visual-audit` (browser measurements + checks), `@design-harness/cli`.
+Design Harness is an open-source, model-agnostic UI/UX QA loop for AI coding agents: local URL → Playwright screenshots → source-backed checks → `audit.json` / `report.md` → coding agent fixes. Monorepo: `@design-harness/core` (criteria, schemas, scoring, report), `@design-harness/visual-audit` (browser measurements + checks), `@design-harness/cli`. Published on npm since v0.3.1.
 
-Strategic direction, rationale, and evidence live in `REPORT.md` (git-ignored, Korean; long-form original in `.omx/plans/2026-07-07-evolution-research.md`). If those files are missing in your checkout, ask the owner before making strategic decisions. This file is the operational compression of that report — when in doubt, this file wins over your own judgment about scope.
+**Authority on conflict**: owner's current-session instruction > this file > committed docs (`docs/ROADMAP.md`, `docs/agent-protocol.md`, `docs/criteria-and-checks.md`) > git-ignored local notes (`REPORT.md`, `.omx/`) > your judgment. Every MUST lives in this file or in a machine check; `REPORT.md` (Korean strategy rationale) and `.omx/` are optional background — never block on their absence, and if you find a MUST that exists only there, promote it here.
 
 ## HARD RULES (never violate)
 
-1. **Epistemic discipline is the product.** A finding with `determinism: heuristic` or `subjective` may NEVER have `resultKind: failure` (enforced by `packages/core/src/integrity.ts` — do not weaken it). Deterministic `failure` language is reserved for official-testable sources (WCAG 2.2) or explicit project-declared config (see ADR rule below). When unsure, downgrade to `risk` or `needs-review`.
-2. **No npm publish, version bump, tag, or GitHub release without the owner's explicit approval in the current session.** Publish order when approved: core → visual-audit → cli.
-3. **Never commit generated Midjourney images** or any binary from `datasets/midjourney-reference-lab/local-assets/`. `scripts/check-midjourney-reference-policy.mjs` guards this; do not bypass it. Committed artifacts derived from images (e.g. distilled token files) are fine.
-4. **Never add hanspell / py-hanspell / Pusan National University / Naver / Daum spellcheck endpoints** as dependencies or default behavior — ToS-restricted and breakage-prone. At most an off-by-default adapter with a ToS warning, and only if the owner asks.
-5. **License hygiene for the Korean copy stack**: `kiwi-nlp` is LGPL (allowed as unmodified dependency; document it), `spellcheck-ko` dictionary is GPLv3 (must be runtime-fetched data, never bundled into the Apache-2.0 packages).
-6. **No hosted LLM in any required path.** LLM/VLM judge features must be opt-in (injectable callback / explicit flag), emit `needs-review` findings only, be excluded from the advisory score, and record model ID + prompt hash in `audit.json`.
-7. **Audit targets stay local HTTP(S)** (`assertLocalHttpUrl` / `packages/core/src/input-policy.ts`). Do not widen this boundary.
-8. **Report copy guardrails**: the harness's own report language must never claim "WCAG compliant", "accessible", "good design" etc. unqualified (`validateReportCopyGuardrails` in `packages/core/src/report.ts`).
-9. **New enum values require lockstep edits.** Category/runtime enums are duplicated across `packages/core/src/types.ts`, `finding.schema.json`, `criterion.schema.json`, `audit-result.schema.json`, `rubric.yaml`, and `implementationAreaFor` in `report.ts`; report sections are duplicated in `packages/cli/src/output.ts`. Touch all of them or none. New source-strength kinds or check runtimes need a short ADR in `docs/` first.
-10. **Do not start milestone work that is on the cut list** (below) without the owner explicitly reopening it.
+1. **Epistemic discipline is the product.** A finding with `determinism: heuristic` or `subjective` may NEVER have `resultKind: failure` (enforced by `packages/core/src/integrity.ts` — do not weaken it). Deterministic `failure` language is reserved for official-testable sources (WCAG 2.2) or explicit project-declared config. **Computation determinism never upgrades criterion strength**: exactly countable metrics (colors, font variants, density) with research-grade criteria stay heuristic risk — see `docs/criteria-and-checks.md`. When unsure, downgrade.
+2. **No npm publish, version bump, tag, or GitHub release without the owner's explicit approval in the current session.** Publish order: core → visual-audit → cli. *Enforced for Claude Code by a PreToolUse hook (`.claude/settings.json` → `scripts/hooks/block-release-commands.mjs`). For Codex no hook exists: Codex agents must not run publish/version/tag/release commands at all — ask the owner to run them, unless the owner approves the exact command text in the current session.*
+3. **Never commit generated Midjourney images** or binaries from `datasets/midjourney-reference-lab/local-assets/`. *Enforced: `check:midjourney-policy`, `check:tracked-hygiene`.* Distilled token files derived from images are fine.
+4. **Never add hanspell / py-hanspell / Pusan / Naver / Daum spellcheck endpoints** as dependencies or defaults (ToS-restricted, breakage history). Bareun and other hosted APIs: opt-in provider only, never a default path. *Enforced: `check:deps-policy`.*
+5. **License hygiene (Korean copy stack)**: `kiwi-nlp` is LGPL (npm metadata says LGPL-2.1-or-later; its repo README says LGPL v3 — trust the npm declaration, record the discrepancy). Never statically vendor it; lazy-load behind the `--copy` flag. The `spellcheck-ko` dictionary is GPL-3.0 project / CC-BY-SA-4.0 data — never bundled; fetched only via an explicit, documented prepare step (opt-in spelling provider), not silently inside `--copy`. *Enforced in part: `check:deps-policy`.*
+6. **Calibration-data licensing (prose-only, legal)**: never commit fixtures derived from gated or non-commercial corpora — NIKL 모두의 말뭉치 / 말평 data (no redistribution, no LLM augmentation), SmileStyle (CC-BY-NC-4.0), K-NCT (unlicensed). Redistributable: IWSLT2023 EN-KO (CDLA-Sharing-1.0) and synthetic generation. When in doubt, generate synthetic Korean data.
+7. **No hosted LLM in any required path.** Judge features are opt-in (injectable callback / explicit flag), emit `needs-review` findings only, are score-exempt, and record model ID + prompt hash in `audit.json`.
+8. **Audit targets stay local HTTP(S)** (`assertLocalHttpUrl`, `packages/core/src/input-policy.ts`). Do not widen.
+9. **Report copy guardrails**: never claim "WCAG compliant", "accessible", "good design" etc. unqualified (`validateReportCopyGuardrails` in `packages/core/src/report.ts`). Scoped phrasing only — in reports AND public docs.
+10. **Enum lockstep**: `RubricCategory` is duplicated across `types.ts`, 3 JSON schemas, `rubric.yaml`, and `implementationAreaFor`. *Enforced: `check:enum-lockstep` — if the script and this sentence disagree, the script wins.* New source-strength kinds or check runtimes need a short ADR in `docs/` first (pre-settled names for v0.4: runtime `model-judged`, source strength `project-contract` — see `docs/ROADMAP.md`).
+11. **Do not build cut-list items** (see Roadmap section below) without the owner explicitly reopening them.
+
+## Ask the owner first (never proceed alone)
+
+npm publish / version tags / GitHub releases / any external publication · adding a runtime dependency (especially networked) · schema or enum changes not in the current milestone spec · reopening any cut-list item · new deterministic+failure combinations outside the existing matrix · changing positioning or claims in public docs (README).
 
 ## Commands
 
@@ -23,57 +28,56 @@ Strategic direction, rationale, and evidence live in `REPORT.md` (git-ignored, K
 pnpm install && pnpm build          # build workspace (core → visual-audit → cli)
 pnpm test                           # all package tests (CI=true for non-interactive)
 pnpm release:check                  # build + typecheck + test + validate + pack + smoke
-pnpm example:serve                  # serve merchant-dashboard fixture on :4173
+pnpm validate                       # schemas, manifests, policy + guard scripts below
+pnpm check:enum-lockstep            # category enum in lockstep across 6 locations
+pnpm check:deps-policy              # ToS/GPL dependency policy
+pnpm check:tracked-hygiene          # local-only files untracked; AGENTS.md line budget
+pnpm example:serve                  # merchant-dashboard fixture on :4173
 pnpm design-harness -- audit --url http://localhost:4173 --out runs/demo
-pnpm validate:midjourney-lab        # manifest + policy validators
-pnpm check:v0.3-integrations        # scenario/MCP/PR-comment scaffolding checks
 ```
 
-Playwright Chromium missing → `pnpm playwright:install`. Partial audits exit `2` unless `--allow-partial`.
+Playwright Chromium missing → `pnpm playwright:install`. Partial audits exit `2` unless `--allow-partial`. CI runs `--frozen-lockfile`: any new dependency requires a lockfile change — this is also the slopsquatting guard (5–22% of LLM-recommended packages don't exist).
 
 ## Adding a check (the established 7-step path)
 
-Criterion in `packages/core/src/criteria.ts` (with `CRITERION_SOURCES` entry) → measurement fields in `ViewportMeasurements` (`packages/visual-audit/src/checks.ts`) → browser evidence in `browser-measurements.ts` (inside the single `page.evaluate` closure) → `findingsFromMeasurements` mapping → good/bad fixture pair in `examples/ui-quality-fixtures/` (one defect per detector) → unit tests → `pnpm release:check`. Details: `docs/criteria-and-checks.md`.
+Criterion in `packages/core/src/criteria.ts` (with `CRITERION_SOURCES` entry) → measurement fields in `ViewportMeasurements` (`packages/visual-audit/src/checks.ts`) → browser evidence in `browser-measurements.ts` (single `page.evaluate` closure) → `findingsFromMeasurements` mapping → good/bad fixture pair in `examples/ui-quality-fixtures/` (one defect per detector) → unit tests → `pnpm release:check`. Details and registry policy: `docs/criteria-and-checks.md`.
 
-## Current roadmap (agreed 2026-07-07 — follow this sequence)
+## Roadmap
 
-| Milestone | Scope |
-|---|---|
-| **v0.3.2** (current) | Publish v0.3.1 to npm AS-IS (owner approval required, no new code). Fix 2 CJK-bias bugs: line-length char-width `fontSize*0.52` → ~1.0 for majority-CJK text (`browser-measurements.ts` ~L543); English-only status regex → language-keyed table incl. 저장 중/로딩 중/완료/오류/실패 (~L634). Add `page-lang-missing` check (WCAG 3.1.1, official-testable, deterministic failure). Commit one finding-rich example report. Port `adapters/codex-skill` to a Claude Code skill. Run the week-zero experiment: audit a bad fixture → feed report.md to 2–3 coding agents → re-audit → record deltas. |
-| **v0.4** | Page-wide text inventory + `page.ariaSnapshot()` as evidence assets. One ADR settling: new runtime name for model-judged checks + source-strength treatment for project-config-backed rules. Add `content` RubricCategory **in the same PR as** schema-duplication consolidation. New package `packages/copy-audit` (deterministic + heuristic Korean tiers only — see table below). Korean good/bad fixtures. Scoring fix: needs-review findings score-exempt, determinism-weighted deductions. Calibration runner: audit every fixture, diff vs manifest `expectedFindings`/`shouldNotFlag`, CI gate. |
-| **v0.5** | `design-harness guide compile`: `design-guide.yaml` + `copy-style.yaml` → ≤2k-token pack (DESIGN.md, Claude skill, AGENTS.md section) + `tokens.css`. Hard constraints first. Token-adherence checks (off-palette-color, off-scale-spacing, unapproved-font-family) as deterministic **risk**, active only with `--guide`. `design-harness loop --until 'deterministic-failures==0' --max-iters N`. Publish per-agent obedience benchmarks (with/without pack) before marketing any "reins" claim. Midjourney art-direction workflow doc (manual first, no CLI). |
-| **v0.6** | Optional LLM copy judge (injectable seam in `audit-url.ts` post-measurement; opt-in flag; Toss 8-principles + error-message structure rubric; always emits a suggested rewrite). Gate: measured owner-vs-judge agreement on Korean samples BEFORE shipping. Localize report output for the copy family (Korean). Private beta on 3–5 real Korean products before any public launch. |
+**Current milestone: v0.3.2** — remaining items: CJK de-bias fixes (line-length char width, Korean status keywords), `page-lang-missing` check, finding-rich example report under `examples/reports/` (never a dir named `runs/` — git-ignored), Claude Code skill port + adapter parity guard, Codex repair-rescore rerun. Full specs and acceptance criteria: **`docs/ROADMAP.md`** (committed, canonical). Do not start a future milestone without reading its spec there.
 
-**Cut list (do NOT build now)**: MCP server (file contract `audit.json`/`report.md` is the canonical interface; capture layer is commoditized), best-of-N candidate picker, community fixture pipeline, interaction-simulation / below-fold sweep / pixel contrast, more than two agent surfaces (Claude Code + Codex only), a `guide from-references` VLM-distiller CLI (manual workflow must prove value first), Open Design integration.
+**Cut list (do NOT build now)**: MCP server (file contract `audit.json`/`report.md` is canonical; capture is commoditized) · best-of-N picker · community fixture pipeline · interaction-simulation / below-fold sweep / pixel contrast · more than two agent surfaces (Claude Code + Codex) · `guide from-references` CLI before the manual workflow proves value · Open Design integration · **evidence-against, do not build**: hue-template color harmony, symmetry/balance scoring for real UIs, scored Korean readability, MQM translation LQA, Figma-plugin surface, generic English style-guide enforcement (details: `docs/ROADMAP.md` cut list).
 
 ## Korean copy check tiering (decided — do not re-litigate)
 
 | Check | Tier | Notes |
 |---|---|---|
 | `placeholder-leak` ({{var}}, unrendered ICU, lorem, TODO) | deterministic **failure** | unambiguous broken rendering |
-| `page-lang-missing`/`mismatch` | deterministic **failure** | WCAG 3.1.1/3.1.2 |
-| Rendered josa hedge "을(를)"/"이(가)" | deterministic **risk** | detection is exact, but it is also a deliberate convention in Korean forms — never failure |
-| `josa-batchim-mismatch` (via es-hangul rule `(code−0xAC00)%28` over Kiwi tokens) | deterministic **risk**, confidence medium | downgrade near Latin/digit-final tokens, brand names, interpolation seams |
+| `page-lang-missing` | deterministic **failure** | WCAG 3.1.1; `lang` mismatch is deterministic ONLY against an explicit declaration (`--locale` / config), never via language inference |
+| Rendered josa hedge "을(를)"/"이(가)" | deterministic **risk** | pure regex, no parser; also a deliberate Korean form convention — never failure; configurable via `josaHedgePolicy` |
+| `josa-batchim-mismatch` | **heuristic** risk | Kiwi-parser-dependent segmentation → heuristic (rule 1 corollary below). Deterministic risk allowed ONLY for the parser-free subset: Hangul-final token + particle provable from raw text. SKIP digit/Latin/symbol-final tokens; require `J*` POS confirmation |
 | Korean line-break (`break-all` / missing `keep-all`) | deterministic **risk** | computed-style |
-| Glossary/terminology consistency | deterministic **risk** | only when a project glossary is configured |
-| Register mixing (해요체/합쇼체/반말 via Kiwi EF tags) | heuristic | only flag deviations from a configured per-surface register map; real products mix registers deliberately; exclude noun-form labels/headings |
-| Object honorifics (사물존칭, e.g. "나오셨습니다") | heuristic | pattern list, high precision achievable |
-| Translationese (번역투) lexicon | heuristic | versioned data file seeded from NIKL materials; always-wrong subset (이중피동, 사물존칭) flagged individually, density-scored subset (~을 통해, ~에 대하여) by frequency |
-| Korean spelling (spellcheck-ko) | heuristic, **never failure** | agglutination false positives |
-| Tone / naturalness / contextual fit | LLM judge, subjective, **needs-review only**, score-exempt | opt-in; rubric = Toss 8 principles + 상태→원인→해결 error structure; temp 0; absolute anchored rubric; never graded by the model that wrote the copy |
+| Glossary/terminology (typed term tiers: approved/banned/use-carefully) | deterministic **risk** | only when a project glossary is configured |
+| Register mixing (해요체/합쇼체/반말 via Kiwi EF tags) | heuristic | only against a configured per-surface register map; hard-exclude strings with no sentence-final ending (labels, fragments, buttons) |
+| Object honorifics (사물존칭) | **LLM judge only** (v0.6, needs-review, score-exempt) | re-tiered 2026-07-07: no dataset or detector exists; NIKL calls the 간접존대 boundary undefined; no rule check in copy-audit v1 |
+| Translationese (번역투) lexicon | heuristic, needs-review | versioned data seeded from NIKL materials; always-wrong subset = 이중피동; no calibration corpus exists — log match rates in audit.json, per-pattern suppression |
+| Korean spelling (spellcheck-ko) | heuristic, **never failure** | unknown-word hits = risk with per-project dictionary (brand names/neologisms dominate) |
+| Tone / naturalness / contextual fit | LLM judge, subjective, **needs-review only**, score-exempt | opt-in; Toss 8 principles + 상태→원인→해결 rubric; temp 0; never self-graded; always emits `suggestedRewrite` |
 
-Copy extraction happens at render time (post-interpolation) from the live page — not from locale files — because josa/agreement errors only manifest after variable interpolation.
+Copy extraction happens at render time (post-interpolation) from the live page — not from locale files — because josa/agreement errors only manifest after variable interpolation. Any check requiring a full morphological parse of informal text inherits Kiwi's ~86.5% web-text accuracy and cannot be deterministic-tier.
 
-## Design invariants (from the research — carry into every decision)
+## Design invariants
 
-- **Agents obey gates, not prose.** Anything that must hold goes into a machine-checked gate (loop exit condition, hook, CI); prose guidance is a prior-shifter, capped at ~2k tokens, MUST rules first.
-- **One config artifact drives both directions**: `design-guide.yaml` / `copy-style.yaml` compile into the pre-generation pack AND parameterize the post-render checks. Guidance and verification must never drift apart.
-- **Midjourney lapse test**: if the Midjourney subscription lapsed tomorrow, zero roadmap items may break. Midjourney is an optional art-direction input (explore direction → distill tokens → seed design-guide.yaml); images stay local-only.
-- **No claims without measurement**: repair-and-rescore deltas before marketing the loop; owner-vs-judge agreement before shipping the Korean judge; false-positive dogfooding on real Korean products before any public Korean launch.
-- **Halve milestones**: solo maintainer. Every release must end in a publishable, honestly-documented state (README claims must match npm reality — the v0.3.1 lesson).
+- **Agents obey gates, not prose.** Anything that must hold becomes a machine check (loop exit, hook, CI); prose guidance is a prior-shifter capped at ~2k tokens, MUST rules first.
+- **Precision over recall in every heuristic tier.** False positives cause banner blindness and kill trust (Ditto's measured lesson). Unproven-precision checks ship informational/logged-only.
+- **One config artifact drives both directions**: `design-guide.yaml` / `copy-style.yaml` compile into the pre-generation pack AND parameterize the post-render checks — guidance and verification never drift apart.
+- **Midjourney lapse test**: if the subscription lapsed tomorrow, zero roadmap items may break.
+- **No claims without measurement**: obedience benchmarks before "reins" marketing; owner-vs-judge agreement (≥80% on ≥50 samples) before the Korean judge ships; false-positive dogfooding on real Korean products before any public Korean launch.
+- **Halve milestones.** Solo maintainer. Every release ends publishable with README claims matching npm/code reality.
 
-## Process conventions
+## Process
 
-- Branch from `main` (`codex/...` or `claude/...`), one coherent slice per PR, review loop before merge. CI runs `release:check` + example-smoke.
-- `.omx/` is git-ignored durable working state (plans, handoffs, goal ledgers). Read the newest `.omx/handoffs/*.md` when resuming; write one when handing off. Do not commit `.omx/` or `REPORT.md`.
-- Verify before claiming done: `pnpm release:check` locally; for check changes, run the audit against the relevant good/bad fixtures and confirm expected findings appear (and good fixtures stay clean).
+- Session protocol: (1) newest `.omx/handoffs/*.md` if present; (2) `git log --oneline -5` + `git status`; (3) current milestone only — out-of-scope ideas go to `.omx/ideas.md`, never code; (4) verify before claiming done (matrix in `docs/agent-protocol.md`); (5) write a handoff before ending. Never list unverified work as Done.
+- Branch from `main` (`codex/...` or `claude/...`), one coherent slice per PR, review before merge. CI runs `release:check` + example-smoke.
+- **Maintenance rule**: any PR that changes a convention, command, check pipeline, or architecture updates this file and/or `docs/ROADMAP.md` in the same PR. This file has a 150-line CI budget (`check:tracked-hygiene`) — a budget, not science; move detail to the committed docs instead of growing this core.
+- Full protocol, anti-drift table, verification matrix, handoff/experiment formats: `docs/agent-protocol.md`.
