@@ -3,11 +3,11 @@
 How to read this file:
 
 - Authority on conflict: owner's current-session instruction > `AGENTS.md` > this file and the other committed docs > git-ignored local notes > your judgment.
-- **Current milestone: v0.3.2.** Work only inside the current milestone; out-of-scope ideas go to `.omx/ideas.md` as one line.
+- **Current milestone: v0.4a** (ADR-001 + schema/enum work + text evidence + scoring fix). Work only inside the current milestone; out-of-scope ideas go to `.omx/ideas.md` as one line.
 - Maintenance rule: any PR that changes scope, conventions, or architecture updates this file (and `AGENTS.md` if a rule changed) in the same PR.
 - Common definition of done for every milestone: `CI=true pnpm release:check` passes, new checks ship with good/bad fixtures, docs updated, handoff written (`docs/agent-protocol.md`), README claims match npm/code reality.
 
-## v0.3.2 (current) — ship, de-bias, gather evidence
+## v0.3.2 — ship, de-bias, gather evidence (COMPLETE 2026-07-08)
 
 1. **npm publish + GitHub release** — DONE 2026-07-07 (v0.3.1 on npm: core, visual-audit, cli; tag + release published; `pnpm dlx @design-harness/cli@0.3.1 --help` verified).
 2. **CJK de-bias** — DONE 2026-07-07 (`korean-line-length-good/bad.html`, `korean-status-good/bad.html` fixtures verify the acceptance criteria below; English fixture results unchanged):
@@ -17,8 +17,8 @@ How to read this file:
 3. **`page-lang-missing` check** — DONE 2026-07-07 (`a11y.language.page-lang`, WCAG 3.1.1, deterministic failure; `page-lang-good/bad.html` fixtures verify silence and one failure per viewport). Scope note: `lang` *mismatch* is deterministic only against an explicit declaration (`--locale` flag or config, `project-contract` source) — never via automatic language inference; the inference variant remains out of scope.
 4. **Finding-rich example report** — DONE 2026-07-08 (`examples/reports/semantic-a11y-bad/`: real audit run, 24 findings, 0/100 blocked score; linked from README's What Gets Checked). Note: the root `/REPORT.md` gitignore pattern had to be anchored — unanchored it matched every `report.md` at any depth on case-insensitive filesystems.
 5. **Claude Code skill port** — DONE 2026-07-08 (`adapters/claude-code-skill/`; shared canonical rules in `adapters/shared/rules.md` embedded verbatim in both adapters between markers; `check:agent-recipes` fails on divergence, `adapters/intentional-differences.json` is the only escape hatch).
-6. **Codex repair-and-rescore rerun** — repeat the 2026-07-07 experiment (Claude tiers all repaired 0→100 from report.md alone) with Codex as executor, plus a more realistic page (merchant-dashboard with injected defects). No "model-agnostic" obedience claims anywhere until this exists.
-7. **axe-core pin** — if any dependency-touching PR happens, pin axe-core >= 4.12.1 (target-size / aria-allowed-attr false-positive fixes).
+6. **Codex repair-and-rescore rerun** — DONE 2026-07-08 (`.omx/experiments/2026-07-08-repair-rescore-codex.md`): Codex gpt-5.5 repaired the fixture 0→85→100 (its iteration-1 fix introduced a clipping regression that the re-audit caught — direct evidence for the v0.5 loop) and a defect-injected merchant dashboard 0→100 one-shot; Sonnet matched on the dashboard. Model-agnostic obedience claims may now cite the two experiment records (fixture-scale pages, single runs — do not overclaim beyond that).
+7. **axe-core pin** — carried to v0.4a (no dependency-touching PR happened in v0.3.2): pin axe-core >= 4.12.1 when the first v0.4 dependency change lands.
 
 ## v0.4 — text evidence + Korean deterministic core
 
