@@ -15,7 +15,7 @@ Each criterion includes:
 - `determinism`: `deterministic`, `heuristic`, or `subjective`.
 - `resultKind`: `failure`, `risk`, or `needs-review`.
 - `confidenceDefault`: default confidence for findings produced by mapped checks.
-- `runtime`: `static-dom`, `computed-style`, `viewport-sweep`, `interaction-simulation`, or `human-review`.
+- `runtime`: `static-dom`, `computed-style`, `viewport-sweep`, `interaction-simulation`, `human-review`, or `model-judged`.
 - `checkNames`: runtime check names that map to the criterion.
 - `remediationHint`: short implementation guidance.
 
@@ -30,6 +30,9 @@ Source strengths:
 - `industry-heuristic`: heuristic risks and review prompts.
 - `research-emerging`: exploratory framing only.
 - `philosophical`: optional subjective critique only.
+- `project-contract`: checks backed by the project's own declared config (`design-guide.yaml`, `copy-style.yaml`); asserts "violates your declared contract", never universal quality; deterministic ceiling is `risk`.
+
+The exhaustive sourceStrength x determinism x resultKind matrix (ceiling semantics — downgrading is always allowed) is defined in [ADR-001](adr/ADR-001-copy-audit-foundations.md) and enforced at the criterion level by `pnpm check:criteria-policy` (`packages/core/src/criteria-policy.ts`).
 
 ### Computation Determinism Never Upgrades Criterion Strength
 
@@ -47,7 +50,7 @@ A false positive costs more than a miss: repeated false flags cause reviewers to
 
 ### Regulatory Mapping
 
-Every accessibility criterion should carry its WCAG 2.2 success-criterion ID machine-readably in `CRITERION_SOURCES` (and the KWCAG 2.2 clause where applicable), so future WCAG 3.0 or KWCAG remaps are mechanical. WCAG 3.0 remains watch-only until Candidate Recommendation (projected Q4 2027 or later).
+Every criterion that cites `wcag-2-2` carries its WCAG 2.2 success-criterion IDs machine-readably in that source's `clausesByCriterion` map in `CRITERION_SOURCES` (enforced by `check:criteria-policy`), so future WCAG 3.0 or KWCAG remaps are mechanical — a new source entry with its own mapping, no criterion edits. The KWCAG 2.2 clause map lands with the v0.6 Korean market slice. WCAG 3.0 remains watch-only until Candidate Recommendation (projected Q4 2027 or later).
 
 ## Adding A Check
 

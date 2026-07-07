@@ -273,7 +273,8 @@
               "computed-style",
               "viewport-sweep",
               "interaction-simulation",
-              "human-review"
+              "human-review",
+              "model-judged"
             ]
           },
           "observed": {

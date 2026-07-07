@@ -58,7 +58,8 @@
         "official-pattern",
         "industry-heuristic",
         "research-emerging",
-        "philosophical"
+        "philosophical",
+        "project-contract"
       ]
     },
     "determinism": {
@@ -92,7 +93,8 @@
         "computed-style",
         "viewport-sweep",
         "interaction-simulation",
-        "human-review"
+        "human-review",
+        "model-judged"
       ]
     },
     "checkNames": {

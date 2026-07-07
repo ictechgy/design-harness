@@ -6,7 +6,26 @@ export const CRITERION_SOURCES: CriterionSource[] = [
     title: "Web Content Accessibility Guidelines 2.2",
     url: "https://www.w3.org/TR/WCAG22/",
     strength: "official-testable",
-    note: "Use only for scoped checks that Design Harness actually implements."
+    note: "Use only for scoped checks that Design Harness actually implements.",
+    // WCAG 2.2 success-criterion ids per criterion (ADR-001). KWCAG 2.2 clause
+    // mapping lands as its own source entry with the v0.6 Korean market slice.
+    clausesByCriterion: {
+      "responsive.horizontal-overflow.none": ["1.4.10"],
+      "a11y.text-contrast.minimum": ["1.4.3"],
+      "a11y.name-role-value.present": ["4.1.2"],
+      "a11y.form-label.present": ["1.3.1", "3.3.2", "4.1.2"],
+      "a11y.image-alt.informative": ["1.1.1"],
+      "hierarchy.heading-structure.sane": ["1.3.1", "2.4.6"],
+      "hierarchy.landmarks.present": ["1.3.1", "2.4.1"],
+      "a11y.language.page-lang": ["3.1.1"],
+      "responsive.fixed-width.risk": ["1.4.10"],
+      "a11y.target-size.minimum": ["2.5.8"],
+      "a11y.form-error.associated": ["1.3.1", "3.3.1"],
+      "a11y.color-only-state.risk": ["1.4.1"],
+      "interaction.status.feedback": ["4.1.3"],
+      "interaction.modal-focus.contained": ["2.1.2", "4.1.2"],
+      "a11y.moving-content.controls": ["2.2.2"]
+    }
   },
   {
     id: "iso-9241-210",

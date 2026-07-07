@@ -6,7 +6,7 @@ Design Harness is an open-source, model-agnostic UI/UX QA loop for AI coding age
 
 ## HARD RULES (never violate)
 
-1. **Epistemic discipline is the product.** A finding with `determinism: heuristic` or `subjective` may NEVER have `resultKind: failure` (enforced by `packages/core/src/integrity.ts` — do not weaken it). Deterministic `failure` language is reserved for official-testable sources (WCAG 2.2) or explicit project-declared config. **Computation determinism never upgrades criterion strength**: exactly countable metrics (colors, font variants, density) with research-grade criteria stay heuristic risk — see `docs/criteria-and-checks.md`. When unsure, downgrade.
+1. **Epistemic discipline is the product.** A finding with `determinism: heuristic` or `subjective` may NEVER have `resultKind: failure` (enforced at finding level by `packages/core/src/integrity.ts`, at criterion level by `check:criteria-policy` per ADR-001 — do not weaken either). Deterministic `failure` language is reserved for official-testable sources (WCAG 2.2), including determinations resolved by explicit project-declared config (`lang` vs `--locale`); `project-contract`-sourced criteria cap at deterministic `risk` (ADR-001 matrix). **Computation determinism never upgrades criterion strength**: exactly countable metrics (colors, font variants, density) with research-grade criteria stay heuristic risk — see `docs/criteria-and-checks.md`. When unsure, downgrade.
 2. **No npm publish, version bump, tag, or GitHub release without the owner's explicit approval in the current session.** Publish order: core → visual-audit → cli. *Enforced for Claude Code by a PreToolUse hook (`.claude/settings.json` → `scripts/hooks/block-release-commands.mjs`). For Codex no hook exists: Codex agents must not run publish/version/tag/release commands at all — ask the owner to run them, unless the owner approves the exact command text in the current session.*
 3. **Never commit generated Midjourney images** or binaries from `datasets/midjourney-reference-lab/local-assets/`. *Enforced: `check:midjourney-policy`, `check:tracked-hygiene`.* Distilled token files derived from images are fine.
 4. **Never add hanspell / py-hanspell / Pusan / Naver / Daum spellcheck endpoints** as dependencies or defaults (ToS-restricted, breakage history). Bareun and other hosted APIs: opt-in provider only, never a default path. *Enforced: `check:deps-policy`.*
@@ -15,7 +15,7 @@ Design Harness is an open-source, model-agnostic UI/UX QA loop for AI coding age
 7. **No hosted LLM in any required path.** Judge features are opt-in (injectable callback / explicit flag), emit `needs-review` findings only, are score-exempt, and record model ID + prompt hash in `audit.json`.
 8. **Audit targets stay local HTTP(S)** (`assertLocalHttpUrl`, `packages/core/src/input-policy.ts`). Do not widen.
 9. **Report copy guardrails**: never claim "WCAG compliant", "accessible", "good design" etc. unqualified (`validateReportCopyGuardrails` in `packages/core/src/report.ts`). Scoped phrasing only — in reports AND public docs.
-10. **Enum lockstep**: `RubricCategory` is duplicated across `types.ts`, 3 JSON schemas, `rubric.yaml`, and `implementationAreaFor`. *Enforced: `check:enum-lockstep` — if the script and this sentence disagree, the script wins.* New source-strength kinds or check runtimes need a short ADR in `docs/` first (pre-settled names for v0.4: runtime `model-judged`, source strength `project-contract` — see `docs/ROADMAP.md`).
+10. **Enum lockstep**: `RubricCategory` is duplicated across `types.ts`, 3 JSON schemas, `rubric.yaml`, and `implementationAreaFor`. *Enforced: `check:enum-lockstep` — if the script and this sentence disagree, the script wins.* New source-strength kinds or check runtimes need a short ADR in `docs/adr/` first (ADR-001 added runtime `model-judged` and source strength `project-contract`; its policy matrix is enforced by `check:criteria-policy`).
 11. **Do not build cut-list items** (see Roadmap section below) without the owner explicitly reopening them.
 
 ## Ask the owner first (never proceed alone)
@@ -30,6 +30,7 @@ pnpm test                           # all package tests (CI=true for non-interac
 pnpm release:check                  # build + typecheck + test + validate + pack + smoke
 pnpm validate                       # schemas, manifests, policy + guard scripts below
 pnpm check:enum-lockstep            # category enum in lockstep across 6 locations
+pnpm check:criteria-policy          # criterion registry vs ADR-001 policy matrix
 pnpm check:deps-policy              # ToS/GPL dependency policy
 pnpm check:tracked-hygiene          # local-only files untracked; AGENTS.md line budget
 pnpm example:serve                  # merchant-dashboard fixture on :4173

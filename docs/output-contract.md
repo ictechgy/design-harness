@@ -42,7 +42,7 @@ Source-backed findings introduced in v0.2 and used by v0.3 can also include:
 - `sourceRefs`: source IDs from the criterion registry.
 - `determinism`: `deterministic`, `heuristic`, or `subjective`.
 - `resultKind`: `failure`, `risk`, or `needs-review`.
-- `runtime`: `static-dom`, `computed-style`, `viewport-sweep`, `interaction-simulation`, or `human-review`.
+- `runtime`: `static-dom`, `computed-style`, `viewport-sweep`, `interaction-simulation`, `human-review`, or `model-judged`.
 - `observed`: measured value or sampled evidence.
 - `expected`: threshold, pattern, or expected behavior.
 - `humanReviewRecommended`: whether a human should review the finding before treating it as a fix requirement.

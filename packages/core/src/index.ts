@@ -1,4 +1,5 @@
 export * from "./criteria.js";
+export * from "./criteria-policy.js";
 export * from "./fixtures.js";
 export * from "./integrity.js";
 export * from "./input-policy.js";

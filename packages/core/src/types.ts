@@ -15,7 +15,8 @@ export type SourceStrength =
   | "official-pattern"
   | "industry-heuristic"
   | "research-emerging"
-  | "philosophical";
+  | "philosophical"
+  | "project-contract";
 export type FindingDeterminism = "deterministic" | "heuristic" | "subjective";
 export type FindingResultKind = "failure" | "risk" | "needs-review";
 export type CheckRuntime =
@@ -23,7 +24,8 @@ export type CheckRuntime =
   | "computed-style"
   | "viewport-sweep"
   | "interaction-simulation"
-  | "human-review";
+  | "human-review"
+  | "model-judged";
 
 export type FindingObservation = string | number | boolean | null | Record<string, unknown> | unknown[];
 
@@ -33,6 +35,13 @@ export interface CriterionSource {
   url: string;
   strength: SourceStrength;
   note?: string;
+  /**
+   * Machine-readable clause references keyed by criterion id, e.g.
+   * { "a11y.text-contrast.minimum": ["1.4.3"] } on the wcag-2-2 source.
+   * Kept on the source (not the criterion) so a future standard remap
+   * (WCAG 3.0, KWCAG) is a new source entry with its own mapping.
+   */
+  clausesByCriterion?: Record<string, string[]>;
 }
 
 export interface Criterion {
