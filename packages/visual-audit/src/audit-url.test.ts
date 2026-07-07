@@ -144,6 +144,7 @@ function measurementFor(name: string): ViewportMeasurements {
     missingFormLabels: [],
     missingImageAlt: [],
     headingIssues: [],
+    pageLangMissing: false,
     missingMainLandmark: false,
     repeatedLabels: [],
     repeatedVisualWeightRisks: [],

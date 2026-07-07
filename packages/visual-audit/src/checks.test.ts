@@ -15,6 +15,7 @@ const baseMeasurements: ViewportMeasurements = {
   missingFormLabels: [],
   missingImageAlt: [],
   headingIssues: [],
+  pageLangMissing: false,
   missingMainLandmark: false,
   repeatedLabels: [],
   repeatedVisualWeightRisks: [],
@@ -34,6 +35,25 @@ const baseMeasurements: ViewportMeasurements = {
 };
 
 describe("findingsFromMeasurements", () => {
+  it("flags a missing page lang declaration as a deterministic failure", () => {
+    const findings = findingsFromMeasurements(
+      { ...baseMeasurements, pageLangMissing: true },
+      ["screenshot-desktop", "measurement-desktop"]
+    );
+    const finding = findings.find((candidate) => candidate.checkName === "page-lang-missing");
+    expect(finding).toBeDefined();
+    expect(finding?.criterionId).toBe("a11y.language.page-lang");
+    expect(finding?.determinism).toBe("deterministic");
+    expect(finding?.resultKind).toBe("failure");
+    expect(findings.filter((candidate) => candidate.checkName === "page-lang-missing")).toHaveLength(1);
+  });
+
+  it("stays silent when the page declares a lang attribute", () => {
+    const findings = findingsFromMeasurements(baseMeasurements, ["screenshot-desktop"]);
+    expect(findings.some((candidate) => candidate.checkName === "page-lang-missing")).toBe(false);
+  });
+
+
   it("detects likely blank renders", () => {
     const findings = findingsFromMeasurements(
       { ...baseMeasurements, textLength: 0, meaningfulElementCount: 0, missingMainLandmark: true },

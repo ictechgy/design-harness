@@ -196,6 +196,21 @@ export const CRITERIA: Criterion[] = [
     remediationHint: "Use semantic landmarks such as main, nav, header, footer, or equivalent roles."
   },
   {
+    id: "a11y.language.page-lang",
+    category: "accessibility",
+    title: "Page declares its language",
+    description:
+      "The document declares a non-empty lang attribute on the html element so assistive technology can select the correct speech engine and rendering rules.",
+    sourceRefs: ["wcag-2-2"],
+    sourceStrength: "official-testable",
+    determinism: "deterministic",
+    resultKind: "failure",
+    confidenceDefault: "high",
+    runtime: "static-dom",
+    checkNames: ["page-lang-missing"],
+    remediationHint: "Add a valid lang attribute to the html element, for example <html lang=\"ko\"> or <html lang=\"en\">."
+  },
+  {
     id: "content.labels.specific",
     category: "task-fit",
     title: "Task-critical labels are specific",
