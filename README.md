@@ -97,7 +97,7 @@ This keeps the loop grounded. The agent is not guessing from "make it better"; i
 Checks are conservative and source-backed:
 
 - **Render and layout**: render failure or blank render, horizontal overflow, likely text clipping, DOM-computed contrast risk.
-- **Semantic accessibility**: missing accessible names, form labels, image alternatives, heading issues, landmarks.
+- **Semantic accessibility**: missing accessible names, form labels, image alternatives, heading issues, landmarks, missing page language declaration.
 - **Responsive readability**: wide content, sticky obstruction, excessive line length, target size.
 - **Interaction state**: error association, color-only states, disabled controls, live status, dialogs, custom controls, moving content.
 - **Reference-derived hierarchy heuristics**: repeated visual weight, saturated color noise, checklist state visibility.

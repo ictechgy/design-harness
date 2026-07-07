@@ -69,6 +69,7 @@ export interface ViewportMeasurements {
   missingFormLabels: ElementSample[];
   missingImageAlt: ElementSample[];
   headingIssues: HeadingIssueSample[];
+  pageLangMissing: boolean;
   missingMainLandmark: boolean;
   repeatedLabels: RepeatedLabelSample[];
   repeatedVisualWeightRisks: RepeatedVisualWeightSample[];
@@ -240,6 +241,22 @@ export function findingsFromMeasurements(
         text: sample.text
       },
       expected: "Heading levels progress clearly without empty headings or ambiguous top-level structure."
+    }));
+  }
+
+  if (measurements.pageLangMissing) {
+    findings.push(createFinding({
+      id: `finding-${measurements.viewport}-page-lang-missing`,
+      category: "accessibility",
+      severity: "high",
+      viewport: measurements.viewport,
+      selector: "html",
+      evidenceRefs,
+      problem: "The html element does not declare a non-empty lang attribute, so assistive technology cannot determine the page language.",
+      recommendation: "Add a valid lang attribute to the html element, for example <html lang=\"ko\"> or <html lang=\"en\">.",
+      checkName: "page-lang-missing",
+      observed: false,
+      expected: "The html element declares a non-empty lang attribute."
     }));
   }
 

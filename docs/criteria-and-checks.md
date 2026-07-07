@@ -101,7 +101,7 @@ Use scoped language:
 - Render and operational stability.
 - Responsiveness and overflow.
 - Text clipping and contrast.
-- Semantic accessibility: names, labels, images, headings, landmarks.
+- Semantic accessibility: names, labels, images, headings, landmarks, page language declaration.
 - Hierarchy review prompts: repeated equal-weight modules and saturated color noise that may flatten priority.
 - Responsive readability: wide content, sticky obstruction, line length, target size.
 - Interaction state: error association, color-only states, checklist state visibility, disabled controls, live status, dialogs, custom controls, moving content.

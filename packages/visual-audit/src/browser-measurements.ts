@@ -87,6 +87,7 @@ export async function collectViewportMeasurements(page: {
 
     const headingIssues = collectHeadingIssues();
     const missingMainLandmark = document.body.querySelector("main,[role='main']") === null;
+    const pageLangMissing = (document.documentElement.getAttribute("lang") || "").trim() === "";
     const repeatedLabels = collectRepeatedLabels(interactiveElements);
     const repeatedVisualWeightRisks = collectRepeatedVisualWeightRisks();
     const saturatedColorNoiseRisks = collectSaturatedColorNoiseRisks();
@@ -117,6 +118,7 @@ export async function collectViewportMeasurements(page: {
       missingFormLabels,
       missingImageAlt,
       headingIssues,
+      pageLangMissing,
       missingMainLandmark,
       repeatedLabels,
       repeatedVisualWeightRisks,
