@@ -2,6 +2,10 @@
 
 Evidence for AI-made interfaces.
 
+[![npm](https://img.shields.io/npm/v/%40design-harness%2Fcli?label=%40design-harness%2Fcli)](https://www.npmjs.com/package/@design-harness/cli)
+[![CI](https://github.com/ictechgy/design-harness/actions/workflows/ci.yml/badge.svg)](https://github.com/ictechgy/design-harness/actions/workflows/ci.yml)
+[![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
+
 Design Harness is an open-source, model-agnostic UI/UX QA loop for AI coding agents. Point it at a local URL and it captures desktop/mobile screenshots, runs conservative source-backed checks, and writes an agent-friendly report you can hand back to Codex, Claude Code, Gemini CLI, or a human reviewer.
 
 ```text
@@ -27,18 +31,16 @@ Design Harness turns those observations into structured output. Deterministic is
 
 ## Quickstart
 
-From a checkout:
+Playwright needs a local Chromium binary. Install it once:
 
 ```bash
-pnpm install
-pnpm build
-pnpm design-harness -- audit --url http://localhost:3000 --out runs/demo
+npx playwright install chromium
 ```
 
-If Chromium is not installed for Playwright:
+Then run your app locally and audit it — no checkout needed:
 
 ```bash
-pnpm playwright:install
+npx @design-harness/cli@latest audit --url http://localhost:3000 --out runs/demo
 ```
 
 Expected output:
@@ -55,19 +57,19 @@ runs/demo/
 
 Partial audits still write artifacts but exit with code `2` by default. Use `--allow-partial` when a debugging workflow should treat partial artifacts as success.
 
-The package is published as `@design-harness/cli`, which exposes the `design-harness` binary for the audit workflow. For a one-off audit without a checkout:
+The npm release is audit-CLI focused. The PR comment renderer, scenario audit runner, and MCP adapter are checkout-local — they run only from a clone of this repository, not from the npm packages — until they are promoted to shipped package APIs.
+
+### From a checkout (for contributors)
+
+For contributing, or for the checkout-local recipes:
 
 ```bash
-npx @design-harness/cli@latest audit --url http://localhost:3000 --out runs/demo
+pnpm install
+pnpm build
+pnpm design-harness -- audit --url http://localhost:3000 --out runs/demo
 ```
 
-For npm-installed usage, install the Playwright browser once if Chromium is missing:
-
-```bash
-npx playwright install chromium
-```
-
-The npm release is audit-CLI focused. The PR comment renderer, scenario audit runner, and MCP adapter are checkout-local recipes/scaffolding in this repository until they are promoted to shipped package APIs.
+Use `pnpm playwright:install` if Chromium is missing.
 
 ## Agent Loop
 
@@ -94,34 +96,45 @@ This keeps the loop grounded. The agent is not guessing from "make it better"; i
 
 Checks are conservative and source-backed:
 
-- render failure or blank render,
-- horizontal overflow,
-- likely text clipping,
-- DOM-computed contrast risk,
-- semantic accessibility risks: missing names, form labels, image alternatives, heading issues, landmarks,
-- responsive readability risks: wide content, sticky obstruction, excessive line length, target size,
-- interaction state risks: error association, color-only states, disabled controls, live status, dialogs, custom controls, moving content.
+- **Render and layout**: render failure or blank render, horizontal overflow, likely text clipping, DOM-computed contrast risk.
+- **Semantic accessibility**: missing accessible names, form labels, image alternatives, heading issues, landmarks.
+- **Responsive readability**: wide content, sticky obstruction, excessive line length, target size.
+- **Interaction state**: error association, color-only states, disabled controls, live status, dialogs, custom controls, moving content.
+- **Reference-derived hierarchy heuristics**: repeated visual weight, saturated color noise, checklist state visibility.
 
 Every finding includes severity, confidence, viewport, category, evidence references, and a recommendation. v0.3 findings may also include `criterionId`, `sourceRefs`, `determinism`, `resultKind`, runtime type, observed evidence, and expected behavior.
 
+A real finding from an audit of the `semantic-a11y-bad` fixture (abridged):
+
+```json
+{
+  "id": "finding-desktop-missing-form-label-1",
+  "category": "accessibility",
+  "severity": "medium",
+  "confidence": "medium",
+  "viewport": "desktop",
+  "selector": "#query",
+  "problem": "Form control #query may not have a programmatic label.",
+  "recommendation": "Associate the control with a visible label, aria-label, or aria-labelledby.",
+  "criterionId": "a11y.form-label.present",
+  "sourceRefs": ["wcag-2-2", "polaris-accessibility"],
+  "determinism": "deterministic",
+  "resultKind": "risk",
+  "evidenceRefs": ["screenshot-desktop", "measurement-desktop"]
+}
+```
+
 See [Criteria And Checks](docs/criteria-and-checks.md), [Output Contract](docs/output-contract.md), and [Fixture Catalog](docs/fixtures.md).
-
-## Recipes
-
-- [GitHub Actions](docs/recipes/github-actions.md): run the harness in CI, upload artifacts, and optionally comment on pull requests.
-- [Pull Request Comment Bot](docs/recipes/pr-comment-bot.md): checkout-local recipe to render a compact PR comment from an audit run.
-- [Scenario Audit](docs/recipes/scenario-audit.md): checkout-local recipe to run multiple local URL scenarios and aggregate the results.
-- [npm Execution](docs/recipes/npm-execution.md): verify the packed CLI and understand the post-publish `npx` path.
-- [Agent Loop Recipes](docs/recipes/agent-loop.md): prompts for Codex, Claude Code, Gemini CLI, and human reviewers.
-- [Release Checklist](docs/recipes/release-checklist.md): package checks to run before publishing a public version.
 
 ## How Findings Speak
 
-Design Harness tries hard not to overclaim.
+Design Harness tries hard not to overclaim. Findings are graded on two axes — `determinism` (deterministic / heuristic / subjective) and `resultKind` (failure / risk / needs-review) — plus a separate low/medium/high `confidence` field. Reports group them into three reader-facing tiers:
 
-- `deterministic`: measured evidence supports a concrete failure or risk, such as horizontal overflow.
-- `heuristic`: the signal is probably useful, but context still matters.
-- `needs-review`: the issue is visible to a reviewer, but the harness should not pretend it can prove it automatically.
+| Tier | Meaning | Example |
+| --- | --- | --- |
+| Deterministic failures and risks | Measured evidence supports a concrete failure or risk. | Horizontal overflow at 390px. |
+| Heuristic risks | The signal is probably useful, but context still matters. | A reading line wider than ~95 characters. |
+| Review prompts (`needs-review`) | Visible to a reviewer; the harness does not pretend to prove it automatically. | Visual weight repeated so evenly that priority is unclear. |
 
 That distinction matters for design work. A contrast threshold and a weak visual hierarchy should not be reported with the same certainty.
 
@@ -141,31 +154,28 @@ pnpm design-harness -- audit --url http://localhost:4173 --out runs/merchant-das
 
 The fixture gives new contributors a stable target for checking the full local loop.
 
-## Midjourney Reference Lab
+## Recipes
 
-The repository also includes a manual calibration workflow for UI quality references:
-
-- prompts and manifest records,
-- good/bad labels,
-- expected findings,
-- "should not flag" notes,
-- hand-authored fixtures derived from general observations.
-
-Generated Midjourney images are local-only by default and are not required to run the project. Design Harness does not call Midjourney, automate Midjourney, require a Midjourney account, or depend on generated assets at runtime.
-
-See [Midjourney Reference Lab Workflow](docs/midjourney-reference-lab/workflow.md).
+- [GitHub Actions](docs/recipes/github-actions.md): run the harness in CI, upload artifacts, and optionally comment on pull requests.
+- [Pull Request Comment Bot](docs/recipes/pr-comment-bot.md): checkout-local recipe to render a compact PR comment from an audit run.
+- [Scenario Audit](docs/recipes/scenario-audit.md): checkout-local recipe to run multiple local URL scenarios and aggregate the results.
+- [npm Execution](docs/recipes/npm-execution.md): verify the packed CLI and the `npx` execution path.
+- [Agent Loop Recipes](docs/recipes/agent-loop.md): prompts for Codex, Claude Code, Gemini CLI, and human reviewers.
+- [Release Checklist](docs/recipes/release-checklist.md): package checks to run before publishing a public version.
 
 ## Packages
 
-- `@design-harness/core`: schemas, validation, scoring, report rendering, shared types.
-- `@design-harness/visual-audit`: Playwright screenshot capture and source-backed DOM, layout, accessibility, and interaction checks.
-- `@design-harness/cli`: command-line entry point for the local audit workflow.
+| Package | What it does |
+| --- | --- |
+| [`@design-harness/cli`](https://www.npmjs.com/package/@design-harness/cli) | Command-line entry point for the local audit workflow. |
+| [`@design-harness/core`](https://www.npmjs.com/package/@design-harness/core) | Schemas, validation, scoring, report rendering, shared types. |
+| [`@design-harness/visual-audit`](https://www.npmjs.com/package/@design-harness/visual-audit) | Playwright screenshot capture and source-backed DOM, layout, accessibility, and interaction checks. |
 
 ## Status
 
 Implemented:
 
-- local CLI audit loop, published to npm as `@design-harness/cli` (with `@design-harness/core` and `@design-harness/visual-audit`),
+- local CLI audit loop, published to npm,
 - desktop/mobile screenshot capture,
 - schema-valid audit artifacts,
 - Markdown report generation,
@@ -185,6 +195,10 @@ In progress or planned:
 - more fixture coverage,
 - deeper hosted/action adapters,
 - Open Design integrations beyond the current specs.
+
+## Midjourney Reference Lab
+
+The repository also includes a manual, local-only calibration workflow: curated good/bad UI reference observations are distilled into hand-authored fixtures, manifest records, and expected findings. Design Harness does not call or automate Midjourney, does not require a Midjourney account, and never depends on generated assets at runtime. See [Midjourney Reference Lab Workflow](docs/midjourney-reference-lab/workflow.md).
 
 ## Contributing
 
