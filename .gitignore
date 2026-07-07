@@ -28,5 +28,6 @@ datasets/midjourney-reference-lab/local-assets/
 .codex/
 .agents/
 
-# Local strategy report (owner-facing, not published)
-REPORT.md
+# Local strategy report (owner-facing, not published; root only —
+# audit artifacts elsewhere may legitimately be named report.md)
+/REPORT.md

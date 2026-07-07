@@ -1,0 +1,1365 @@
+{
+  "schemaVersion": "0.1",
+  "harnessVersion": "0.3.1",
+  "runId": "2026-07-07-150516499Z",
+  "target": {
+    "schemaVersion": "0.1",
+    "kind": "url",
+    "url": "http://localhost:4173/semantic-a11y-bad.html"
+  },
+  "viewportPresets": [
+    {
+      "name": "desktop",
+      "width": 1440,
+      "height": 900,
+      "deviceScaleFactor": 1,
+      "isMobile": false
+    },
+    {
+      "name": "mobile",
+      "width": 390,
+      "height": 844,
+      "deviceScaleFactor": 2,
+      "isMobile": true
+    }
+  ],
+  "evidenceAssets": [
+    {
+      "id": "screenshot-desktop",
+      "type": "screenshot",
+      "path": "screenshots/desktop.png",
+      "viewport": "desktop",
+      "createdAt": "2026-07-07T15:05:16.660Z"
+    },
+    {
+      "id": "measurement-desktop",
+      "type": "measurement",
+      "viewport": "desktop",
+      "data": {
+        "viewport": "desktop",
+        "viewportWidth": 1440,
+        "viewportHeight": 900,
+        "documentScrollWidth": 1440,
+        "bodyScrollWidth": 1424,
+        "textLength": 44,
+        "meaningfulElementCount": 7,
+        "clippedText": [],
+        "contrastRisks": [],
+        "missingAccessibleNames": [
+          {
+            "selector": "div > button:nth-of-type(1)",
+            "text": "",
+            "region": {
+              "x": 8,
+              "y": 194,
+              "width": 16,
+              "height": 6
+            }
+          }
+        ],
+        "missingFormLabels": [
+          {
+            "selector": "#query",
+            "text": "",
+            "region": {
+              "x": 28,
+              "y": 182,
+              "width": 153,
+              "height": 21
+            }
+          }
+        ],
+        "missingImageAlt": [
+          {
+            "selector": "div > img",
+            "text": "",
+            "region": {
+              "x": 185,
+              "y": 196,
+              "width": 1,
+              "height": 1
+            }
+          }
+        ],
+        "headingIssues": [
+          {
+            "selector": "div > h3",
+            "text": "Late orders",
+            "region": {
+              "x": 8,
+              "y": 80,
+              "width": 1424,
+              "height": 22
+            },
+            "level": 3,
+            "issue": "heading-level-skip",
+            "previousLevel": 1
+          },
+          {
+            "selector": "div > h1:nth-of-type(2)",
+            "text": "Exports",
+            "region": {
+              "x": 8,
+              "y": 123,
+              "width": 1424,
+              "height": 37
+            },
+            "level": 1,
+            "issue": "duplicate-h1"
+          }
+        ],
+        "pageLangMissing": false,
+        "missingMainLandmark": true,
+        "repeatedLabels": [
+          {
+            "label": "view",
+            "count": 3,
+            "selectors": [
+              "div > button:nth-of-type(2)",
+              "div > button:nth-of-type(3)",
+              "div > button:nth-of-type(4)"
+            ]
+          }
+        ],
+        "repeatedVisualWeightRisks": [],
+        "saturatedColorNoiseRisks": [],
+        "checklistStateVisibilityRisks": [],
+        "fixedWidthRisks": [],
+        "stickyObstructionRisks": [],
+        "excessiveLineLength": [],
+        "tapTargetRisks": [
+          {
+            "selector": "div > button:nth-of-type(1)",
+            "text": "",
+            "region": {
+              "x": 8,
+              "y": 194,
+              "width": 16,
+              "height": 6
+            }
+          },
+          {
+            "selector": "#query",
+            "text": "",
+            "region": {
+              "x": 28,
+              "y": 182,
+              "width": 153,
+              "height": 21
+            }
+          },
+          {
+            "selector": "div > button:nth-of-type(2)",
+            "text": "View",
+            "region": {
+              "x": 190,
+              "y": 182,
+              "width": 45,
+              "height": 21
+            }
+          },
+          {
+            "selector": "div > button:nth-of-type(3)",
+            "text": "View",
+            "region": {
+              "x": 239,
+              "y": 182,
+              "width": 45,
+              "height": 21
+            }
+          },
+          {
+            "selector": "div > button:nth-of-type(4)",
+            "text": "View",
+            "region": {
+              "x": 287,
+              "y": 182,
+              "width": 45,
+              "height": 21
+            }
+          }
+        ],
+        "formErrorAssociationRisks": [],
+        "colorOnlyStateRisks": [],
+        "disabledWithoutExplanation": [],
+        "statusLiveRegionRisks": [],
+        "modalFocusRisks": [],
+        "customControlSemanticsRisks": [],
+        "movingContentControlRisks": []
+      },
+      "createdAt": "2026-07-07T15:05:16.666Z"
+    },
+    {
+      "id": "screenshot-mobile",
+      "type": "screenshot",
+      "path": "screenshots/mobile.png",
+      "viewport": "mobile",
+      "createdAt": "2026-07-07T15:05:16.767Z"
+    },
+    {
+      "id": "measurement-mobile",
+      "type": "measurement",
+      "viewport": "mobile",
+      "data": {
+        "viewport": "mobile",
+        "viewportWidth": 390,
+        "viewportHeight": 844,
+        "documentScrollWidth": 390,
+        "bodyScrollWidth": 374,
+        "textLength": 44,
+        "meaningfulElementCount": 7,
+        "clippedText": [],
+        "contrastRisks": [],
+        "missingAccessibleNames": [
+          {
+            "selector": "div > button:nth-of-type(1)",
+            "text": "",
+            "region": {
+              "x": 8,
+              "y": 194,
+              "width": 16,
+              "height": 6
+            }
+          }
+        ],
+        "missingFormLabels": [
+          {
+            "selector": "#query",
+            "text": "",
+            "region": {
+              "x": 28,
+              "y": 182,
+              "width": 153,
+              "height": 21
+            }
+          }
+        ],
+        "missingImageAlt": [
+          {
+            "selector": "div > img",
+            "text": "",
+            "region": {
+              "x": 185,
+              "y": 196,
+              "width": 1,
+              "height": 1
+            }
+          }
+        ],
+        "headingIssues": [
+          {
+            "selector": "div > h3",
+            "text": "Late orders",
+            "region": {
+              "x": 8,
+              "y": 80,
+              "width": 374,
+              "height": 22
+            },
+            "level": 3,
+            "issue": "heading-level-skip",
+            "previousLevel": 1
+          },
+          {
+            "selector": "div > h1:nth-of-type(2)",
+            "text": "Exports",
+            "region": {
+              "x": 8,
+              "y": 123,
+              "width": 374,
+              "height": 37
+            },
+            "level": 1,
+            "issue": "duplicate-h1"
+          }
+        ],
+        "pageLangMissing": false,
+        "missingMainLandmark": true,
+        "repeatedLabels": [
+          {
+            "label": "view",
+            "count": 3,
+            "selectors": [
+              "div > button:nth-of-type(2)",
+              "div > button:nth-of-type(3)",
+              "div > button:nth-of-type(4)"
+            ]
+          }
+        ],
+        "repeatedVisualWeightRisks": [],
+        "saturatedColorNoiseRisks": [],
+        "checklistStateVisibilityRisks": [],
+        "fixedWidthRisks": [],
+        "stickyObstructionRisks": [],
+        "excessiveLineLength": [],
+        "tapTargetRisks": [
+          {
+            "selector": "div > button:nth-of-type(1)",
+            "text": "",
+            "region": {
+              "x": 8,
+              "y": 194,
+              "width": 16,
+              "height": 6
+            }
+          },
+          {
+            "selector": "#query",
+            "text": "",
+            "region": {
+              "x": 28,
+              "y": 182,
+              "width": 153,
+              "height": 21
+            }
+          },
+          {
+            "selector": "div > button:nth-of-type(2)",
+            "text": "View",
+            "region": {
+              "x": 190,
+              "y": 182,
+              "width": 45,
+              "height": 21
+            }
+          },
+          {
+            "selector": "div > button:nth-of-type(3)",
+            "text": "View",
+            "region": {
+              "x": 239,
+              "y": 182,
+              "width": 45,
+              "height": 21
+            }
+          },
+          {
+            "selector": "div > button:nth-of-type(4)",
+            "text": "View",
+            "region": {
+              "x": 287,
+              "y": 182,
+              "width": 45,
+              "height": 21
+            }
+          }
+        ],
+        "formErrorAssociationRisks": [],
+        "colorOnlyStateRisks": [],
+        "disabledWithoutExplanation": [],
+        "statusLiveRegionRisks": [],
+        "modalFocusRisks": [],
+        "customControlSemanticsRisks": [],
+        "movingContentControlRisks": []
+      },
+      "createdAt": "2026-07-07T15:05:16.772Z"
+    }
+  ],
+  "findings": [
+    {
+      "id": "finding-desktop-missing-accessible-name-1",
+      "category": "accessibility",
+      "severity": "medium",
+      "viewport": "desktop",
+      "selector": "div > button:nth-of-type(1)",
+      "region": {
+        "x": 8,
+        "y": 194,
+        "width": 16,
+        "height": 6
+      },
+      "evidenceRefs": [
+        "screenshot-desktop",
+        "measurement-desktop"
+      ],
+      "problem": "Interactive element div > button:nth-of-type(1) may not expose a usable accessible name.",
+      "recommendation": "Add visible text, aria-label, aria-labelledby, or use a native control with a clear label.",
+      "checkName": "missing-accessible-name",
+      "observed": {
+        "x": 8,
+        "y": 194,
+        "width": 16,
+        "height": 6
+      },
+      "expected": "Interactive controls expose a non-empty accessible name.",
+      "criterionId": "a11y.name-role-value.present",
+      "sourceRefs": [
+        "wcag-2-2",
+        "carbon-accessibility",
+        "polaris-accessibility",
+        "agent-ui-arxiv-2605-02729"
+      ],
+      "determinism": "deterministic",
+      "resultKind": "risk",
+      "runtime": "static-dom",
+      "confidence": "medium",
+      "humanReviewRecommended": false
+    },
+    {
+      "id": "finding-desktop-missing-form-label-1",
+      "category": "accessibility",
+      "severity": "medium",
+      "viewport": "desktop",
+      "selector": "#query",
+      "region": {
+        "x": 28,
+        "y": 182,
+        "width": 153,
+        "height": 21
+      },
+      "evidenceRefs": [
+        "screenshot-desktop",
+        "measurement-desktop"
+      ],
+      "problem": "Form control #query may not have a programmatic label.",
+      "recommendation": "Associate the control with a visible label, aria-label, or aria-labelledby.",
+      "checkName": "missing-form-label",
+      "observed": {
+        "x": 28,
+        "y": 182,
+        "width": 153,
+        "height": 21
+      },
+      "expected": "Form controls have programmatic labels.",
+      "criterionId": "a11y.form-label.present",
+      "sourceRefs": [
+        "wcag-2-2",
+        "polaris-accessibility"
+      ],
+      "determinism": "deterministic",
+      "resultKind": "risk",
+      "runtime": "static-dom",
+      "confidence": "medium",
+      "humanReviewRecommended": false
+    },
+    {
+      "id": "finding-desktop-missing-image-alt-1",
+      "category": "accessibility",
+      "severity": "medium",
+      "viewport": "desktop",
+      "selector": "div > img",
+      "region": {
+        "x": 185,
+        "y": 196,
+        "width": 1,
+        "height": 1
+      },
+      "evidenceRefs": [
+        "screenshot-desktop",
+        "measurement-desktop"
+      ],
+      "problem": "Image div > img does not declare alt text or an intentional decorative alt attribute.",
+      "recommendation": "Add meaningful alt text for informative images, or use alt=\"\" for decorative images.",
+      "checkName": "missing-image-alt",
+      "observed": {
+        "x": 185,
+        "y": 196,
+        "width": 1,
+        "height": 1
+      },
+      "expected": "Informative images provide text alternatives or decorative images are explicitly marked.",
+      "criterionId": "a11y.image-alt.informative",
+      "sourceRefs": [
+        "wcag-2-2"
+      ],
+      "determinism": "deterministic",
+      "resultKind": "risk",
+      "runtime": "static-dom",
+      "confidence": "medium",
+      "humanReviewRecommended": false
+    },
+    {
+      "id": "finding-desktop-heading-level-skip-1",
+      "category": "hierarchy",
+      "severity": "medium",
+      "viewport": "desktop",
+      "selector": "div > h3",
+      "region": {
+        "x": 8,
+        "y": 80,
+        "width": 1424,
+        "height": 22
+      },
+      "evidenceRefs": [
+        "screenshot-desktop",
+        "measurement-desktop"
+      ],
+      "problem": "Heading div > h3 jumps from level 1 to level 3.",
+      "recommendation": "Use headings to describe page and section structure in a clear order.",
+      "checkName": "heading-level-skip",
+      "observed": {
+        "level": 3,
+        "previousLevel": 1,
+        "text": "Late orders"
+      },
+      "expected": "Heading levels progress clearly without empty headings or ambiguous top-level structure.",
+      "criterionId": "hierarchy.heading-structure.sane",
+      "sourceRefs": [
+        "wcag-2-2",
+        "govuk-layout",
+        "nng-usability-heuristics"
+      ],
+      "determinism": "deterministic",
+      "resultKind": "risk",
+      "runtime": "static-dom",
+      "confidence": "medium",
+      "humanReviewRecommended": false
+    },
+    {
+      "id": "finding-desktop-duplicate-h1-2",
+      "category": "hierarchy",
+      "severity": "low",
+      "viewport": "desktop",
+      "selector": "div > h1:nth-of-type(2)",
+      "region": {
+        "x": 8,
+        "y": 123,
+        "width": 1424,
+        "height": 37
+      },
+      "evidenceRefs": [
+        "screenshot-desktop",
+        "measurement-desktop"
+      ],
+      "problem": "Additional H1 div > h1:nth-of-type(2) may make the page top-level structure ambiguous.",
+      "recommendation": "Use headings to describe page and section structure in a clear order.",
+      "checkName": "duplicate-h1",
+      "observed": {
+        "level": 1,
+        "text": "Exports"
+      },
+      "expected": "Heading levels progress clearly without empty headings or ambiguous top-level structure.",
+      "criterionId": "hierarchy.heading-structure.sane",
+      "sourceRefs": [
+        "wcag-2-2",
+        "govuk-layout",
+        "nng-usability-heuristics"
+      ],
+      "determinism": "deterministic",
+      "resultKind": "risk",
+      "runtime": "static-dom",
+      "confidence": "medium",
+      "humanReviewRecommended": false
+    },
+    {
+      "id": "finding-desktop-missing-main-landmark",
+      "category": "hierarchy",
+      "severity": "medium",
+      "viewport": "desktop",
+      "selector": "body",
+      "evidenceRefs": [
+        "screenshot-desktop",
+        "measurement-desktop"
+      ],
+      "problem": "The page does not expose a main landmark in the captured DOM.",
+      "recommendation": "Wrap primary page content in a <main> element or role=\"main\" landmark.",
+      "checkName": "missing-main-landmark",
+      "observed": false,
+      "expected": "A main landmark is present.",
+      "criterionId": "hierarchy.landmarks.present",
+      "sourceRefs": [
+        "wcag-2-2",
+        "carbon-accessibility"
+      ],
+      "determinism": "deterministic",
+      "resultKind": "risk",
+      "runtime": "static-dom",
+      "confidence": "medium",
+      "humanReviewRecommended": false
+    },
+    {
+      "id": "finding-desktop-ambiguous-repeated-label-1",
+      "category": "task-fit",
+      "severity": "low",
+      "confidence": "low",
+      "viewport": "desktop",
+      "evidenceRefs": [
+        "screenshot-desktop",
+        "measurement-desktop"
+      ],
+      "problem": "The label \"view\" is reused by 3 interactive elements, which may be ambiguous.",
+      "recommendation": "Make repeated action labels more specific with visible text or accessible-name context.",
+      "checkName": "ambiguous-repeated-label",
+      "observed": {
+        "label": "view",
+        "count": 3,
+        "selectors": [
+          "div > button:nth-of-type(2)",
+          "div > button:nth-of-type(3)",
+          "div > button:nth-of-type(4)"
+        ]
+      },
+      "expected": "Repeated interactive labels are specific enough to distinguish actions.",
+      "criterionId": "content.labels.specific",
+      "sourceRefs": [
+        "nng-usability-heuristics",
+        "polaris-accessibility",
+        "agent-ui-arxiv-2605-02729"
+      ],
+      "determinism": "heuristic",
+      "resultKind": "needs-review",
+      "runtime": "static-dom",
+      "humanReviewRecommended": true
+    },
+    {
+      "id": "finding-desktop-tap-target-risk-1",
+      "category": "accessibility",
+      "severity": "medium",
+      "viewport": "desktop",
+      "selector": "div > button:nth-of-type(1)",
+      "region": {
+        "x": 8,
+        "y": 194,
+        "width": 16,
+        "height": 6
+      },
+      "evidenceRefs": [
+        "screenshot-desktop",
+        "measurement-desktop"
+      ],
+      "problem": "Interactive target div > button:nth-of-type(1) appears smaller than the configured minimum target size.",
+      "recommendation": "Increase the control hit area or spacing so the target is easier to activate.",
+      "checkName": "tap-target-risk",
+      "observed": {
+        "x": 8,
+        "y": 194,
+        "width": 16,
+        "height": 6
+      },
+      "expected": "Interactive targets are at least 24 by 24 CSS pixels unless an exception applies.",
+      "criterionId": "a11y.target-size.minimum",
+      "sourceRefs": [
+        "wcag-2-2",
+        "carbon-accessibility",
+        "polaris-accessibility"
+      ],
+      "determinism": "deterministic",
+      "resultKind": "risk",
+      "runtime": "computed-style",
+      "confidence": "medium",
+      "humanReviewRecommended": false
+    },
+    {
+      "id": "finding-desktop-tap-target-risk-2",
+      "category": "accessibility",
+      "severity": "medium",
+      "viewport": "desktop",
+      "selector": "#query",
+      "region": {
+        "x": 28,
+        "y": 182,
+        "width": 153,
+        "height": 21
+      },
+      "evidenceRefs": [
+        "screenshot-desktop",
+        "measurement-desktop"
+      ],
+      "problem": "Interactive target #query appears smaller than the configured minimum target size.",
+      "recommendation": "Increase the control hit area or spacing so the target is easier to activate.",
+      "checkName": "tap-target-risk",
+      "observed": {
+        "x": 28,
+        "y": 182,
+        "width": 153,
+        "height": 21
+      },
+      "expected": "Interactive targets are at least 24 by 24 CSS pixels unless an exception applies.",
+      "criterionId": "a11y.target-size.minimum",
+      "sourceRefs": [
+        "wcag-2-2",
+        "carbon-accessibility",
+        "polaris-accessibility"
+      ],
+      "determinism": "deterministic",
+      "resultKind": "risk",
+      "runtime": "computed-style",
+      "confidence": "medium",
+      "humanReviewRecommended": false
+    },
+    {
+      "id": "finding-desktop-tap-target-risk-3",
+      "category": "accessibility",
+      "severity": "medium",
+      "viewport": "desktop",
+      "selector": "div > button:nth-of-type(2)",
+      "region": {
+        "x": 190,
+        "y": 182,
+        "width": 45,
+        "height": 21
+      },
+      "evidenceRefs": [
+        "screenshot-desktop",
+        "measurement-desktop"
+      ],
+      "problem": "Interactive target div > button:nth-of-type(2) appears smaller than the configured minimum target size.",
+      "recommendation": "Increase the control hit area or spacing so the target is easier to activate.",
+      "checkName": "tap-target-risk",
+      "observed": {
+        "x": 190,
+        "y": 182,
+        "width": 45,
+        "height": 21
+      },
+      "expected": "Interactive targets are at least 24 by 24 CSS pixels unless an exception applies.",
+      "criterionId": "a11y.target-size.minimum",
+      "sourceRefs": [
+        "wcag-2-2",
+        "carbon-accessibility",
+        "polaris-accessibility"
+      ],
+      "determinism": "deterministic",
+      "resultKind": "risk",
+      "runtime": "computed-style",
+      "confidence": "medium",
+      "humanReviewRecommended": false
+    },
+    {
+      "id": "finding-desktop-tap-target-risk-4",
+      "category": "accessibility",
+      "severity": "medium",
+      "viewport": "desktop",
+      "selector": "div > button:nth-of-type(3)",
+      "region": {
+        "x": 239,
+        "y": 182,
+        "width": 45,
+        "height": 21
+      },
+      "evidenceRefs": [
+        "screenshot-desktop",
+        "measurement-desktop"
+      ],
+      "problem": "Interactive target div > button:nth-of-type(3) appears smaller than the configured minimum target size.",
+      "recommendation": "Increase the control hit area or spacing so the target is easier to activate.",
+      "checkName": "tap-target-risk",
+      "observed": {
+        "x": 239,
+        "y": 182,
+        "width": 45,
+        "height": 21
+      },
+      "expected": "Interactive targets are at least 24 by 24 CSS pixels unless an exception applies.",
+      "criterionId": "a11y.target-size.minimum",
+      "sourceRefs": [
+        "wcag-2-2",
+        "carbon-accessibility",
+        "polaris-accessibility"
+      ],
+      "determinism": "deterministic",
+      "resultKind": "risk",
+      "runtime": "computed-style",
+      "confidence": "medium",
+      "humanReviewRecommended": false
+    },
+    {
+      "id": "finding-desktop-tap-target-risk-5",
+      "category": "accessibility",
+      "severity": "medium",
+      "viewport": "desktop",
+      "selector": "div > button:nth-of-type(4)",
+      "region": {
+        "x": 287,
+        "y": 182,
+        "width": 45,
+        "height": 21
+      },
+      "evidenceRefs": [
+        "screenshot-desktop",
+        "measurement-desktop"
+      ],
+      "problem": "Interactive target div > button:nth-of-type(4) appears smaller than the configured minimum target size.",
+      "recommendation": "Increase the control hit area or spacing so the target is easier to activate.",
+      "checkName": "tap-target-risk",
+      "observed": {
+        "x": 287,
+        "y": 182,
+        "width": 45,
+        "height": 21
+      },
+      "expected": "Interactive targets are at least 24 by 24 CSS pixels unless an exception applies.",
+      "criterionId": "a11y.target-size.minimum",
+      "sourceRefs": [
+        "wcag-2-2",
+        "carbon-accessibility",
+        "polaris-accessibility"
+      ],
+      "determinism": "deterministic",
+      "resultKind": "risk",
+      "runtime": "computed-style",
+      "confidence": "medium",
+      "humanReviewRecommended": false
+    },
+    {
+      "id": "finding-mobile-missing-accessible-name-1",
+      "category": "accessibility",
+      "severity": "medium",
+      "viewport": "mobile",
+      "selector": "div > button:nth-of-type(1)",
+      "region": {
+        "x": 8,
+        "y": 194,
+        "width": 16,
+        "height": 6
+      },
+      "evidenceRefs": [
+        "screenshot-mobile",
+        "measurement-mobile"
+      ],
+      "problem": "Interactive element div > button:nth-of-type(1) may not expose a usable accessible name.",
+      "recommendation": "Add visible text, aria-label, aria-labelledby, or use a native control with a clear label.",
+      "checkName": "missing-accessible-name",
+      "observed": {
+        "x": 8,
+        "y": 194,
+        "width": 16,
+        "height": 6
+      },
+      "expected": "Interactive controls expose a non-empty accessible name.",
+      "criterionId": "a11y.name-role-value.present",
+      "sourceRefs": [
+        "wcag-2-2",
+        "carbon-accessibility",
+        "polaris-accessibility",
+        "agent-ui-arxiv-2605-02729"
+      ],
+      "determinism": "deterministic",
+      "resultKind": "risk",
+      "runtime": "static-dom",
+      "confidence": "medium",
+      "humanReviewRecommended": false
+    },
+    {
+      "id": "finding-mobile-missing-form-label-1",
+      "category": "accessibility",
+      "severity": "medium",
+      "viewport": "mobile",
+      "selector": "#query",
+      "region": {
+        "x": 28,
+        "y": 182,
+        "width": 153,
+        "height": 21
+      },
+      "evidenceRefs": [
+        "screenshot-mobile",
+        "measurement-mobile"
+      ],
+      "problem": "Form control #query may not have a programmatic label.",
+      "recommendation": "Associate the control with a visible label, aria-label, or aria-labelledby.",
+      "checkName": "missing-form-label",
+      "observed": {
+        "x": 28,
+        "y": 182,
+        "width": 153,
+        "height": 21
+      },
+      "expected": "Form controls have programmatic labels.",
+      "criterionId": "a11y.form-label.present",
+      "sourceRefs": [
+        "wcag-2-2",
+        "polaris-accessibility"
+      ],
+      "determinism": "deterministic",
+      "resultKind": "risk",
+      "runtime": "static-dom",
+      "confidence": "medium",
+      "humanReviewRecommended": false
+    },
+    {
+      "id": "finding-mobile-missing-image-alt-1",
+      "category": "accessibility",
+      "severity": "medium",
+      "viewport": "mobile",
+      "selector": "div > img",
+      "region": {
+        "x": 185,
+        "y": 196,
+        "width": 1,
+        "height": 1
+      },
+      "evidenceRefs": [
+        "screenshot-mobile",
+        "measurement-mobile"
+      ],
+      "problem": "Image div > img does not declare alt text or an intentional decorative alt attribute.",
+      "recommendation": "Add meaningful alt text for informative images, or use alt=\"\" for decorative images.",
+      "checkName": "missing-image-alt",
+      "observed": {
+        "x": 185,
+        "y": 196,
+        "width": 1,
+        "height": 1
+      },
+      "expected": "Informative images provide text alternatives or decorative images are explicitly marked.",
+      "criterionId": "a11y.image-alt.informative",
+      "sourceRefs": [
+        "wcag-2-2"
+      ],
+      "determinism": "deterministic",
+      "resultKind": "risk",
+      "runtime": "static-dom",
+      "confidence": "medium",
+      "humanReviewRecommended": false
+    },
+    {
+      "id": "finding-mobile-heading-level-skip-1",
+      "category": "hierarchy",
+      "severity": "medium",
+      "viewport": "mobile",
+      "selector": "div > h3",
+      "region": {
+        "x": 8,
+        "y": 80,
+        "width": 374,
+        "height": 22
+      },
+      "evidenceRefs": [
+        "screenshot-mobile",
+        "measurement-mobile"
+      ],
+      "problem": "Heading div > h3 jumps from level 1 to level 3.",
+      "recommendation": "Use headings to describe page and section structure in a clear order.",
+      "checkName": "heading-level-skip",
+      "observed": {
+        "level": 3,
+        "previousLevel": 1,
+        "text": "Late orders"
+      },
+      "expected": "Heading levels progress clearly without empty headings or ambiguous top-level structure.",
+      "criterionId": "hierarchy.heading-structure.sane",
+      "sourceRefs": [
+        "wcag-2-2",
+        "govuk-layout",
+        "nng-usability-heuristics"
+      ],
+      "determinism": "deterministic",
+      "resultKind": "risk",
+      "runtime": "static-dom",
+      "confidence": "medium",
+      "humanReviewRecommended": false
+    },
+    {
+      "id": "finding-mobile-duplicate-h1-2",
+      "category": "hierarchy",
+      "severity": "low",
+      "viewport": "mobile",
+      "selector": "div > h1:nth-of-type(2)",
+      "region": {
+        "x": 8,
+        "y": 123,
+        "width": 374,
+        "height": 37
+      },
+      "evidenceRefs": [
+        "screenshot-mobile",
+        "measurement-mobile"
+      ],
+      "problem": "Additional H1 div > h1:nth-of-type(2) may make the page top-level structure ambiguous.",
+      "recommendation": "Use headings to describe page and section structure in a clear order.",
+      "checkName": "duplicate-h1",
+      "observed": {
+        "level": 1,
+        "text": "Exports"
+      },
+      "expected": "Heading levels progress clearly without empty headings or ambiguous top-level structure.",
+      "criterionId": "hierarchy.heading-structure.sane",
+      "sourceRefs": [
+        "wcag-2-2",
+        "govuk-layout",
+        "nng-usability-heuristics"
+      ],
+      "determinism": "deterministic",
+      "resultKind": "risk",
+      "runtime": "static-dom",
+      "confidence": "medium",
+      "humanReviewRecommended": false
+    },
+    {
+      "id": "finding-mobile-missing-main-landmark",
+      "category": "hierarchy",
+      "severity": "medium",
+      "viewport": "mobile",
+      "selector": "body",
+      "evidenceRefs": [
+        "screenshot-mobile",
+        "measurement-mobile"
+      ],
+      "problem": "The page does not expose a main landmark in the captured DOM.",
+      "recommendation": "Wrap primary page content in a <main> element or role=\"main\" landmark.",
+      "checkName": "missing-main-landmark",
+      "observed": false,
+      "expected": "A main landmark is present.",
+      "criterionId": "hierarchy.landmarks.present",
+      "sourceRefs": [
+        "wcag-2-2",
+        "carbon-accessibility"
+      ],
+      "determinism": "deterministic",
+      "resultKind": "risk",
+      "runtime": "static-dom",
+      "confidence": "medium",
+      "humanReviewRecommended": false
+    },
+    {
+      "id": "finding-mobile-ambiguous-repeated-label-1",
+      "category": "task-fit",
+      "severity": "low",
+      "confidence": "low",
+      "viewport": "mobile",
+      "evidenceRefs": [
+        "screenshot-mobile",
+        "measurement-mobile"
+      ],
+      "problem": "The label \"view\" is reused by 3 interactive elements, which may be ambiguous.",
+      "recommendation": "Make repeated action labels more specific with visible text or accessible-name context.",
+      "checkName": "ambiguous-repeated-label",
+      "observed": {
+        "label": "view",
+        "count": 3,
+        "selectors": [
+          "div > button:nth-of-type(2)",
+          "div > button:nth-of-type(3)",
+          "div > button:nth-of-type(4)"
+        ]
+      },
+      "expected": "Repeated interactive labels are specific enough to distinguish actions.",
+      "criterionId": "content.labels.specific",
+      "sourceRefs": [
+        "nng-usability-heuristics",
+        "polaris-accessibility",
+        "agent-ui-arxiv-2605-02729"
+      ],
+      "determinism": "heuristic",
+      "resultKind": "needs-review",
+      "runtime": "static-dom",
+      "humanReviewRecommended": true
+    },
+    {
+      "id": "finding-mobile-tap-target-risk-1",
+      "category": "accessibility",
+      "severity": "medium",
+      "viewport": "mobile",
+      "selector": "div > button:nth-of-type(1)",
+      "region": {
+        "x": 8,
+        "y": 194,
+        "width": 16,
+        "height": 6
+      },
+      "evidenceRefs": [
+        "screenshot-mobile",
+        "measurement-mobile"
+      ],
+      "problem": "Interactive target div > button:nth-of-type(1) appears smaller than the configured minimum target size.",
+      "recommendation": "Increase the control hit area or spacing so the target is easier to activate.",
+      "checkName": "tap-target-risk",
+      "observed": {
+        "x": 8,
+        "y": 194,
+        "width": 16,
+        "height": 6
+      },
+      "expected": "Interactive targets are at least 24 by 24 CSS pixels unless an exception applies.",
+      "criterionId": "a11y.target-size.minimum",
+      "sourceRefs": [
+        "wcag-2-2",
+        "carbon-accessibility",
+        "polaris-accessibility"
+      ],
+      "determinism": "deterministic",
+      "resultKind": "risk",
+      "runtime": "computed-style",
+      "confidence": "medium",
+      "humanReviewRecommended": false
+    },
+    {
+      "id": "finding-mobile-tap-target-risk-2",
+      "category": "accessibility",
+      "severity": "medium",
+      "viewport": "mobile",
+      "selector": "#query",
+      "region": {
+        "x": 28,
+        "y": 182,
+        "width": 153,
+        "height": 21
+      },
+      "evidenceRefs": [
+        "screenshot-mobile",
+        "measurement-mobile"
+      ],
+      "problem": "Interactive target #query appears smaller than the configured minimum target size.",
+      "recommendation": "Increase the control hit area or spacing so the target is easier to activate.",
+      "checkName": "tap-target-risk",
+      "observed": {
+        "x": 28,
+        "y": 182,
+        "width": 153,
+        "height": 21
+      },
+      "expected": "Interactive targets are at least 24 by 24 CSS pixels unless an exception applies.",
+      "criterionId": "a11y.target-size.minimum",
+      "sourceRefs": [
+        "wcag-2-2",
+        "carbon-accessibility",
+        "polaris-accessibility"
+      ],
+      "determinism": "deterministic",
+      "resultKind": "risk",
+      "runtime": "computed-style",
+      "confidence": "medium",
+      "humanReviewRecommended": false
+    },
+    {
+      "id": "finding-mobile-tap-target-risk-3",
+      "category": "accessibility",
+      "severity": "medium",
+      "viewport": "mobile",
+      "selector": "div > button:nth-of-type(2)",
+      "region": {
+        "x": 190,
+        "y": 182,
+        "width": 45,
+        "height": 21
+      },
+      "evidenceRefs": [
+        "screenshot-mobile",
+        "measurement-mobile"
+      ],
+      "problem": "Interactive target div > button:nth-of-type(2) appears smaller than the configured minimum target size.",
+      "recommendation": "Increase the control hit area or spacing so the target is easier to activate.",
+      "checkName": "tap-target-risk",
+      "observed": {
+        "x": 190,
+        "y": 182,
+        "width": 45,
+        "height": 21
+      },
+      "expected": "Interactive targets are at least 24 by 24 CSS pixels unless an exception applies.",
+      "criterionId": "a11y.target-size.minimum",
+      "sourceRefs": [
+        "wcag-2-2",
+        "carbon-accessibility",
+        "polaris-accessibility"
+      ],
+      "determinism": "deterministic",
+      "resultKind": "risk",
+      "runtime": "computed-style",
+      "confidence": "medium",
+      "humanReviewRecommended": false
+    },
+    {
+      "id": "finding-mobile-tap-target-risk-4",
+      "category": "accessibility",
+      "severity": "medium",
+      "viewport": "mobile",
+      "selector": "div > button:nth-of-type(3)",
+      "region": {
+        "x": 239,
+        "y": 182,
+        "width": 45,
+        "height": 21
+      },
+      "evidenceRefs": [
+        "screenshot-mobile",
+        "measurement-mobile"
+      ],
+      "problem": "Interactive target div > button:nth-of-type(3) appears smaller than the configured minimum target size.",
+      "recommendation": "Increase the control hit area or spacing so the target is easier to activate.",
+      "checkName": "tap-target-risk",
+      "observed": {
+        "x": 239,
+        "y": 182,
+        "width": 45,
+        "height": 21
+      },
+      "expected": "Interactive targets are at least 24 by 24 CSS pixels unless an exception applies.",
+      "criterionId": "a11y.target-size.minimum",
+      "sourceRefs": [
+        "wcag-2-2",
+        "carbon-accessibility",
+        "polaris-accessibility"
+      ],
+      "determinism": "deterministic",
+      "resultKind": "risk",
+      "runtime": "computed-style",
+      "confidence": "medium",
+      "humanReviewRecommended": false
+    },
+    {
+      "id": "finding-mobile-tap-target-risk-5",
+      "category": "accessibility",
+      "severity": "medium",
+      "viewport": "mobile",
+      "selector": "div > button:nth-of-type(4)",
+      "region": {
+        "x": 287,
+        "y": 182,
+        "width": 45,
+        "height": 21
+      },
+      "evidenceRefs": [
+        "screenshot-mobile",
+        "measurement-mobile"
+      ],
+      "problem": "Interactive target div > button:nth-of-type(4) appears smaller than the configured minimum target size.",
+      "recommendation": "Increase the control hit area or spacing so the target is easier to activate.",
+      "checkName": "tap-target-risk",
+      "observed": {
+        "x": 287,
+        "y": 182,
+        "width": 45,
+        "height": 21
+      },
+      "expected": "Interactive targets are at least 24 by 24 CSS pixels unless an exception applies.",
+      "criterionId": "a11y.target-size.minimum",
+      "sourceRefs": [
+        "wcag-2-2",
+        "carbon-accessibility",
+        "polaris-accessibility"
+      ],
+      "determinism": "deterministic",
+      "resultKind": "risk",
+      "runtime": "computed-style",
+      "confidence": "medium",
+      "humanReviewRecommended": false
+    }
+  ],
+  "advisoryScore": {
+    "value": 0,
+    "max": 100,
+    "band": "blocked",
+    "deductions": [
+      {
+        "findingId": "finding-desktop-missing-accessible-name-1",
+        "points": 7.5,
+        "reason": "medium accessibility finding with medium confidence"
+      },
+      {
+        "findingId": "finding-desktop-missing-form-label-1",
+        "points": 7.5,
+        "reason": "medium accessibility finding with medium confidence"
+      },
+      {
+        "findingId": "finding-desktop-missing-image-alt-1",
+        "points": 7.5,
+        "reason": "medium accessibility finding with medium confidence"
+      },
+      {
+        "findingId": "finding-desktop-heading-level-skip-1",
+        "points": 7.5,
+        "reason": "medium hierarchy finding with medium confidence"
+      },
+      {
+        "findingId": "finding-desktop-duplicate-h1-2",
+        "points": 3,
+        "reason": "low hierarchy finding with medium confidence"
+      },
+      {
+        "findingId": "finding-desktop-missing-main-landmark",
+        "points": 7.5,
+        "reason": "medium hierarchy finding with medium confidence"
+      },
+      {
+        "findingId": "finding-desktop-ambiguous-repeated-label-1",
+        "points": 2,
+        "reason": "low task-fit finding with low confidence"
+      },
+      {
+        "findingId": "finding-desktop-tap-target-risk-1",
+        "points": 7.5,
+        "reason": "medium accessibility finding with medium confidence"
+      },
+      {
+        "findingId": "finding-desktop-tap-target-risk-2",
+        "points": 7.5,
+        "reason": "medium accessibility finding with medium confidence"
+      },
+      {
+        "findingId": "finding-desktop-tap-target-risk-3",
+        "points": 7.5,
+        "reason": "medium accessibility finding with medium confidence"
+      },
+      {
+        "findingId": "finding-desktop-tap-target-risk-4",
+        "points": 7.5,
+        "reason": "medium accessibility finding with medium confidence"
+      },
+      {
+        "findingId": "finding-desktop-tap-target-risk-5",
+        "points": 7.5,
+        "reason": "medium accessibility finding with medium confidence"
+      },
+      {
+        "findingId": "finding-mobile-missing-accessible-name-1",
+        "points": 7.5,
+        "reason": "medium accessibility finding with medium confidence"
+      },
+      {
+        "findingId": "finding-mobile-missing-form-label-1",
+        "points": 7.5,
+        "reason": "medium accessibility finding with medium confidence"
+      },
+      {
+        "findingId": "finding-mobile-missing-image-alt-1",
+        "points": 7.5,
+        "reason": "medium accessibility finding with medium confidence"
+      },
+      {
+        "findingId": "finding-mobile-heading-level-skip-1",
+        "points": 7.5,
+        "reason": "medium hierarchy finding with medium confidence"
+      },
+      {
+        "findingId": "finding-mobile-duplicate-h1-2",
+        "points": 3,
+        "reason": "low hierarchy finding with medium confidence"
+      },
+      {
+        "findingId": "finding-mobile-missing-main-landmark",
+        "points": 7.5,
+        "reason": "medium hierarchy finding with medium confidence"
+      },
+      {
+        "findingId": "finding-mobile-ambiguous-repeated-label-1",
+        "points": 2,
+        "reason": "low task-fit finding with low confidence"
+      },
+      {
+        "findingId": "finding-mobile-tap-target-risk-1",
+        "points": 7.5,
+        "reason": "medium accessibility finding with medium confidence"
+      },
+      {
+        "findingId": "finding-mobile-tap-target-risk-2",
+        "points": 7.5,
+        "reason": "medium accessibility finding with medium confidence"
+      },
+      {
+        "findingId": "finding-mobile-tap-target-risk-3",
+        "points": 7.5,
+        "reason": "medium accessibility finding with medium confidence"
+      },
+      {
+        "findingId": "finding-mobile-tap-target-risk-4",
+        "points": 7.5,
+        "reason": "medium accessibility finding with medium confidence"
+      },
+      {
+        "findingId": "finding-mobile-tap-target-risk-5",
+        "points": 7.5,
+        "reason": "medium accessibility finding with medium confidence"
+      }
+    ],
+    "explanation": "Advisory score starts at 100 and subtracts deterministic finding deductions by severity and confidence. It is not an objective design-quality grade."
+  },
+  "timings": {
+    "startedAt": "2026-07-07T15:05:16.499Z",
+    "finishedAt": "2026-07-07T15:05:16.795Z",
+    "durationMs": 296
+  },
+  "status": "success",
+  "failedChecks": []
+}

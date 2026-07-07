@@ -1,0 +1,19 @@
+{
+  "schemaVersion": "0.1",
+  "harnessVersion": "0.3.1",
+  "runId": "2026-07-07-150516499Z",
+  "format": "markdown",
+  "reportPath": "report.md",
+  "sourceAuditPath": "audit.json",
+  "sections": [
+    "Run Summary",
+    "Advisory Score",
+    "Findings",
+    "Source-Backed Criteria",
+    "Evidence Links",
+    "Recommendations",
+    "Iteration Prompt Scaffold",
+    "Optional Subjective Critique"
+  ],
+  "createdAt": "2026-07-07T15:05:16.796Z"
+}

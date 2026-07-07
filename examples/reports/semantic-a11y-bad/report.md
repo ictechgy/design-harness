@@ -1,0 +1,117 @@
+# Design Harness Audit Report
+
+## Run Summary
+
+- Run ID: `2026-07-07-150516499Z`
+- Target: http://localhost:4173/semantic-a11y-bad.html
+- Status: `success`
+- Started: 2026-07-07T15:05:16.499Z
+- Duration: 296ms
+- Viewports: desktop (1440x900), mobile (390x844)
+
+## Advisory Score
+
+**0/100** (blocked)
+
+Verdict: Blocked by high-risk deterministic findings.
+
+Note: Advisory score starts at 100 and subtracts deterministic finding deductions by severity and confidence. It is not an objective design-quality grade.
+
+## Findings
+
+### Deterministic Findings: Risks
+
+| ID | Severity | Confidence | Category | Viewport | Determinism | Result | Criterion | Problem | Evidence |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| finding-desktop-missing-accessible-name-1 | medium | medium | accessibility | desktop | deterministic | risk | a11y.name-role-value.present | Interactive element div > button:nth-of-type(1) may not expose a usable accessible name. | `screenshot-desktop`, `measurement-desktop` |
+| finding-desktop-missing-form-label-1 | medium | medium | accessibility | desktop | deterministic | risk | a11y.form-label.present | Form control #query may not have a programmatic label. | `screenshot-desktop`, `measurement-desktop` |
+| finding-desktop-missing-image-alt-1 | medium | medium | accessibility | desktop | deterministic | risk | a11y.image-alt.informative | Image div > img does not declare alt text or an intentional decorative alt attribute. | `screenshot-desktop`, `measurement-desktop` |
+| finding-desktop-heading-level-skip-1 | medium | medium | hierarchy | desktop | deterministic | risk | hierarchy.heading-structure.sane | Heading div > h3 jumps from level 1 to level 3. | `screenshot-desktop`, `measurement-desktop` |
+| finding-desktop-duplicate-h1-2 | low | medium | hierarchy | desktop | deterministic | risk | hierarchy.heading-structure.sane | Additional H1 div > h1:nth-of-type(2) may make the page top-level structure ambiguous. | `screenshot-desktop`, `measurement-desktop` |
+| finding-desktop-missing-main-landmark | medium | medium | hierarchy | desktop | deterministic | risk | hierarchy.landmarks.present | The page does not expose a main landmark in the captured DOM. | `screenshot-desktop`, `measurement-desktop` |
+| finding-desktop-tap-target-risk-1 | medium | medium | accessibility | desktop | deterministic | risk | a11y.target-size.minimum | Interactive target div > button:nth-of-type(1) appears smaller than the configured minimum target size. | `screenshot-desktop`, `measurement-desktop` |
+| finding-desktop-tap-target-risk-2 | medium | medium | accessibility | desktop | deterministic | risk | a11y.target-size.minimum | Interactive target #query appears smaller than the configured minimum target size. | `screenshot-desktop`, `measurement-desktop` |
+| finding-desktop-tap-target-risk-3 | medium | medium | accessibility | desktop | deterministic | risk | a11y.target-size.minimum | Interactive target div > button:nth-of-type(2) appears smaller than the configured minimum target size. | `screenshot-desktop`, `measurement-desktop` |
+| finding-desktop-tap-target-risk-4 | medium | medium | accessibility | desktop | deterministic | risk | a11y.target-size.minimum | Interactive target div > button:nth-of-type(3) appears smaller than the configured minimum target size. | `screenshot-desktop`, `measurement-desktop` |
+| finding-desktop-tap-target-risk-5 | medium | medium | accessibility | desktop | deterministic | risk | a11y.target-size.minimum | Interactive target div > button:nth-of-type(4) appears smaller than the configured minimum target size. | `screenshot-desktop`, `measurement-desktop` |
+| finding-mobile-missing-accessible-name-1 | medium | medium | accessibility | mobile | deterministic | risk | a11y.name-role-value.present | Interactive element div > button:nth-of-type(1) may not expose a usable accessible name. | `screenshot-mobile`, `measurement-mobile` |
+| finding-mobile-missing-form-label-1 | medium | medium | accessibility | mobile | deterministic | risk | a11y.form-label.present | Form control #query may not have a programmatic label. | `screenshot-mobile`, `measurement-mobile` |
+| finding-mobile-missing-image-alt-1 | medium | medium | accessibility | mobile | deterministic | risk | a11y.image-alt.informative | Image div > img does not declare alt text or an intentional decorative alt attribute. | `screenshot-mobile`, `measurement-mobile` |
+| finding-mobile-heading-level-skip-1 | medium | medium | hierarchy | mobile | deterministic | risk | hierarchy.heading-structure.sane | Heading div > h3 jumps from level 1 to level 3. | `screenshot-mobile`, `measurement-mobile` |
+| finding-mobile-duplicate-h1-2 | low | medium | hierarchy | mobile | deterministic | risk | hierarchy.heading-structure.sane | Additional H1 div > h1:nth-of-type(2) may make the page top-level structure ambiguous. | `screenshot-mobile`, `measurement-mobile` |
+| finding-mobile-missing-main-landmark | medium | medium | hierarchy | mobile | deterministic | risk | hierarchy.landmarks.present | The page does not expose a main landmark in the captured DOM. | `screenshot-mobile`, `measurement-mobile` |
+| finding-mobile-tap-target-risk-1 | medium | medium | accessibility | mobile | deterministic | risk | a11y.target-size.minimum | Interactive target div > button:nth-of-type(1) appears smaller than the configured minimum target size. | `screenshot-mobile`, `measurement-mobile` |
+| finding-mobile-tap-target-risk-2 | medium | medium | accessibility | mobile | deterministic | risk | a11y.target-size.minimum | Interactive target #query appears smaller than the configured minimum target size. | `screenshot-mobile`, `measurement-mobile` |
+| finding-mobile-tap-target-risk-3 | medium | medium | accessibility | mobile | deterministic | risk | a11y.target-size.minimum | Interactive target div > button:nth-of-type(2) appears smaller than the configured minimum target size. | `screenshot-mobile`, `measurement-mobile` |
+| finding-mobile-tap-target-risk-4 | medium | medium | accessibility | mobile | deterministic | risk | a11y.target-size.minimum | Interactive target div > button:nth-of-type(3) appears smaller than the configured minimum target size. | `screenshot-mobile`, `measurement-mobile` |
+| finding-mobile-tap-target-risk-5 | medium | medium | accessibility | mobile | deterministic | risk | a11y.target-size.minimum | Interactive target div > button:nth-of-type(4) appears smaller than the configured minimum target size. | `screenshot-mobile`, `measurement-mobile` |
+
+### Heuristic Review Prompts
+
+| ID | Severity | Confidence | Category | Viewport | Determinism | Result | Criterion | Problem | Evidence |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| finding-desktop-ambiguous-repeated-label-1 | low | low | task-fit | desktop | heuristic | needs-review | content.labels.specific | The label "view" is reused by 3 interactive elements, which may be ambiguous. | `screenshot-desktop`, `measurement-desktop` |
+| finding-mobile-ambiguous-repeated-label-1 | low | low | task-fit | mobile | heuristic | needs-review | content.labels.specific | The label "view" is reused by 3 interactive elements, which may be ambiguous. | `screenshot-mobile`, `measurement-mobile` |
+
+## Source-Backed Criteria
+
+- `a11y.name-role-value.present` (deterministic/risk, static-dom): Interactive controls expose names and roles. Sources: [Web Content Accessibility Guidelines 2.2](https://www.w3.org/TR/WCAG22/) (official-testable); [IBM Carbon accessibility overview](https://carbondesignsystem.com/guidelines/accessibility/overview/) (industry-heuristic); [Shopify Polaris accessibility guidance](https://polaris.shopify.com/foundations/accessibility) (industry-heuristic); [Augmenting Interface Usability Heuristics for Reliable Computer-Use Agents](https://arxiv.org/abs/2605.02729) (research-emerging).
+- `a11y.form-label.present` (deterministic/risk, static-dom): Form controls have programmatic labels. Sources: [Web Content Accessibility Guidelines 2.2](https://www.w3.org/TR/WCAG22/) (official-testable); [Shopify Polaris accessibility guidance](https://polaris.shopify.com/foundations/accessibility) (industry-heuristic).
+- `a11y.image-alt.informative` (deterministic/risk, static-dom): Informative images provide text alternatives. Sources: [Web Content Accessibility Guidelines 2.2](https://www.w3.org/TR/WCAG22/) (official-testable).
+- `hierarchy.heading-structure.sane` (deterministic/risk, static-dom): Heading structure is understandable. Sources: [Web Content Accessibility Guidelines 2.2](https://www.w3.org/TR/WCAG22/) (official-testable); [GOV.UK Design System layout guidance](https://design-system.service.gov.uk/styles/layout/) (official-pattern); [Nielsen Norman Group Ten Usability Heuristics](https://www.nngroup.com/articles/ten-usability-heuristics/) (industry-heuristic).
+- `hierarchy.landmarks.present` (deterministic/risk, static-dom): Core landmarks are present. Sources: [Web Content Accessibility Guidelines 2.2](https://www.w3.org/TR/WCAG22/) (official-testable); [IBM Carbon accessibility overview](https://carbondesignsystem.com/guidelines/accessibility/overview/) (industry-heuristic).
+- `content.labels.specific` (heuristic/needs-review, static-dom): Task-critical labels are specific. Sources: [Nielsen Norman Group Ten Usability Heuristics](https://www.nngroup.com/articles/ten-usability-heuristics/) (industry-heuristic); [Shopify Polaris accessibility guidance](https://polaris.shopify.com/foundations/accessibility) (industry-heuristic); [Augmenting Interface Usability Heuristics for Reliable Computer-Use Agents](https://arxiv.org/abs/2605.02729) (research-emerging).
+- `a11y.target-size.minimum` (deterministic/risk, computed-style): Interactive targets meet minimum geometry. Sources: [Web Content Accessibility Guidelines 2.2](https://www.w3.org/TR/WCAG22/) (official-testable); [IBM Carbon accessibility overview](https://carbondesignsystem.com/guidelines/accessibility/overview/) (industry-heuristic); [Shopify Polaris accessibility guidance](https://polaris.shopify.com/foundations/accessibility) (industry-heuristic).
+
+## Evidence Links
+
+- `screenshot-desktop` (screenshot, desktop): screenshots/desktop.png
+- `measurement-desktop` (measurement, desktop): {"viewport":"desktop","viewportWidth":1440,"viewportHeight":900,"documentScrollWidth":1440,"bodyScrollWidth":1424,"textLength":44,"meaningfulElementCount":7,"clippedText":[],"contrastRisks":[],"missingAccessibleNames":[{"selector":"div > button:nth-of-type(1)","text":"","region":{"x":8,"y":194,"width":16,"height":6}}],"missingFormLabels":[{"selector":"#query","text":"","region":{"x":28,"y":182,"width":153,"height":21}}],"missingImageAlt":[{"selector":"div > img","text":"","region":{"x":185,"y":196,"width":1,"height":1}}],"headingIssues":[{"selector":"div > h3","text":"Late orders","region":{"x":8,"y":80,"width":1424,"height":22},"level":3,"issue":"heading-level-skip","previousLevel":1},{"selector":"div > h1:nth-of-type(2)","text":"Exports","region":{"x":8,"y":123,"width":1424,"height":37},"level":1,"issue":"duplicate-h1"}],"pageLangMissing":false,"missingMainLandmark":true,"repeatedLabels":[{"label":"view","count":3,"selectors":["div > button:nth-of-type(2)","div > button:nth-of-type(3)","div > button:nth-of-type(4)"]}],"repeatedVisualWeightRisks":[],"saturatedColorNoiseRisks":[],"checklistStateVisibilityRisks":[],"fixedWidthRisks":[],"stickyObstructionRisks":[],"excessiveLineLength":[],"tapTargetRisks":[{"selector":"div > button:nth-of-type(1)","text":"","region":{"x":8,"y":194,"width":16,"height":6}},{"selector":"#query","text":"","region":{"x":28,"y":182,"width":153,"height":21}},{"selector":"div > button:nth-of-type(2)","text":"View","region":{"x":190,"y":182,"width":45,"height":21}},{"selector":"div > button:nth-of-type(3)","text":"View","region":{"x":239,"y":182,"width":45,"height":21}},{"selector":"div > button:nth-of-type(4)","text":"View","region":{"x":287,"y":182,"width":45,"height":21}}],"formErrorAssociationRisks":[],"colorOnlyStateRisks":[],"disabledWithoutExplanation":[],"statusLiveRegionRisks":[],"modalFocusRisks":[],"customControlSemanticsRisks":[],"movingContentControlRisks":[]}
+- `screenshot-mobile` (screenshot, mobile): screenshots/mobile.png
+- `measurement-mobile` (measurement, mobile): {"viewport":"mobile","viewportWidth":390,"viewportHeight":844,"documentScrollWidth":390,"bodyScrollWidth":374,"textLength":44,"meaningfulElementCount":7,"clippedText":[],"contrastRisks":[],"missingAccessibleNames":[{"selector":"div > button:nth-of-type(1)","text":"","region":{"x":8,"y":194,"width":16,"height":6}}],"missingFormLabels":[{"selector":"#query","text":"","region":{"x":28,"y":182,"width":153,"height":21}}],"missingImageAlt":[{"selector":"div > img","text":"","region":{"x":185,"y":196,"width":1,"height":1}}],"headingIssues":[{"selector":"div > h3","text":"Late orders","region":{"x":8,"y":80,"width":374,"height":22},"level":3,"issue":"heading-level-skip","previousLevel":1},{"selector":"div > h1:nth-of-type(2)","text":"Exports","region":{"x":8,"y":123,"width":374,"height":37},"level":1,"issue":"duplicate-h1"}],"pageLangMissing":false,"missingMainLandmark":true,"repeatedLabels":[{"label":"view","count":3,"selectors":["div > button:nth-of-type(2)","div > button:nth-of-type(3)","div > button:nth-of-type(4)"]}],"repeatedVisualWeightRisks":[],"saturatedColorNoiseRisks":[],"checklistStateVisibilityRisks":[],"fixedWidthRisks":[],"stickyObstructionRisks":[],"excessiveLineLength":[],"tapTargetRisks":[{"selector":"div > button:nth-of-type(1)","text":"","region":{"x":8,"y":194,"width":16,"height":6}},{"selector":"#query","text":"","region":{"x":28,"y":182,"width":153,"height":21}},{"selector":"div > button:nth-of-type(2)","text":"View","region":{"x":190,"y":182,"width":45,"height":21}},{"selector":"div > button:nth-of-type(3)","text":"View","region":{"x":239,"y":182,"width":45,"height":21}},{"selector":"div > button:nth-of-type(4)","text":"View","region":{"x":287,"y":182,"width":45,"height":21}}],"formErrorAssociationRisks":[],"colorOnlyStateRisks":[],"disabledWithoutExplanation":[],"statusLiveRegionRisks":[],"modalFocusRisks":[],"customControlSemanticsRisks":[],"movingContentControlRisks":[]}
+
+## Recommendations
+
+- `finding-desktop-missing-accessible-name-1`: Add visible text, aria-label, aria-labelledby, or use a native control with a clear label. Criterion: `a11y.name-role-value.present`. Evidence: `screenshot-desktop`, `measurement-desktop`.
+- `finding-desktop-missing-form-label-1`: Associate the control with a visible label, aria-label, or aria-labelledby. Criterion: `a11y.form-label.present`. Evidence: `screenshot-desktop`, `measurement-desktop`.
+- `finding-desktop-missing-image-alt-1`: Add meaningful alt text for informative images, or use alt="" for decorative images. Criterion: `a11y.image-alt.informative`. Evidence: `screenshot-desktop`, `measurement-desktop`.
+- `finding-desktop-heading-level-skip-1`: Use headings to describe page and section structure in a clear order. Criterion: `hierarchy.heading-structure.sane`. Evidence: `screenshot-desktop`, `measurement-desktop`.
+- `finding-desktop-duplicate-h1-2`: Use headings to describe page and section structure in a clear order. Criterion: `hierarchy.heading-structure.sane`. Evidence: `screenshot-desktop`, `measurement-desktop`.
+- `finding-desktop-missing-main-landmark`: Wrap primary page content in a <main> element or role="main" landmark. Criterion: `hierarchy.landmarks.present`. Evidence: `screenshot-desktop`, `measurement-desktop`.
+- `finding-desktop-ambiguous-repeated-label-1`: Make repeated action labels more specific with visible text or accessible-name context. Criterion: `content.labels.specific`. Evidence: `screenshot-desktop`, `measurement-desktop`.
+- `finding-desktop-tap-target-risk-1`: Increase the control hit area or spacing so the target is easier to activate. Criterion: `a11y.target-size.minimum`. Evidence: `screenshot-desktop`, `measurement-desktop`.
+- `finding-desktop-tap-target-risk-2`: Increase the control hit area or spacing so the target is easier to activate. Criterion: `a11y.target-size.minimum`. Evidence: `screenshot-desktop`, `measurement-desktop`.
+- `finding-desktop-tap-target-risk-3`: Increase the control hit area or spacing so the target is easier to activate. Criterion: `a11y.target-size.minimum`. Evidence: `screenshot-desktop`, `measurement-desktop`.
+- `finding-desktop-tap-target-risk-4`: Increase the control hit area or spacing so the target is easier to activate. Criterion: `a11y.target-size.minimum`. Evidence: `screenshot-desktop`, `measurement-desktop`.
+- `finding-desktop-tap-target-risk-5`: Increase the control hit area or spacing so the target is easier to activate. Criterion: `a11y.target-size.minimum`. Evidence: `screenshot-desktop`, `measurement-desktop`.
+- `finding-mobile-missing-accessible-name-1`: Add visible text, aria-label, aria-labelledby, or use a native control with a clear label. Criterion: `a11y.name-role-value.present`. Evidence: `screenshot-mobile`, `measurement-mobile`.
+- `finding-mobile-missing-form-label-1`: Associate the control with a visible label, aria-label, or aria-labelledby. Criterion: `a11y.form-label.present`. Evidence: `screenshot-mobile`, `measurement-mobile`.
+- `finding-mobile-missing-image-alt-1`: Add meaningful alt text for informative images, or use alt="" for decorative images. Criterion: `a11y.image-alt.informative`. Evidence: `screenshot-mobile`, `measurement-mobile`.
+- `finding-mobile-heading-level-skip-1`: Use headings to describe page and section structure in a clear order. Criterion: `hierarchy.heading-structure.sane`. Evidence: `screenshot-mobile`, `measurement-mobile`.
+- `finding-mobile-duplicate-h1-2`: Use headings to describe page and section structure in a clear order. Criterion: `hierarchy.heading-structure.sane`. Evidence: `screenshot-mobile`, `measurement-mobile`.
+- `finding-mobile-missing-main-landmark`: Wrap primary page content in a <main> element or role="main" landmark. Criterion: `hierarchy.landmarks.present`. Evidence: `screenshot-mobile`, `measurement-mobile`.
+- `finding-mobile-ambiguous-repeated-label-1`: Make repeated action labels more specific with visible text or accessible-name context. Criterion: `content.labels.specific`. Evidence: `screenshot-mobile`, `measurement-mobile`.
+- `finding-mobile-tap-target-risk-1`: Increase the control hit area or spacing so the target is easier to activate. Criterion: `a11y.target-size.minimum`. Evidence: `screenshot-mobile`, `measurement-mobile`.
+- `finding-mobile-tap-target-risk-2`: Increase the control hit area or spacing so the target is easier to activate. Criterion: `a11y.target-size.minimum`. Evidence: `screenshot-mobile`, `measurement-mobile`.
+- `finding-mobile-tap-target-risk-3`: Increase the control hit area or spacing so the target is easier to activate. Criterion: `a11y.target-size.minimum`. Evidence: `screenshot-mobile`, `measurement-mobile`.
+- `finding-mobile-tap-target-risk-4`: Increase the control hit area or spacing so the target is easier to activate. Criterion: `a11y.target-size.minimum`. Evidence: `screenshot-mobile`, `measurement-mobile`.
+- `finding-mobile-tap-target-risk-5`: Increase the control hit area or spacing so the target is easier to activate. Criterion: `a11y.target-size.minimum`. Evidence: `screenshot-mobile`, `measurement-mobile`.
+
+## Iteration Prompt Scaffold
+
+```text
+You are improving a UI using Design Harness evidence.
+Target URL: http://localhost:4173/semantic-a11y-bad.html
+Run ID: 2026-07-07-150516499Z
+Use the deterministic findings below as evidence, then make one focused revision pass.
+- semantics: finding-desktop-missing-accessible-name-1: Interactive element div > button:nth-of-type(1) may not expose a usable accessible name. Criterion: a11y.name-role-value.present. Recommendation: Add visible text, aria-label, aria-labelledby, or use a native control with a clear label.
+- semantics: finding-desktop-missing-form-label-1: Form control #query may not have a programmatic label. Criterion: a11y.form-label.present. Recommendation: Associate the control with a visible label, aria-label, or aria-labelledby.
+- semantics: finding-desktop-missing-image-alt-1: Image div > img does not declare alt text or an intentional decorative alt attribute. Criterion: a11y.image-alt.informative. Recommendation: Add meaningful alt text for informative images, or use alt="" for decorative images.
+- structure: finding-desktop-heading-level-skip-1: Heading div > h3 jumps from level 1 to level 3. Criterion: hierarchy.heading-structure.sane. Recommendation: Use headings to describe page and section structure in a clear order.
+- structure: finding-desktop-duplicate-h1-2: Additional H1 div > h1:nth-of-type(2) may make the page top-level structure ambiguous. Criterion: hierarchy.heading-structure.sane. Recommendation: Use headings to describe page and section structure in a clear order.
+After revising, rerun the audit and compare the new report against this one.
+```
+
+## Optional Subjective Critique
+
+No subjective critique was supplied. This report only contains deterministic audit findings.
