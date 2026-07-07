@@ -1,0 +1,41 @@
+{
+  "schemaVersion": "0.1",
+  "harnessVersion": "0.3.1",
+  "runId": "2026-07-07-150516499Z",
+  "status": "success",
+  "targetUrl": "http://localhost:4173/semantic-a11y-bad.html",
+  "startedAt": "2026-07-07T15:05:16.499Z",
+  "finishedAt": "2026-07-07T15:05:16.795Z",
+  "durationMs": 296,
+  "viewportPresets": [
+    {
+      "name": "desktop",
+      "width": 1440,
+      "height": 900,
+      "deviceScaleFactor": 1,
+      "isMobile": false
+    },
+    {
+      "name": "mobile",
+      "width": 390,
+      "height": 844,
+      "deviceScaleFactor": 2,
+      "isMobile": true
+    }
+  ],
+  "toolVersions": {
+    "@design-harness/core": "0.3.1",
+    "@design-harness/visual-audit": "0.3.1",
+    "playwright": "149.0.7827.55"
+  },
+  "browserVersion": "149.0.7827.55",
+  "outputFiles": [
+    "metadata.json",
+    "audit.json",
+    "report.md",
+    "report-manifest.json",
+    "screenshots/desktop.png",
+    "screenshots/mobile.png"
+  ],
+  "failedChecks": []
+}

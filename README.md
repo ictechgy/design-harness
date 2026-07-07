@@ -124,6 +124,8 @@ A real finding from an audit of the `semantic-a11y-bad` fixture (abridged):
 }
 ```
 
+A complete failing run — the full `report.md`, `audit.json`, and screenshots for a fixture with 24 findings and a blocked advisory score — is committed at [examples/reports/semantic-a11y-bad](examples/reports/semantic-a11y-bad/report.md).
+
 See [Criteria And Checks](docs/criteria-and-checks.md), [Output Contract](docs/output-contract.md), and [Fixture Catalog](docs/fixtures.md).
 
 ## How Findings Speak
