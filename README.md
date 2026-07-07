@@ -55,7 +55,7 @@ runs/demo/
 
 Partial audits still write artifacts but exit with code `2` by default. Use `--allow-partial` when a debugging workflow should treat partial artifacts as success.
 
-The package entry point is prepared as `@design-harness/cli`, which exposes the `design-harness` binary for the audit workflow. Until the first npm publish, use the checkout workflow above. After publish, the intended one-off audit shape is:
+The package is published as `@design-harness/cli`, which exposes the `design-harness` binary for the audit workflow. For a one-off audit without a checkout:
 
 ```bash
 npx @design-harness/cli@latest audit --url http://localhost:3000 --out runs/demo
@@ -67,7 +67,7 @@ For npm-installed usage, install the Playwright browser once if Chromium is miss
 npx playwright install chromium
 ```
 
-The first npm publish is audit-CLI focused. The PR comment renderer, scenario audit runner, and MCP adapter are checkout-local recipes/scaffolding in this repository until they are promoted to shipped package APIs.
+The npm release is audit-CLI focused. The PR comment renderer, scenario audit runner, and MCP adapter are checkout-local recipes/scaffolding in this repository until they are promoted to shipped package APIs.
 
 ## Agent Loop
 
@@ -165,7 +165,7 @@ See [Midjourney Reference Lab Workflow](docs/midjourney-reference-lab/workflow.m
 
 Implemented:
 
-- local CLI audit loop,
+- local CLI audit loop, published to npm as `@design-harness/cli` (with `@design-harness/core` and `@design-harness/visual-audit`),
 - desktop/mobile screenshot capture,
 - schema-valid audit artifacts,
 - Markdown report generation,
@@ -181,7 +181,6 @@ Checkout-local recipes/scaffolding:
 
 In progress or planned:
 
-- first npm publish,
 - package-installed PR comment/scenario/MCP command surface,
 - more fixture coverage,
 - deeper hosted/action adapters,
