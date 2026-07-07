@@ -32,6 +32,8 @@ Use the same loop for Codex, Claude Code, Gemini CLI, or a human reviewer:
 
 ## Codex
 
+A ready-made skill adapter is available at `adapters/codex-skill/`. Prompt template:
+
 ```text
 Use this Design Harness evidence packet as the source of truth:
 
@@ -52,6 +54,8 @@ Acceptance: the rerun report has no deterministic failures, and any remaining he
 ```
 
 ## Claude Code
+
+A ready-made skill adapter is available at `adapters/claude-code-skill/` — copy it to `.claude/skills/product-ui-designer/` to install. Prompt template:
 
 ```text
 Read the Design Harness report and inspect the screenshots before editing:

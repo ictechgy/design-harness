@@ -1,11 +1,6 @@
----
-name: product-ui-designer
-description: Use Design Harness artifacts to run a brief -> implementation -> audit -> report -> revision loop for product UI work.
----
+# Shared Adapter Rules (canonical)
 
-# Product UI Designer (Codex)
-
-Use this skill when improving a frontend UI with Design Harness evidence. This adapter is intentionally thin: it makes Codex follow the same artifact contract as every other client. The rule content below is shared verbatim with the Claude Code adapter; the canonical copy lives in `adapters/shared/rules.md` and parity is CI-checked.
+This file is the canonical source for the rule content that every agent adapter must carry verbatim. Each adapter's `SKILL.md` embeds the block between the markers below, and `pnpm check:agent-recipes` fails if any adapter's copy diverges. Intentional divergence requires an entry in `adapters/intentional-differences.json`.
 
 <!-- design-harness:shared:begin -->
 ## Workflow
