@@ -1,0 +1,3 @@
+{
+  "_comment": "Escape hatch for adapter parity in check-agent-recipes.mjs. Keys are adapter directory names; a { \"reason\": \"...\" } entry exempts that adapter's shared block from exact-match against adapters/shared/rules.md. Keep this empty unless a divergence is deliberate and documented."
+}
