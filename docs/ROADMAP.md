@@ -10,7 +10,7 @@ How to read this file:
 ## v0.3.2 (current) — ship, de-bias, gather evidence
 
 1. **npm publish + GitHub release** — DONE 2026-07-07 (v0.3.1 on npm: core, visual-audit, cli; tag + release published; `pnpm dlx @design-harness/cli@0.3.1 --help` verified).
-2. **CJK de-bias** (`packages/visual-audit/src/browser-measurements.ts`):
+2. **CJK de-bias** — DONE 2026-07-07 (`korean-line-length-good/bad.html`, `korean-status-good/bad.html` fixtures verify the acceptance criteria below; English fixture results unchanged):
    - `excessive-line-length` (~L543): "majority-CJK" is defined as >50% of non-whitespace code points in the Hangul (`가-힯`, `ᄀ-ᇿ`), CJK (`⺀-鿿`), or full-width (`　-ヿ`) ranges. Majority-CJK text uses char-width factor ~1.0 (else keep 0.52) with a CJK band of 40–45 chars/line. While here, calibrate the Latin band to 50–75 cpl (55 optimum) and add Dyson & Haselgrove 2001 as a sourceRef — do not duplicate this into v0.4.
    - `status-live-region-risk` (~L634): replace the English-only regex with a language-keyed keyword table adding 로딩 중, 저장 중, 저장됨, 완료, 실패, 오류, 처리 중, 불러오는 중.
    - Acceptance (fixture-backed, exact counts): `korean-line-length-good.html` emits zero `excessive-line-length` findings; `korean-line-length-bad.html` emits exactly one; a Korean "저장 중..." fixture without a live region triggers `status-live-region-risk`; all existing English fixture results unchanged.

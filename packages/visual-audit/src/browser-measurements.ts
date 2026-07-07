@@ -532,6 +532,21 @@ export async function collectViewportMeasurements(page: {
         .map((element) => sampleElement(element));
     }
 
+    function cjkCharacterShare(text: string): number {
+      let cjkCount = 0;
+      let totalCount = 0;
+      for (const character of text) {
+        if (/\s/.test(character)) {
+          continue;
+        }
+        totalCount += 1;
+        if (/[ᄀ-ᇿ⺀-鿿가-힯豈-﫿＀-￯]/.test(character)) {
+          cjkCount += 1;
+        }
+      }
+      return totalCount === 0 ? 0 : cjkCount / totalCount;
+    }
+
     function collectExcessiveLineLength(elements: HTMLElement[]) {
       return elements
         .filter(isReadableTextMeasureCandidate)
@@ -540,13 +555,22 @@ export async function collectViewportMeasurements(page: {
           const rect = element.getBoundingClientRect();
           const fontSize = Number.parseFloat(style.fontSize || "16");
           const measuredWidth = style.whiteSpace === "nowrap" ? Math.max(rect.width, element.scrollWidth) : rect.width;
-          const estimatedCharactersPerLine = Math.round(measuredWidth / Math.max(fontSize * 0.52, 1));
+          const text = element.innerText.trim();
+          // CJK glyphs are full-width (~1.0em) while Latin averages ~0.52em, and
+          // majority-CJK text has a shorter comfortable measure (~40-45 chars vs
+          // 50-75 for Latin), so the width factor and threshold branch by script.
+          const isCjkMajority = cjkCharacterShare(text) > 0.5;
+          const characterWidthFactor = isCjkMajority ? 1 : 0.52;
+          const riskThreshold = isCjkMajority ? 60 : 95;
+          const estimatedCharactersPerLine = Math.round(measuredWidth / Math.max(fontSize * characterWidthFactor, 1));
           return {
             element,
-            estimatedCharactersPerLine
+            text,
+            estimatedCharactersPerLine,
+            riskThreshold
           };
         })
-        .filter(({ element, estimatedCharactersPerLine }) => element.innerText.trim().length > 160 && estimatedCharactersPerLine > 95)
+        .filter(({ text, estimatedCharactersPerLine, riskThreshold }) => text.length > 160 && estimatedCharactersPerLine > riskThreshold)
         .slice(0, 10)
         .map(({ element, estimatedCharactersPerLine }) => ({
           ...sampleElement(element),
@@ -631,7 +655,15 @@ export async function collectViewportMeasurements(page: {
         "[data-state]"
       ].join(",")))
         .filter(isElementVisible)
-        .filter((element) => /\b(loading|saving|saved|success|error|failed|complete)\b/i.test(element.innerText))
+        .filter((element) => {
+          // Language-keyed status vocabulary; \b does not match Hangul boundaries,
+          // so the Korean pattern relies on the status-ish selectors above for scope.
+          const statusKeywordPatterns = [
+            /\b(loading|saving|saved|success|error|failed|complete)\b/i,
+            /로딩\s*중|불러오는\s*중|저장\s*중|저장됨|처리\s*중|완료|실패|오류/
+          ];
+          return statusKeywordPatterns.some((pattern) => pattern.test(element.innerText));
+        })
         .filter((element) => !hasStatusSemantics(element))
         .slice(0, 10)
         .map((element) => sampleElement(element));

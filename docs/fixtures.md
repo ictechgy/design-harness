@@ -17,6 +17,10 @@ They are intentionally small, framework-free HTML pages used to calibrate determ
 - `interaction-state-bad.html`: static signals for interaction-state risks.
 - `midjourney-derived/scanability-good.html`: hand-authored dense-dashboard scanability fixture distilled from generic reference observations.
 - `midjourney-derived/scanability-bad.html`: hand-authored dense-dashboard scanability stress fixture for responsive/readability risks.
+- `korean-line-length-good.html`: Korean long-form text at a comfortable CJK measure (~40 chars/line); calibrates the CJK-aware line-length estimate against false positives.
+- `korean-line-length-bad.html`: unconstrained full-width Korean paragraph; expects exactly one desktop `excessive-line-length` finding.
+- `korean-status-good.html`: Korean "저장 중..." status with `role="status"`; must stay silent.
+- `korean-status-bad.html`: Korean status text without live-region semantics; expects `status-live-region-risk` per viewport.
 
 ## Fixture Policy
 

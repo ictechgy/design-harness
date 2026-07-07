@@ -58,6 +58,13 @@ export const CRITERION_SOURCES: CriterionSource[] = [
     url: "docs/output-contract.md",
     strength: "official-testable",
     note: "Project-local contract for operational audit behavior."
+  },
+  {
+    id: "dyson-haselgrove-2001",
+    title: "Dyson & Haselgrove: The influence of reading speed and line length on the effectiveness of reading from screen",
+    url: "https://doi.org/10.1006/ijhc.2001.0458",
+    strength: "research-emerging",
+    note: "Measured Latin reading bands: ~55 characters per line reads best; ~95 reads faster at a comprehension cost. CJK comfortable measure is shorter (~40-45 characters)."
   }
 ];
 
@@ -248,8 +255,9 @@ export const CRITERIA: Criterion[] = [
     id: "readability.line-length.reasonable",
     category: "visual-polish",
     title: "Reading line length remains reasonable",
-    description: "Long-form text should avoid line lengths that are difficult to scan or read.",
-    sourceRefs: ["govuk-layout"],
+    description:
+      "Long-form text should avoid line lengths that are difficult to scan or read. Comfortable measure is roughly 50-75 Latin characters (55 optimum) or 40-45 CJK characters per line.",
+    sourceRefs: ["govuk-layout", "dyson-haselgrove-2001"],
     sourceStrength: "official-pattern",
     determinism: "heuristic",
     resultKind: "risk",
