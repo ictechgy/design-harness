@@ -27,3 +27,6 @@ datasets/midjourney-reference-lab/local-assets/
 .omx/
 .codex/
 .agents/
+
+# Local strategy report (owner-facing, not published)
+REPORT.md

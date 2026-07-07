@@ -29,9 +29,9 @@ pnpm --filter @design-harness/cli publish --access public
 After publish, verify one-off execution from a separate temporary directory:
 
 ```bash
-npx @design-harness/cli@0.3.0 --help
+npx @design-harness/cli@0.3.1 --help
 npx playwright install chromium
-npx @design-harness/cli@0.3.0 audit --url http://localhost:3000 --out runs/demo
+npx @design-harness/cli@0.3.1 audit --url http://localhost:3000 --out runs/demo
 ```
 
 PR comment rendering, scenario audit, and MCP adapter usage remain checkout-local recipes for this release.
