@@ -31,6 +31,24 @@ Source strengths:
 - `research-emerging`: exploratory framing only.
 - `philosophical`: optional subjective critique only.
 
+### Computation Determinism Never Upgrades Criterion Strength
+
+A check can be deterministically computable while its criterion is research-grade. Color counts, font-variant counts, and density budgets are exact measurements, but the claim "this hurts design quality" rests on research whose best validated metric sets explain only ~30-50% of variance in human aesthetic ratings (Reinecke et al. CHI 2013, adj R² = .48; Miniukovich & De Angeli CHI 2015, 49% web / 32% app). Such checks land as `research-emerging` or `industry-heuristic` source strength, `heuristic` determinism, and `risk` or `needs-review` result kind — and the advisory score must never be presented as an objective design-quality grade. Evidence table: [Visual Metrics Evidence](research/visual-metrics-evidence.md).
+
+### Precision Over Recall In Heuristic Tiers
+
+A false positive costs more than a miss: repeated false flags cause reviewers to ignore the whole report. When a heuristic check's precision is unproven, ship it informational or logged-only and promote it after calibration data exists.
+
+### Do Not Build (Peer-Reviewed Evidence Against)
+
+- Hue-template color-harmony scoring: no predictive power for theme ratings; inter-rater agreement on color-theme quality is only 52% (O'Donovan et al. SIGGRAPH 2011). The evidence-backed palette signal is lightness-contrast structure with a restrained hue spread.
+- Mirror-symmetry or center-of-mass balance scoring for real UIs: validates strongly only on abstract stimuli and fails to generalize (Silvia & Barona 2009).
+- Scored Korean readability: no validated formula exists for short UI strings (KRIT reaches 0.746 on long-form textbook text; its authors state no public datasets or baselines exist).
+
+### Regulatory Mapping
+
+Every accessibility criterion should carry its WCAG 2.2 success-criterion ID machine-readably in `CRITERION_SOURCES` (and the KWCAG 2.2 clause where applicable), so future WCAG 3.0 or KWCAG remaps are mechanical. WCAG 3.0 remains watch-only until Candidate Recommendation (projected Q4 2027 or later).
+
 ## Adding A Check
 
 1. Add or reuse a criterion in `packages/core/src/criteria.ts`.
@@ -39,15 +57,7 @@ Source strengths:
 4. Convert measurements to findings in `findingsFromMeasurements`.
 5. Add good/bad fixture coverage under `examples/ui-quality-fixtures`.
 6. Add unit coverage in `packages/visual-audit/src/checks.test.ts`.
-7. Run:
-
-```bash
-pnpm build
-pnpm typecheck
-pnpm test
-pnpm validate
-pnpm smoke:example
-```
+7. Run `CI=true pnpm release:check` (build + typecheck + test + validate + pack + smoke). If a subcommand cannot run in your environment, list which ones were skipped and why — do not report the step as passed.
 
 ## Reference-Derived Calibration
 
