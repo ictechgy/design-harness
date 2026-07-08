@@ -8,6 +8,8 @@ categories:
     description: "Controls, affordances, states, and workflow clarity."
   accessibility:
     description: "Contrast, semantics, keyboard and assistive technology risks."
+  content:
+    description: "Rendered language, terminology, interpolation, and copy-style findings."
   responsiveness:
     description: "Viewport adaptation and mobile/desktop stability."
   visual-polish:

@@ -254,6 +254,8 @@ function implementationAreaFor(finding: Finding): string {
       return "layout";
     case "interaction":
       return "interaction state";
+    case "content":
+      return "content";
     case "task-fit":
       return "content";
     case "hierarchy":

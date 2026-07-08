@@ -3,6 +3,7 @@ export type RubricCategory =
   | "hierarchy"
   | "interaction"
   | "accessibility"
+  | "content"
   | "responsiveness"
   | "visual-polish"
   | "task-fit";

@@ -89,6 +89,14 @@ const TRACKED_ENUMS = [
   { typeName: "EvidenceAssetType", property: "type" }
 ];
 
+const REQUIRED_RUBRIC_CATEGORY_MIRRORS = [
+  "packages/core/schemas/finding.schema.json (category enum #1)",
+  "packages/core/schemas/criterion.schema.json (category enum #1)",
+  "packages/core/schemas/audit-result.schema.json (category enum #1)",
+  "rubric.yaml categories",
+  "report.ts implementationAreaFor cases"
+];
+
 let comparisons = 0;
 for (const { typeName, property } of TRACKED_ENUMS) {
   const expected = extractTypesUnion(typesSource, typeName);
@@ -108,7 +116,12 @@ for (const { typeName, property } of TRACKED_ENUMS) {
       "report.ts implementationAreaFor cases",
       extractSwitchCases(read("packages/core/src/report.ts"), "implementationAreaFor")
     );
-    if (sources.size < 3) failures.push("RubricCategory: expected at least 3 mirror locations");
+    for (const label of REQUIRED_RUBRIC_CATEGORY_MIRRORS) {
+      if (!sources.has(label)) failures.push(`RubricCategory: missing mirror ${label}`);
+    }
+    for (const label of sources.keys()) {
+      if (!REQUIRED_RUBRIC_CATEGORY_MIRRORS.includes(label)) failures.push(`RubricCategory: unexpected mirror ${label}`);
+    }
   }
   for (const [label, values] of sources) {
     comparisons += 1;
