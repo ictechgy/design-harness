@@ -31,6 +31,7 @@ pnpm release:check                  # build + typecheck + test + validate + pack
 pnpm validate                       # schemas, manifests, policy + guard scripts below
 pnpm check:enum-lockstep            # category enum in lockstep across 6 locations
 pnpm check:criteria-policy          # criterion registry vs ADR-001 policy matrix
+pnpm check:core-purity              # core stays capture-agnostic (ADR-002)
 pnpm check:deps-policy              # ToS/GPL dependency policy
 pnpm check:tracked-hygiene          # local-only files untracked; AGENTS.md line budget
 pnpm example:serve                  # merchant-dashboard fixture on :4173
@@ -72,6 +73,7 @@ Copy extraction happens at render time (post-interpolation) from the live page �
 - **Agents obey gates, not prose.** Anything that must hold becomes a machine check (loop exit, hook, CI); prose guidance is a prior-shifter capped at ~2k tokens, MUST rules first.
 - **Precision over recall in every heuristic tier.** False positives cause banner blindness and kill trust (Ditto's measured lesson). Unproven-precision checks ship informational/logged-only.
 - **One config artifact drives both directions**: `design-guide.yaml` / `copy-style.yaml` compile into the pre-generation pack AND parameterize the post-render checks — guidance and verification never drift apart.
+- **Core stays capture-agnostic (ADR-002)**: criteria/schemas/scoring/report never import capture tech (*enforced: `check:core-purity`*); evidence a check needs is declared in layers (missing layer → skip, never garbage); evidence provenance may downgrade a finding's tier, never upgrade it; new surfaces are demand-gated via ROADMAP "Surface horizons" — never build a capture adapter without the owner scheduling it.
 - **Midjourney lapse test**: if the subscription lapsed tomorrow, zero roadmap items may break.
 - **No claims without measurement**: obedience benchmarks before "reins" marketing; owner-vs-judge agreement (≥80% on ≥50 samples) before the Korean judge ships; false-positive dogfooding on real Korean products before any public Korean launch.
 - **Halve milestones.** Solo maintainer. Every release ends publishable with README claims matching npm/code reality.
