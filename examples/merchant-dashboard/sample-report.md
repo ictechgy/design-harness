@@ -15,7 +15,7 @@
 
 Verdict: No blocking deterministic findings.
 
-Note: Advisory score starts at 100 and subtracts deterministic finding deductions by severity and confidence. It is not an objective design-quality grade.
+Note: Advisory score starts at 100 and subtracts finding deductions by severity, confidence, and evidence-tier weight. Needs-review findings are score-exempt. It is not an objective design-quality grade.
 
 ## Deterministic Findings
 

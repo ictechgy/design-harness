@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
 import {
   buildIterationPrompt,
   assertAuditResultIntegrity,
@@ -61,6 +62,12 @@ describe("core schemas", () => {
   it("validates an audit result with schema and harness versions", () => {
     const result = validateSchema("audit-result", createExampleAuditResult());
     expect(result.valid).toBe(true);
+  });
+
+  it("validates the committed example report audit artifact", () => {
+    const auditPath = new URL("../../../examples/reports/semantic-a11y-bad/audit.json", import.meta.url);
+    const auditResult = JSON.parse(readFileSync(auditPath, "utf8"));
+    expect(validateSchema("audit-result", auditResult).valid).toBe(true);
   });
 
   it("accepts text inventory and aria snapshot evidence assets", () => {
@@ -191,11 +198,81 @@ describe("artifact integrity", () => {
 });
 
 describe("scoring", () => {
-  it("deducts points by severity and confidence", () => {
+  it("deducts deterministic risk points by severity, confidence, and epistemic weight", () => {
     const score = scoreFindings([createExampleFinding()]);
-    expect(score.value).toBe(90);
+    expect(score.formulaVersion).toBe("epistemic-weight-v1");
+    expect(score.value).toBe(94);
     expect(score.band).toBe("strong");
+    expect(score.deductions[0]).toMatchObject({
+      findingId: "finding-desktop-overflow",
+      points: 6
+    });
+    expect(score.deductions[0]?.reason).toContain("deterministic risk score weight 0.6");
     expect(score.explanation).toContain("not an objective");
+    expect(score.explanation).toContain("Needs-review findings are score-exempt");
+  });
+
+  it("applies ADR-001 scoring weights by epistemic tier", () => {
+    const deterministicFailure = {
+      ...createExampleFinding(),
+      id: "deterministic-failure",
+      resultKind: "failure" as const
+    };
+    const deterministicRisk = {
+      ...createExampleFinding(),
+      id: "deterministic-risk"
+    };
+    const heuristicRisk = {
+      ...createExampleFinding(),
+      id: "heuristic-risk",
+      determinism: "heuristic" as const,
+      resultKind: "risk" as const
+    };
+    const needsReview = {
+      ...createExampleFinding(),
+      id: "needs-review",
+      determinism: "heuristic" as const,
+      resultKind: "needs-review" as const
+    };
+    const legacy = createContentFinding({ id: "legacy-unclassified" });
+
+    const score = scoreFindings([deterministicFailure, deterministicRisk, heuristicRisk, needsReview, legacy]);
+
+    expect(score.deductions).toEqual([
+      expect.objectContaining({ findingId: "deterministic-failure", points: 10 }),
+      expect.objectContaining({ findingId: "deterministic-risk", points: 6 }),
+      expect.objectContaining({ findingId: "heuristic-risk", points: 2.5 }),
+      expect.objectContaining({ findingId: "needs-review", points: 0 }),
+      expect.objectContaining({ findingId: "legacy-unclassified", points: 10 })
+    ]);
+    expect(score.deductions.find((deduction) => deduction.findingId === "needs-review")?.reason).toContain("score-exempt");
+    expect(score.deductions.find((deduction) => deduction.findingId === "legacy-unclassified")?.reason).toContain("legacy/unclassified");
+    expect(score.value).toBe(71.5);
+  });
+
+  it("requires the advisory score formula version in the audit-result schema", () => {
+    const auditResult = createExampleAuditResult();
+    expect(auditResult.advisoryScore.formulaVersion).toBe("epistemic-weight-v1");
+
+    const missingFormulaVersion = {
+      ...auditResult,
+      advisoryScore: {
+        ...auditResult.advisoryScore
+      } as Record<string, unknown>
+    };
+    delete missingFormulaVersion.advisoryScore.formulaVersion;
+    expect(validateSchema("audit-result", missingFormulaVersion).valid).toBe(false);
+
+    const wrongFormulaVersion = {
+      ...auditResult,
+      advisoryScore: {
+        ...auditResult.advisoryScore,
+        formulaVersion: "legacy-severity-confidence"
+      }
+    };
+    const result = validateSchema("audit-result", wrongFormulaVersion);
+    expect(result.valid).toBe(false);
+    expect(result.issues.some((issue) => issue.path === "$.advisoryScore.formulaVersion")).toBe(true);
   });
 });
 

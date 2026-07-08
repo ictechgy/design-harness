@@ -1228,132 +1228,133 @@
     }
   ],
   "advisoryScore": {
-    "value": 0,
+    "formulaVersion": "epistemic-weight-v1",
+    "value": 6.4,
     "max": 100,
     "band": "blocked",
     "deductions": [
       {
         "findingId": "finding-desktop-missing-accessible-name-1",
-        "points": 7.5,
-        "reason": "medium accessibility finding with medium confidence"
+        "points": 4.5,
+        "reason": "medium accessibility finding with medium confidence; deterministic risk score weight 0.6"
       },
       {
         "findingId": "finding-desktop-missing-form-label-1",
-        "points": 7.5,
-        "reason": "medium accessibility finding with medium confidence"
+        "points": 4.5,
+        "reason": "medium accessibility finding with medium confidence; deterministic risk score weight 0.6"
       },
       {
         "findingId": "finding-desktop-missing-image-alt-1",
-        "points": 7.5,
-        "reason": "medium accessibility finding with medium confidence"
+        "points": 4.5,
+        "reason": "medium accessibility finding with medium confidence; deterministic risk score weight 0.6"
       },
       {
         "findingId": "finding-desktop-heading-level-skip-1",
-        "points": 7.5,
-        "reason": "medium hierarchy finding with medium confidence"
+        "points": 4.5,
+        "reason": "medium hierarchy finding with medium confidence; deterministic risk score weight 0.6"
       },
       {
         "findingId": "finding-desktop-duplicate-h1-2",
-        "points": 3,
-        "reason": "low hierarchy finding with medium confidence"
+        "points": 1.8,
+        "reason": "low hierarchy finding with medium confidence; deterministic risk score weight 0.6"
       },
       {
         "findingId": "finding-desktop-missing-main-landmark",
-        "points": 7.5,
-        "reason": "medium hierarchy finding with medium confidence"
+        "points": 4.5,
+        "reason": "medium hierarchy finding with medium confidence; deterministic risk score weight 0.6"
       },
       {
         "findingId": "finding-desktop-ambiguous-repeated-label-1",
-        "points": 2,
-        "reason": "low task-fit finding with low confidence"
+        "points": 0,
+        "reason": "low task-fit finding with low confidence; heuristic needs-review finding is score-exempt"
       },
       {
         "findingId": "finding-desktop-tap-target-risk-1",
-        "points": 7.5,
-        "reason": "medium accessibility finding with medium confidence"
+        "points": 4.5,
+        "reason": "medium accessibility finding with medium confidence; deterministic risk score weight 0.6"
       },
       {
         "findingId": "finding-desktop-tap-target-risk-2",
-        "points": 7.5,
-        "reason": "medium accessibility finding with medium confidence"
+        "points": 4.5,
+        "reason": "medium accessibility finding with medium confidence; deterministic risk score weight 0.6"
       },
       {
         "findingId": "finding-desktop-tap-target-risk-3",
-        "points": 7.5,
-        "reason": "medium accessibility finding with medium confidence"
+        "points": 4.5,
+        "reason": "medium accessibility finding with medium confidence; deterministic risk score weight 0.6"
       },
       {
         "findingId": "finding-desktop-tap-target-risk-4",
-        "points": 7.5,
-        "reason": "medium accessibility finding with medium confidence"
+        "points": 4.5,
+        "reason": "medium accessibility finding with medium confidence; deterministic risk score weight 0.6"
       },
       {
         "findingId": "finding-desktop-tap-target-risk-5",
-        "points": 7.5,
-        "reason": "medium accessibility finding with medium confidence"
+        "points": 4.5,
+        "reason": "medium accessibility finding with medium confidence; deterministic risk score weight 0.6"
       },
       {
         "findingId": "finding-mobile-missing-accessible-name-1",
-        "points": 7.5,
-        "reason": "medium accessibility finding with medium confidence"
+        "points": 4.5,
+        "reason": "medium accessibility finding with medium confidence; deterministic risk score weight 0.6"
       },
       {
         "findingId": "finding-mobile-missing-form-label-1",
-        "points": 7.5,
-        "reason": "medium accessibility finding with medium confidence"
+        "points": 4.5,
+        "reason": "medium accessibility finding with medium confidence; deterministic risk score weight 0.6"
       },
       {
         "findingId": "finding-mobile-missing-image-alt-1",
-        "points": 7.5,
-        "reason": "medium accessibility finding with medium confidence"
+        "points": 4.5,
+        "reason": "medium accessibility finding with medium confidence; deterministic risk score weight 0.6"
       },
       {
         "findingId": "finding-mobile-heading-level-skip-1",
-        "points": 7.5,
-        "reason": "medium hierarchy finding with medium confidence"
+        "points": 4.5,
+        "reason": "medium hierarchy finding with medium confidence; deterministic risk score weight 0.6"
       },
       {
         "findingId": "finding-mobile-duplicate-h1-2",
-        "points": 3,
-        "reason": "low hierarchy finding with medium confidence"
+        "points": 1.8,
+        "reason": "low hierarchy finding with medium confidence; deterministic risk score weight 0.6"
       },
       {
         "findingId": "finding-mobile-missing-main-landmark",
-        "points": 7.5,
-        "reason": "medium hierarchy finding with medium confidence"
+        "points": 4.5,
+        "reason": "medium hierarchy finding with medium confidence; deterministic risk score weight 0.6"
       },
       {
         "findingId": "finding-mobile-ambiguous-repeated-label-1",
-        "points": 2,
-        "reason": "low task-fit finding with low confidence"
+        "points": 0,
+        "reason": "low task-fit finding with low confidence; heuristic needs-review finding is score-exempt"
       },
       {
         "findingId": "finding-mobile-tap-target-risk-1",
-        "points": 7.5,
-        "reason": "medium accessibility finding with medium confidence"
+        "points": 4.5,
+        "reason": "medium accessibility finding with medium confidence; deterministic risk score weight 0.6"
       },
       {
         "findingId": "finding-mobile-tap-target-risk-2",
-        "points": 7.5,
-        "reason": "medium accessibility finding with medium confidence"
+        "points": 4.5,
+        "reason": "medium accessibility finding with medium confidence; deterministic risk score weight 0.6"
       },
       {
         "findingId": "finding-mobile-tap-target-risk-3",
-        "points": 7.5,
-        "reason": "medium accessibility finding with medium confidence"
+        "points": 4.5,
+        "reason": "medium accessibility finding with medium confidence; deterministic risk score weight 0.6"
       },
       {
         "findingId": "finding-mobile-tap-target-risk-4",
-        "points": 7.5,
-        "reason": "medium accessibility finding with medium confidence"
+        "points": 4.5,
+        "reason": "medium accessibility finding with medium confidence; deterministic risk score weight 0.6"
       },
       {
         "findingId": "finding-mobile-tap-target-risk-5",
-        "points": 7.5,
-        "reason": "medium accessibility finding with medium confidence"
+        "points": 4.5,
+        "reason": "medium accessibility finding with medium confidence; deterministic risk score weight 0.6"
       }
     ],
-    "explanation": "Advisory score starts at 100 and subtracts deterministic finding deductions by severity and confidence. It is not an objective design-quality grade."
+    "explanation": "Advisory score starts at 100 and subtracts finding deductions by severity, confidence, and evidence-tier weight. Needs-review findings are score-exempt. It is not an objective design-quality grade."
   },
   "timings": {
     "startedAt": "2026-07-07T15:05:16.499Z",
