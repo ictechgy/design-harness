@@ -119,7 +119,9 @@ export type EvidenceAssetType =
   | "dom-summary"
   | "console-summary"
   | "network-summary"
-  | "measurement";
+  | "measurement"
+  | "text-inventory"
+  | "aria-snapshot";
 
 export interface EvidenceAsset {
   id: string;

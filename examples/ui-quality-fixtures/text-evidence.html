@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Text evidence fixture</title>
+    <style>
+      body {
+        font-family: system-ui, sans-serif;
+        margin: 32px;
+        line-height: 1.5;
+      }
+
+      main {
+        max-width: 720px;
+      }
+
+      .secret {
+        display: none;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>텍스트 증거 수집</h1>
+      <section aria-label="주문 상태">
+        <p>주문 상태가 저장되었습니다.</p>
+        <div>
+          직접 텍스트
+          <p>자식 문단 텍스트</p>
+        </div>
+      </section>
+      <form>
+        <label for="password">비밀번호</label>
+        <input id="password" type="password" value="SUPER_SECRET_PASSWORD">
+        <input type="hidden" value="HIDDEN_SECRET_TOKEN">
+      </form>
+      <p aria-hidden="true">ARIA_HIDDEN_SECRET</p>
+      <p id="long-copy"></p>
+    </main>
+    <script>
+      document.getElementById("long-copy").textContent = "긴 렌더링 문장 ".repeat(3000) + "TAIL_SECRET_SHOULD_TRUNCATE";
+    </script>
+  </body>
+</html>

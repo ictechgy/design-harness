@@ -55,6 +55,24 @@ export interface LineLengthSample extends ElementSample {
   estimatedCharactersPerLine: number;
 }
 
+export interface TextInventoryItem {
+  selector: string;
+  text: string;
+  truncated?: true;
+  region: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  };
+  fontSize: number;
+  fontWeight: string;
+  nearestLang: string;
+  tag: string;
+  role: string;
+  accessibleName: string;
+}
+
 export interface ViewportMeasurements {
   viewport: string;
   viewportWidth: number;
@@ -86,6 +104,7 @@ export interface ViewportMeasurements {
   modalFocusRisks: ElementSample[];
   customControlSemanticsRisks: ElementSample[];
   movingContentControlRisks: ElementSample[];
+  textInventory: TextInventoryItem[];
 }
 
 export function findingsFromMeasurements(

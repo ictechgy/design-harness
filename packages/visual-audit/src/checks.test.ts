@@ -31,7 +31,8 @@ const baseMeasurements: ViewportMeasurements = {
   statusLiveRegionRisks: [],
   modalFocusRisks: [],
   customControlSemanticsRisks: [],
-  movingContentControlRisks: []
+  movingContentControlRisks: [],
+  textInventory: []
 };
 
 describe("findingsFromMeasurements", () => {

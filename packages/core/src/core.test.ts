@@ -63,6 +63,48 @@ describe("core schemas", () => {
     expect(result.valid).toBe(true);
   });
 
+  it("accepts text inventory and aria snapshot evidence assets", () => {
+    const auditResult = createExampleAuditResult();
+    auditResult.evidenceAssets.push(
+      {
+        id: "text-inventory-desktop",
+        type: "text-inventory",
+        viewport: "desktop",
+        data: {
+          viewport: "desktop",
+          count: 1,
+          truncatedCount: 0,
+          items: [{
+            selector: "main > p",
+            text: "Rendered copy",
+            region: { x: 0, y: 0, width: 120, height: 24 },
+            fontSize: 16,
+            fontWeight: "400",
+            nearestLang: "en",
+            tag: "p",
+            role: "",
+            accessibleName: "Rendered copy"
+          }]
+        },
+        createdAt: "2026-01-01T00:00:00.000Z"
+      },
+      {
+        id: "aria-snapshot-desktop",
+        type: "aria-snapshot",
+        viewport: "desktop",
+        data: {
+          viewport: "desktop",
+          format: "playwright-aria-yaml",
+          snapshot: "- paragraph: Rendered copy"
+        },
+        createdAt: "2026-01-01T00:00:00.000Z"
+      }
+    );
+
+    expect(validateSchema("audit-result", auditResult).valid).toBe(true);
+    expect(() => assertAuditResultIntegrity(auditResult)).not.toThrow();
+  });
+
   it("accepts content category schema plumbing without a new criterion", () => {
     const contentFinding = createContentFinding();
     expect(validateSchema("finding", contentFinding).valid).toBe(true);

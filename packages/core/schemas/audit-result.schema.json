@@ -116,7 +116,9 @@
               "dom-summary",
               "console-summary",
               "network-summary",
-              "measurement"
+              "measurement",
+              "text-inventory",
+              "aria-snapshot"
             ]
           },
           "path": {

@@ -4,6 +4,7 @@ export async function collectViewportMeasurements(page: {
   evaluate: <T>(pageFunction: () => T | Promise<T>) => Promise<T>;
 }): Promise<ViewportMeasurements> {
   return page.evaluate(() => {
+    const MAX_TEXT_INVENTORY_TEXT_LENGTH = 2_000;
     const viewport = {
       width: window.innerWidth,
       height: window.innerHeight
@@ -103,6 +104,7 @@ export async function collectViewportMeasurements(page: {
     const modalFocusRisks = collectModalFocusRisks();
     const customControlSemanticsRisks = collectCustomControlSemanticsRisks();
     const movingContentControlRisks = collectMovingContentControlRisks();
+    const textInventory = collectTextInventory();
 
     return {
       viewport: document.documentElement.dataset.designHarnessViewport || "unknown",
@@ -134,7 +136,8 @@ export async function collectViewportMeasurements(page: {
       statusLiveRegionRisks,
       modalFocusRisks,
       customControlSemanticsRisks,
-      movingContentControlRisks
+      movingContentControlRisks,
+      textInventory
     };
 
     function sampleElement(element: HTMLElement) {
@@ -149,6 +152,129 @@ export async function collectViewportMeasurements(page: {
           height: Math.round(rect.height)
         }
       };
+    }
+
+    function collectTextInventory() {
+      return Array.from(document.body.querySelectorAll<HTMLElement>("body *"))
+        .filter(isTextInventoryCandidate)
+        .map((element) => ({
+          element,
+          text: textForInventory(element)
+        }))
+        .filter(({ text }) => text.length > 0)
+        .map(({ element, text }) => {
+          const style = window.getComputedStyle(element);
+          const rect = element.getBoundingClientRect();
+          const textValue = truncateTextForInventory(text);
+          const accessibleName = truncateTextForInventory(accessibleNameFor(element));
+          return {
+            selector: selectorFor(element),
+            text: textValue.text,
+            ...(textValue.truncated || accessibleName.truncated ? { truncated: true as const } : {}),
+            region: {
+              x: Math.round(rect.x),
+              y: Math.round(rect.y),
+              width: Math.round(rect.width),
+              height: Math.round(rect.height)
+            },
+            fontSize: Number.parseFloat(style.fontSize || "16"),
+            fontWeight: style.fontWeight || "400",
+            nearestLang: nearestLangFor(element),
+            tag: element.tagName.toLowerCase(),
+            role: roleFor(element),
+            accessibleName: accessibleName.text
+          };
+        });
+    }
+
+    function isTextInventoryCandidate(element: HTMLElement): boolean {
+      if (isSensitiveTextControl(element)) {
+        return false;
+      }
+      if (element.closest("script,style,noscript,template,[aria-hidden='true']")) {
+        return false;
+      }
+      return isElementVisible(element) && normalizeWhitespace(element.innerText ?? element.textContent ?? "").length > 0;
+    }
+
+    function textForInventory(element: HTMLElement): string {
+      const directText = directTextFor(element);
+      if (hasVisibleTextChild(element)) {
+        return directText;
+      }
+      return normalizeWhitespace(element.innerText ?? element.textContent ?? "");
+    }
+
+    function isSensitiveTextControl(element: HTMLElement): boolean {
+      return element instanceof HTMLInputElement && ["hidden", "password"].includes(element.type);
+    }
+
+    function directTextFor(element: HTMLElement): string {
+      return normalizeWhitespace(Array.from(element.childNodes)
+        .filter((node) => node.nodeType === Node.TEXT_NODE)
+        .map((node) => node.textContent ?? "")
+        .join(" "));
+    }
+
+    function hasVisibleTextChild(element: HTMLElement): boolean {
+      return Array.from(element.children).some((child) => {
+        if (!(child instanceof HTMLElement) || !isTextInventoryCandidate(child)) {
+          return false;
+        }
+        return true;
+      });
+    }
+
+    function normalizeWhitespace(value: string): string {
+      return value.replace(/\s+/g, " ").trim();
+    }
+
+    function truncateTextForInventory(text: string): { text: string; truncated: boolean } {
+      if (text.length <= MAX_TEXT_INVENTORY_TEXT_LENGTH) {
+        return { text, truncated: false };
+      }
+      return { text: text.slice(0, MAX_TEXT_INVENTORY_TEXT_LENGTH), truncated: true };
+    }
+
+    function nearestLangFor(element: HTMLElement): string {
+      let current: HTMLElement | null = element;
+      while (current) {
+        const lang = current.getAttribute("lang")?.trim();
+        if (lang) {
+          return lang;
+        }
+        current = current.parentElement;
+      }
+      return document.documentElement.getAttribute("lang")?.trim() ?? "";
+    }
+
+    function roleFor(element: HTMLElement): string {
+      const explicitRole = element.getAttribute("role")?.trim();
+      if (explicitRole) {
+        return explicitRole;
+      }
+
+      const tag = element.tagName;
+      if (tag === "A" && element.hasAttribute("href")) return "link";
+      if (tag === "BUTTON") return "button";
+      if (/^H[1-6]$/.test(tag)) return "heading";
+      if (tag === "IMG") return "img";
+      if (tag === "MAIN") return "main";
+      if (tag === "NAV") return "navigation";
+      if (tag === "HEADER") return "banner";
+      if (tag === "FOOTER") return "contentinfo";
+      if (tag === "UL" || tag === "OL") return "list";
+      if (tag === "LI") return "listitem";
+      if (tag === "INPUT") {
+        const input = element as HTMLInputElement;
+        if (["button", "submit", "reset"].includes(input.type)) return "button";
+        if (input.type === "checkbox") return "checkbox";
+        if (input.type === "radio") return "radio";
+        return "textbox";
+      }
+      if (tag === "TEXTAREA") return "textbox";
+      if (tag === "SELECT") return "combobox";
+      return "";
     }
 
     function selectorFor(element: Element): string {
