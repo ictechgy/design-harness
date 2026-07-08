@@ -20,6 +20,21 @@ import {
   validateSchema
 } from "./index.js";
 
+function createContentFinding(overrides: Partial<ReturnType<typeof createExampleFinding>> = {}) {
+  const finding = {
+    ...createExampleFinding(),
+    category: "content" as const,
+    checkName: "placeholder-leak",
+    ...overrides
+  };
+  delete finding.criterionId;
+  delete finding.sourceRefs;
+  delete finding.determinism;
+  delete finding.resultKind;
+  delete finding.runtime;
+  return finding;
+}
+
 describe("core schemas", () => {
   it("accepts a valid design brief", () => {
     expect(validateSchema("brief", createExampleBrief()).valid).toBe(true);
@@ -46,6 +61,26 @@ describe("core schemas", () => {
   it("validates an audit result with schema and harness versions", () => {
     const result = validateSchema("audit-result", createExampleAuditResult());
     expect(result.valid).toBe(true);
+  });
+
+  it("accepts content category schema plumbing without a new criterion", () => {
+    const contentFinding = createContentFinding();
+    expect(validateSchema("finding", contentFinding).valid).toBe(true);
+
+    const contentCriterion = {
+      ...createExampleCriterion(),
+      id: "content.placeholder.rendered",
+      category: "content" as const,
+      title: "Rendered copy does not expose placeholders",
+      description: "Rendered UI copy should not expose interpolation placeholders to users.",
+      checkNames: ["placeholder-leak"]
+    };
+    expect(validateSchema("criterion", contentCriterion).valid).toBe(true);
+
+    const auditResult = createExampleAuditResult();
+    auditResult.findings = [contentFinding];
+    auditResult.advisoryScore = scoreFindings([contentFinding]);
+    expect(validateSchema("audit-result", auditResult).valid).toBe(true);
   });
 
   it("validates metadata and report manifests", () => {
@@ -142,6 +177,19 @@ describe("report rendering", () => {
     const prompt = buildIterationPrompt(createExampleAuditResult());
     expect(prompt).toContain("Use the deterministic findings");
     expect(prompt).not.toContain("Codex");
+  });
+
+  it("routes content category findings to the content implementation area", () => {
+    const contentFinding = createContentFinding({
+      problem: "Rendered copy exposes an interpolation placeholder.",
+      recommendation: "Render the localized value before showing the copy."
+    });
+    const auditResult = createExampleAuditResult();
+    auditResult.findings = [contentFinding];
+    const prompt = buildIterationPrompt(auditResult);
+
+    expect(prompt).toContain("- content: finding-desktop-overflow: Rendered copy exposes an interpolation placeholder.");
+    expect(prompt).toContain("Recommendation: Render the localized value before showing the copy.");
   });
 
   it("flags overclaiming report language", () => {
