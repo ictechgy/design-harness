@@ -139,6 +139,7 @@ export interface ScoreDeduction {
 }
 
 export interface AdvisoryScore {
+  formulaVersion: "epistemic-weight-v1";
   value: number;
   max: number;
   band: "strong" | "usable" | "needs-work" | "blocked";

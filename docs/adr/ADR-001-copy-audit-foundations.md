@@ -53,7 +53,7 @@ This table completes the ROADMAP item-1 one-liner (new in this ADR): it adds cel
 
 ### 6. Scoring weights (decision recorded here; implementation is the v0.4a scoring slice)
 
-`needs-review` findings become score-exempt. Deductions are weighted by evidence tier: deterministic `failure` 1.0, deterministic `risk` 0.6, heuristic `risk` 0.25, `needs-review` 0. The scoring change ships with a `schemaVersion` note in the audit artifact. The advisory score remains advisory — never an objective design-quality grade.
+`needs-review` findings become score-exempt. Deductions are weighted by evidence tier: deterministic `failure` 1.0, deterministic `risk` 0.6, heuristic `risk` 0.25, `needs-review` 0. The scoring change ships with a score-local `advisoryScore.formulaVersion` note in the audit artifact. The advisory score remains advisory — never an objective design-quality grade.
 
 ## Consequences
 

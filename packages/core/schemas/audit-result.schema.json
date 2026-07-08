@@ -334,6 +334,7 @@
       "type": "object",
       "additionalProperties": false,
       "required": [
+        "formulaVersion",
         "value",
         "max",
         "band",
@@ -341,6 +342,10 @@
         "explanation"
       ],
       "properties": {
+        "formulaVersion": {
+          "type": "string",
+          "const": "epistemic-weight-v1"
+        },
         "value": {
           "type": "number",
           "minimum": 0

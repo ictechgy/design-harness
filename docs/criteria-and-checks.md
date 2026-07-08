@@ -38,6 +38,17 @@ The exhaustive sourceStrength x determinism x resultKind matrix (ceiling semanti
 
 A check can be deterministically computable while its criterion is research-grade. Color counts, font-variant counts, and density budgets are exact measurements, but the claim "this hurts design quality" rests on research whose best validated metric sets explain only ~30-50% of variance in human aesthetic ratings (Reinecke et al. CHI 2013, adj R² = .48; Miniukovich & De Angeli CHI 2015, 49% web / 32% app). Such checks land as `research-emerging` or `industry-heuristic` source strength, `heuristic` determinism, and `risk` or `needs-review` result kind — and the advisory score must never be presented as an objective design-quality grade. Evidence table: [Visual Metrics Evidence](research/visual-metrics-evidence.md).
 
+### Advisory Score Weights
+
+The advisory score uses `advisoryScore.formulaVersion: "epistemic-weight-v1"` and starts from 100. Each deduction is still based on finding severity and confidence, then weighted by evidence tier:
+
+- deterministic `failure`: `1.0`
+- deterministic `risk`: `0.6`
+- heuristic `risk`: `0.25`
+- `needs-review`: `0` (score-exempt)
+
+Findings without determinism/resultKind metadata keep the legacy severity/confidence deduction path for compatibility and are labeled as unclassified in the deduction reason.
+
 ### Precision Over Recall In Heuristic Tiers
 
 A false positive costs more than a miss: repeated false flags cause reviewers to ignore the whole report. When a heuristic check's precision is unproven, ship it informational or logged-only and promote it after calibration data exists.
