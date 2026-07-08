@@ -17,6 +17,9 @@ import { collectViewportMeasurements } from "./browser-measurements.js";
 import { createRenderFailureFinding, findingsFromMeasurements, type ViewportMeasurements } from "./checks.js";
 import { BrowserUnavailableError } from "./errors.js";
 
+const MAX_ARIA_SNAPSHOT_LENGTH = 20_000;
+const MAX_TEXT_INVENTORY_FIELD_LENGTH = 2_000;
+
 export interface AuditUrlOptions {
   url: string;
   outDir: string;
@@ -47,6 +50,7 @@ export interface PageHandle {
   goto(url: string, options: { waitUntil: "domcontentloaded"; timeout: number }): Promise<{ status(): number; statusText(): string } | null>;
   evaluate<T>(pageFunction: ((arg?: unknown) => T | Promise<T>), arg?: unknown): Promise<T>;
   screenshot(options: { path: string; fullPage: boolean }): Promise<unknown>;
+  ariaSnapshot?: () => Promise<string>;
   close(): Promise<void>;
 }
 
@@ -181,10 +185,20 @@ export async function auditUrl(options: AuditUrlOptions): Promise<AuditUrlResult
           id: measurementEvidenceId,
           type: "measurement",
           viewport: viewport.name,
-          data: measurement as unknown as Record<string, unknown>,
+          data: measurementEvidenceData(measurement),
           createdAt: new Date().toISOString()
         });
         viewportEvidenceRefs.push(measurementEvidenceId);
+        const textInventoryEvidenceId = `text-inventory-${viewport.name}`;
+        evidenceAssets.push({
+          id: textInventoryEvidenceId,
+          type: "text-inventory",
+          viewport: viewport.name,
+          data: textInventoryEvidenceData(measurement),
+          createdAt: new Date().toISOString()
+        });
+        viewportEvidenceRefs.push(textInventoryEvidenceId);
+        viewportEvidenceRefs.push(...await recordAriaSnapshotEvidence(page, evidenceAssets, viewport.name, failedChecks));
         measurementRecords.push({
           measurement,
           evidenceRefs: [...viewportEvidenceRefs]
@@ -265,6 +279,119 @@ export async function auditUrl(options: AuditUrlOptions): Promise<AuditUrlResult
 
 function createRunId(isoTimestamp: string): string {
   return isoTimestamp.replaceAll(":", "").replaceAll(".", "").replace("T", "-").replace("Z", "Z");
+}
+
+function measurementEvidenceData(measurement: ViewportMeasurements): Record<string, unknown> {
+  const { textInventory: _textInventory, ...measurementWithoutTextInventory } = measurement;
+  return measurementWithoutTextInventory as unknown as Record<string, unknown>;
+}
+
+function textInventoryEvidenceData(measurement: ViewportMeasurements): Record<string, unknown> {
+  const items = measurement.textInventory.map((item) => {
+    const text = truncateText(item.text, MAX_TEXT_INVENTORY_FIELD_LENGTH);
+    const accessibleName = truncateText(item.accessibleName, MAX_TEXT_INVENTORY_FIELD_LENGTH);
+    const truncated = Boolean(item.truncated || text.truncated || accessibleName.truncated);
+    return {
+      ...item,
+      text: text.text,
+      accessibleName: accessibleName.text,
+      ...(truncated ? { truncated: true as const } : {})
+    };
+  });
+  const truncatedCount = items.filter((item) => item.truncated).length;
+  return {
+    viewport: measurement.viewport,
+    count: items.length,
+    truncatedCount,
+    items
+  };
+}
+
+async function recordAriaSnapshotEvidence(
+  page: PageHandle,
+  evidenceAssets: EvidenceAsset[],
+  viewport: string,
+  failedChecks: string[]
+): Promise<string[]> {
+  if (typeof page.ariaSnapshot !== "function") {
+    const evidenceId = addFailureEvidence(evidenceAssets, viewport, "aria-snapshot-unavailable", {
+      message: "Playwright page.ariaSnapshot() is unavailable in this runtime."
+    });
+    failedChecks.push(`${viewport}:aria-snapshot`);
+    return [evidenceId];
+  }
+
+  const evidenceRefs: string[] = [];
+  let maskedSensitiveValues = false;
+  try {
+    await maskSensitiveInputValues(page);
+    maskedSensitiveValues = true;
+    const rawSnapshot = await page.ariaSnapshot();
+    const snapshot = truncateText(rawSnapshot, MAX_ARIA_SNAPSHOT_LENGTH);
+    const evidenceId = `aria-snapshot-${viewport}`;
+    evidenceAssets.push({
+      id: evidenceId,
+      type: "aria-snapshot",
+      viewport,
+      data: {
+        viewport,
+        format: "playwright-aria-yaml",
+        snapshot: snapshot.text,
+        ...(snapshot.truncated ? { truncated: true } : {})
+      },
+      createdAt: new Date().toISOString()
+    });
+    evidenceRefs.push(evidenceId);
+  } catch (error) {
+    const evidenceId = addFailureEvidence(evidenceAssets, viewport, "aria-snapshot", {
+      message: error instanceof Error ? error.message : String(error)
+    });
+    failedChecks.push(`${viewport}:aria-snapshot`);
+    evidenceRefs.push(evidenceId);
+  } finally {
+    if (maskedSensitiveValues) {
+      try {
+        await restoreSensitiveInputValues(page);
+      } catch (error) {
+        const evidenceId = addFailureEvidence(evidenceAssets, viewport, "aria-snapshot-restore", {
+          message: error instanceof Error ? error.message : String(error)
+        });
+        failedChecks.push(`${viewport}:aria-snapshot-restore`);
+        evidenceRefs.push(evidenceId);
+      }
+    }
+  }
+
+  return evidenceRefs;
+}
+
+async function maskSensitiveInputValues(page: PageHandle): Promise<void> {
+  await page.evaluate(() => {
+    const marker = "data-design-harness-original-value";
+    for (const input of Array.from(document.querySelectorAll<HTMLInputElement>("input[type='password']"))) {
+      if (!input.hasAttribute(marker)) {
+        input.setAttribute(marker, input.value);
+      }
+      input.value = "";
+    }
+  });
+}
+
+async function restoreSensitiveInputValues(page: PageHandle): Promise<void> {
+  await page.evaluate(() => {
+    const marker = "data-design-harness-original-value";
+    for (const input of Array.from(document.querySelectorAll<HTMLInputElement>(`input[${marker}]`))) {
+      input.value = input.getAttribute(marker) ?? "";
+      input.removeAttribute(marker);
+    }
+  });
+}
+
+function truncateText(text: string, maxLength: number): { text: string; truncated: boolean } {
+  if (text.length <= maxLength) {
+    return { text, truncated: false };
+  }
+  return { text: text.slice(0, maxLength), truncated: true };
 }
 
 function addFailureEvidence(evidenceAssets: EvidenceAsset[], viewport: string, checkName: string, data: Record<string, unknown>): string {
