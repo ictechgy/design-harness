@@ -31,6 +31,8 @@ pnpm release:check                  # build + typecheck + test + validate + pack
 pnpm validate                       # schemas, manifests, policy + guard scripts below
 pnpm check:enum-lockstep            # category enum in lockstep across 6 locations
 pnpm check:criteria-policy          # criterion registry vs ADR-001 policy matrix
+pnpm check:version-consistency      # package/HARNESS_VERSION + schemaVersion lockstep
+pnpm check:release-hook-policy      # release-block hook sample coverage
 pnpm check:core-purity              # core stays capture-agnostic (ADR-002)
 pnpm check:deps-policy              # ToS/GPL dependency policy
 pnpm check:tracked-hygiene          # local-only files untracked; AGENTS.md line budget

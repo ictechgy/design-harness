@@ -42,7 +42,7 @@ describe("core schemas", () => {
   });
 
   it("rejects an invalid design brief with readable issues", () => {
-    const result = validateSchema("brief", { schemaVersion: "0.1", title: "" });
+    const result = validateSchema("brief", { schemaVersion: "0.2", title: "" });
     expect(result.valid).toBe(false);
     expect(result.issues.map((issue) => issue.path)).toContain("$.goals");
     expect(result.issues.map((issue) => issue.path)).toContain("$.targetUsers");
@@ -243,11 +243,11 @@ describe("scoring", () => {
       expect.objectContaining({ findingId: "deterministic-risk", points: 6 }),
       expect.objectContaining({ findingId: "heuristic-risk", points: 2.5 }),
       expect.objectContaining({ findingId: "needs-review", points: 0 }),
-      expect.objectContaining({ findingId: "legacy-unclassified", points: 10 })
+      expect.objectContaining({ findingId: "legacy-unclassified", points: 2.5 })
     ]);
     expect(score.deductions.find((deduction) => deduction.findingId === "needs-review")?.reason).toContain("score-exempt");
     expect(score.deductions.find((deduction) => deduction.findingId === "legacy-unclassified")?.reason).toContain("legacy/unclassified");
-    expect(score.value).toBe(71.5);
+    expect(score.value).toBe(79);
   });
 
   it("requires the advisory score formula version in the audit-result schema", () => {

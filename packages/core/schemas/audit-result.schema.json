@@ -20,7 +20,7 @@
   "properties": {
     "schemaVersion": {
       "type": "string",
-      "const": "0.1"
+      "const": "0.2"
     },
     "harnessVersion": {
       "type": "string",
@@ -41,7 +41,7 @@
       "properties": {
         "schemaVersion": {
           "type": "string",
-          "const": "0.1"
+          "const": "0.2"
         },
         "kind": {
           "type": "string",

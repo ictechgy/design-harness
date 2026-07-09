@@ -7,11 +7,16 @@
  * Exit 2 blocks the tool call and surfaces the message to the agent.
  */
 const BLOCKED = [
-  { pattern: /\bnpm\s+publish\b/, label: "npm publish" },
-  { pattern: /\bpnpm\s+(-r\s+|--filter\s+\S+\s+)?publish\b/, label: "pnpm publish" },
-  { pattern: /\bgit\s+tag\b.*\bv?\d/, label: "git tag" },
+  { pattern: /\bnpm\s+(?:(?:--workspace|-w)\s+\S+\s+)*publish\b/, label: "npm publish" },
+  { pattern: /\bpnpm\s+(?:(?:-r|--recursive|--filter\s+\S+|-F\s+\S+)\s+)*publish\b/, label: "pnpm publish" },
+  { pattern: /\byarn\s+(?:npm\s+)?publish\b/, label: "yarn publish" },
+  { pattern: /\b(?:npm|pnpm|yarn)\s+(?:(?:-r|--recursive)\s+|(?:(?:--filter|-F|--workspace|-w)\s+\S+\s+))*version\b/, label: "package version bump" },
+  { pattern: /\b(?:npm|pnpm)\s+dist-tag\b/, label: "npm dist-tag" },
+  { pattern: /\byarn\s+npm\s+tag\b/, label: "yarn npm tag" },
+  { pattern: /\bgit\s+tag\s+(?!--list\b|-l\b)/, label: "git tag" },
+  { pattern: /\bgit\s+push\b.*\bv?\d+\.\d+\.\d+\b/, label: "git push version tag" },
   { pattern: /\bgit\s+push\b.*--tags/, label: "git push --tags" },
-  { pattern: /\bgh\s+release\s+create\b/, label: "gh release create" },
+  { pattern: /\bgh\s+release\s+(?:create|upload|edit|delete)\b/, label: "gh release" },
   { pattern: /\bgit\s+add\b.*-f\b.*(REPORT\.md|\.omx)/, label: "force-adding local-only files" }
 ];
 

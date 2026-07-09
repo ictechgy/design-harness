@@ -47,7 +47,7 @@ The advisory score uses `advisoryScore.formulaVersion: "epistemic-weight-v1"` an
 - heuristic `risk`: `0.25`
 - `needs-review`: `0` (score-exempt)
 
-Findings without determinism/resultKind metadata keep the legacy severity/confidence deduction path for compatibility and are labeled as unclassified in the deduction reason.
+Findings without determinism/resultKind metadata are treated as unclassified and use the heuristic-risk fallback weight `0.25`; subjective unclassified findings are score-exempt. When unsure, the score downgrades instead of upgrading.
 
 ### Precision Over Recall In Heuristic Tiers
 
