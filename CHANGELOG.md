@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+No changes yet.
+
+## 0.4.0 - 2026-07-09
+
 - Added schema version `0.2` for the v0.4a artifact contract.
 - Added `content` rubric category support, text-inventory evidence, ARIA snapshot evidence, `project-contract` source strength, and `model-judged` runtime vocabulary.
 - Added `advisoryScore.formulaVersion: "epistemic-weight-v1"` and evidence-tier score weights.
@@ -15,4 +19,3 @@ Migration notes:
 
 - Scores from `epistemic-weight-v1` are not directly comparable with scores produced before v0.4a.
 - Audit consumers should accept `schemaVersion: "0.2"` and the new `text-inventory` / `aria-snapshot` evidence asset types.
-- Package versions remain unchanged until an owner-approved release/version step is performed.

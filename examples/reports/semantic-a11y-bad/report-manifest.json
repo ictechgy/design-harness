@@ -1,7 +1,7 @@
 {
   "schemaVersion": "0.2",
-  "harnessVersion": "0.3.1",
-  "runId": "2026-07-09-135913834Z",
+  "harnessVersion": "0.4.0",
+  "runId": "2026-07-09-141826875Z",
   "format": "markdown",
   "reportPath": "report.md",
   "sourceAuditPath": "audit.json",
@@ -15,5 +15,5 @@
     "Iteration Prompt Scaffold",
     "Optional Subjective Critique"
   ],
-  "createdAt": "2026-07-09T13:59:14.141Z"
+  "createdAt": "2026-07-09T14:18:27.171Z"
 }

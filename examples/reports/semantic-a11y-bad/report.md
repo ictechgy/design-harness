@@ -2,11 +2,11 @@
 
 ## Run Summary
 
-- Run ID: `2026-07-09-135913834Z`
+- Run ID: `2026-07-09-141826875Z`
 - Target: http://localhost:4174/semantic-a11y-bad.html
 - Status: `success`
-- Started: 2026-07-09T13:59:13.834Z
-- Duration: 306ms
+- Started: 2026-07-09T14:18:26.875Z
+- Duration: 295ms
 - Viewports: desktop (1440x900), mobile (390x844)
 
 ## Advisory Score
@@ -106,7 +106,7 @@ Note: Advisory score starts at 100 and subtracts finding deductions by severity,
 ```text
 You are improving a UI using Design Harness evidence.
 Target URL: http://localhost:4174/semantic-a11y-bad.html
-Run ID: 2026-07-09-135913834Z
+Run ID: 2026-07-09-141826875Z
 Use the deterministic findings below as evidence, then make one focused revision pass.
 - semantics: finding-desktop-missing-accessible-name-1: Interactive element div > button:nth-of-type(1) may not expose a usable accessible name. Criterion: a11y.name-role-value.present. Recommendation: Add visible text, aria-label, aria-labelledby, or use a native control with a clear label.
 - semantics: finding-desktop-missing-form-label-1: Form control #query may not have a programmatic label. Criterion: a11y.form-label.present. Recommendation: Associate the control with a visible label, aria-label, or aria-labelledby.
