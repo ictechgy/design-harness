@@ -1,12 +1,12 @@
 {
   "schemaVersion": "0.2",
-  "harnessVersion": "0.3.1",
-  "runId": "2026-07-09-135913834Z",
+  "harnessVersion": "0.4.0",
+  "runId": "2026-07-09-141826875Z",
   "status": "success",
   "targetUrl": "http://localhost:4174/semantic-a11y-bad.html",
-  "startedAt": "2026-07-09T13:59:13.834Z",
-  "finishedAt": "2026-07-09T13:59:14.140Z",
-  "durationMs": 306,
+  "startedAt": "2026-07-09T14:18:26.875Z",
+  "finishedAt": "2026-07-09T14:18:27.170Z",
+  "durationMs": 295,
   "viewportPresets": [
     {
       "name": "desktop",
@@ -24,8 +24,8 @@
     }
   ],
   "toolVersions": {
-    "@design-harness/core": "0.3.1",
-    "@design-harness/visual-audit": "0.3.1",
+    "@design-harness/core": "0.4.0",
+    "@design-harness/visual-audit": "0.4.0",
     "playwright": "149.0.7827.55"
   },
   "browserVersion": "149.0.7827.55",

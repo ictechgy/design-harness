@@ -1,7 +1,7 @@
 {
   "schemaVersion": "0.2",
-  "harnessVersion": "0.3.1",
-  "runId": "2026-07-09-135913834Z",
+  "harnessVersion": "0.4.0",
+  "runId": "2026-07-09-141826875Z",
   "target": {
     "schemaVersion": "0.2",
     "kind": "url",
@@ -29,7 +29,7 @@
       "type": "screenshot",
       "path": "screenshots/desktop.png",
       "viewport": "desktop",
-      "createdAt": "2026-07-09T13:59:14.005Z"
+      "createdAt": "2026-07-09T14:18:27.037Z"
     },
     {
       "id": "measurement-desktop",
@@ -187,7 +187,7 @@
         "customControlSemanticsRisks": [],
         "movingContentControlRisks": []
       },
-      "createdAt": "2026-07-09T13:59:14.011Z"
+      "createdAt": "2026-07-09T14:18:27.043Z"
     },
     {
       "id": "text-inventory-desktop",
@@ -296,7 +296,7 @@
           }
         ]
       },
-      "createdAt": "2026-07-09T13:59:14.011Z"
+      "createdAt": "2026-07-09T14:18:27.043Z"
     },
     {
       "id": "aria-snapshot-desktop",
@@ -307,14 +307,14 @@
         "format": "playwright-aria-yaml",
         "snapshot": "- heading \"Orders\" [level=1]\n- heading \"Late orders\" [level=3]\n- heading \"Exports\" [level=1]\n- button\n- searchbox\n- img\n- button \"View\"\n- button \"View\"\n- button \"View\""
       },
-      "createdAt": "2026-07-09T13:59:14.023Z"
+      "createdAt": "2026-07-09T14:18:27.054Z"
     },
     {
       "id": "screenshot-mobile",
       "type": "screenshot",
       "path": "screenshots/mobile.png",
       "viewport": "mobile",
-      "createdAt": "2026-07-09T13:59:14.112Z"
+      "createdAt": "2026-07-09T14:18:27.138Z"
     },
     {
       "id": "measurement-mobile",
@@ -472,7 +472,7 @@
         "customControlSemanticsRisks": [],
         "movingContentControlRisks": []
       },
-      "createdAt": "2026-07-09T13:59:14.119Z"
+      "createdAt": "2026-07-09T14:18:27.144Z"
     },
     {
       "id": "text-inventory-mobile",
@@ -581,7 +581,7 @@
           }
         ]
       },
-      "createdAt": "2026-07-09T13:59:14.119Z"
+      "createdAt": "2026-07-09T14:18:27.144Z"
     },
     {
       "id": "aria-snapshot-mobile",
@@ -592,7 +592,7 @@
         "format": "playwright-aria-yaml",
         "snapshot": "- heading \"Orders\" [level=1]\n- heading \"Late orders\" [level=3]\n- heading \"Exports\" [level=1]\n- button\n- searchbox\n- img\n- button \"View\"\n- button \"View\"\n- button \"View\""
       },
-      "createdAt": "2026-07-09T13:59:14.128Z"
+      "createdAt": "2026-07-09T14:18:27.154Z"
     }
   ],
   "findings": [
@@ -1645,9 +1645,9 @@
     "explanation": "Advisory score starts at 100 and subtracts finding deductions by severity, confidence, and evidence-tier weight. Needs-review findings are score-exempt. It is not an objective design-quality grade."
   },
   "timings": {
-    "startedAt": "2026-07-09T13:59:13.834Z",
-    "finishedAt": "2026-07-09T13:59:14.140Z",
-    "durationMs": 306
+    "startedAt": "2026-07-09T14:18:26.875Z",
+    "finishedAt": "2026-07-09T14:18:27.170Z",
+    "durationMs": 295
   },
   "status": "success",
   "failedChecks": []
