@@ -4,6 +4,10 @@
 
 No changes yet.
 
+## 0.4.1 - 2026-07-10
+
+- Removed stale `v0.3` wording from the CLI help output while preserving the local HTTP(S) target policy.
+
 ## 0.4.0 - 2026-07-09
 
 - Added schema version `0.2` for the v0.4a artifact contract.
