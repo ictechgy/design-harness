@@ -49,6 +49,9 @@ export interface PageHandle {
   setDefaultNavigationTimeout(timeoutMs: number): void;
   goto(url: string, options: { waitUntil: "domcontentloaded"; timeout: number }): Promise<{ status(): number; statusText(): string } | null>;
   evaluate<T>(pageFunction: ((arg?: unknown) => T | Promise<T>), arg?: unknown): Promise<T>;
+  locator?: (selector: string) => {
+    ariaSnapshot?: () => Promise<string>;
+  };
   screenshot(options: { path: string; fullPage: boolean }): Promise<unknown>;
   ariaSnapshot?: () => Promise<string>;
   close(): Promise<void>;
@@ -57,6 +60,11 @@ export interface PageHandle {
 interface MeasurementRecord {
   measurement: ViewportMeasurements;
   evidenceRefs: string[];
+}
+
+interface SensitiveInputMask {
+  marker: string;
+  value: string;
 }
 
 export async function auditUrl(options: AuditUrlOptions): Promise<AuditUrlResult> {
@@ -313,20 +321,16 @@ async function recordAriaSnapshotEvidence(
   viewport: string,
   failedChecks: string[]
 ): Promise<string[]> {
-  if (typeof page.ariaSnapshot !== "function") {
-    const evidenceId = addFailureEvidence(evidenceAssets, viewport, "aria-snapshot-unavailable", {
-      message: "Playwright page.ariaSnapshot() is unavailable in this runtime."
-    });
-    failedChecks.push(`${viewport}:aria-snapshot`);
-    return [evidenceId];
+  const ariaSnapshot = ariaSnapshotFnForPage(page);
+  if (!ariaSnapshot) {
+    return [];
   }
 
   const evidenceRefs: string[] = [];
-  let maskedSensitiveValues = false;
+  let maskedSensitiveValues: SensitiveInputMask[] = [];
   try {
-    await maskSensitiveInputValues(page);
-    maskedSensitiveValues = true;
-    const rawSnapshot = await page.ariaSnapshot();
+    maskedSensitiveValues = await maskSensitiveInputValues(page);
+    const rawSnapshot = await ariaSnapshot();
     const snapshot = truncateText(rawSnapshot, MAX_ARIA_SNAPSHOT_LENGTH);
     const evidenceId = `aria-snapshot-${viewport}`;
     evidenceAssets.push({
@@ -349,9 +353,9 @@ async function recordAriaSnapshotEvidence(
     failedChecks.push(`${viewport}:aria-snapshot`);
     evidenceRefs.push(evidenceId);
   } finally {
-    if (maskedSensitiveValues) {
+    if (maskedSensitiveValues.length > 0) {
       try {
-        await restoreSensitiveInputValues(page);
+        await restoreSensitiveInputValues(page, maskedSensitiveValues);
       } catch (error) {
         const evidenceId = addFailureEvidence(evidenceAssets, viewport, "aria-snapshot-restore", {
           message: error instanceof Error ? error.message : String(error)
@@ -365,26 +369,66 @@ async function recordAriaSnapshotEvidence(
   return evidenceRefs;
 }
 
-async function maskSensitiveInputValues(page: PageHandle): Promise<void> {
-  await page.evaluate(() => {
-    const marker = "data-design-harness-original-value";
-    for (const input of Array.from(document.querySelectorAll<HTMLInputElement>("input[type='password']"))) {
-      if (!input.hasAttribute(marker)) {
-        input.setAttribute(marker, input.value);
+function ariaSnapshotFnForPage(page: PageHandle): (() => Promise<string>) | undefined {
+  const bodyLocator = page.locator?.("body");
+  if (bodyLocator && typeof bodyLocator.ariaSnapshot === "function") {
+    return () => bodyLocator.ariaSnapshot?.() ?? Promise.resolve("");
+  }
+
+  if (typeof page.ariaSnapshot === "function") {
+    return () => page.ariaSnapshot?.() ?? Promise.resolve("");
+  }
+
+  return undefined;
+}
+
+async function maskSensitiveInputValues(page: PageHandle): Promise<SensitiveInputMask[]> {
+  return page.evaluate(() => {
+    const markerAttribute = "data-design-harness-mask-id";
+    const inputs = Array.from(document.querySelectorAll<HTMLInputElement>("input[type='password']"));
+    const snapshots = inputs.map((input, index) => ({
+      marker: `dh-${Date.now().toString(36)}-${index}-${Math.random().toString(36).slice(2)}`,
+      value: input.value
+    }));
+
+    try {
+      for (const [index, input] of inputs.entries()) {
+        input.setAttribute(markerAttribute, snapshots[index]?.marker ?? "");
+        input.value = "";
       }
-      input.value = "";
+    } catch (error) {
+      for (const [index, input] of inputs.entries()) {
+        input.value = snapshots[index]?.value ?? "";
+        input.removeAttribute(markerAttribute);
+      }
+      throw error;
     }
+    return snapshots;
   });
 }
 
-async function restoreSensitiveInputValues(page: PageHandle): Promise<void> {
-  await page.evaluate(() => {
-    const marker = "data-design-harness-original-value";
-    for (const input of Array.from(document.querySelectorAll<HTMLInputElement>(`input[${marker}]`))) {
-      input.value = input.getAttribute(marker) ?? "";
-      input.removeAttribute(marker);
+async function restoreSensitiveInputValues(page: PageHandle, snapshots: SensitiveInputMask[]): Promise<void> {
+  await page.evaluate((arg) => {
+    const markerAttribute = "data-design-harness-mask-id";
+    const maskedInputs = Array.isArray(arg) ? arg : [];
+    for (const snapshot of maskedInputs) {
+      if (
+        typeof snapshot !== "object" ||
+        snapshot === null ||
+        !("marker" in snapshot) ||
+        !("value" in snapshot) ||
+        typeof snapshot.marker !== "string" ||
+        typeof snapshot.value !== "string"
+      ) {
+        continue;
+      }
+      const input = document.querySelector<HTMLInputElement>(`input[${markerAttribute}="${snapshot.marker}"]`);
+      if (input) {
+        input.value = snapshot.value;
+        input.removeAttribute(markerAttribute);
+      }
     }
-  });
+  }, snapshots);
 }
 
 function truncateText(text: string, maxLength: number): { text: string; truncated: boolean } {

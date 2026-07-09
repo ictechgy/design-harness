@@ -1,11 +1,11 @@
 {
-  "schemaVersion": "0.1",
+  "schemaVersion": "0.2",
   "harnessVersion": "0.3.1",
-  "runId": "2026-07-07-150516499Z",
+  "runId": "2026-07-09-135913834Z",
   "target": {
-    "schemaVersion": "0.1",
+    "schemaVersion": "0.2",
     "kind": "url",
-    "url": "http://localhost:4173/semantic-a11y-bad.html"
+    "url": "http://localhost:4174/semantic-a11y-bad.html"
   },
   "viewportPresets": [
     {
@@ -29,7 +29,7 @@
       "type": "screenshot",
       "path": "screenshots/desktop.png",
       "viewport": "desktop",
-      "createdAt": "2026-07-07T15:05:16.660Z"
+      "createdAt": "2026-07-09T13:59:14.005Z"
     },
     {
       "id": "measurement-desktop",
@@ -187,14 +187,134 @@
         "customControlSemanticsRisks": [],
         "movingContentControlRisks": []
       },
-      "createdAt": "2026-07-07T15:05:16.666Z"
+      "createdAt": "2026-07-09T13:59:14.011Z"
+    },
+    {
+      "id": "text-inventory-desktop",
+      "type": "text-inventory",
+      "viewport": "desktop",
+      "data": {
+        "viewport": "desktop",
+        "count": 6,
+        "truncatedCount": 0,
+        "items": [
+          {
+            "selector": "div > h1:nth-of-type(1)",
+            "text": "Orders",
+            "region": {
+              "x": 8,
+              "y": 21,
+              "width": 1424,
+              "height": 37
+            },
+            "fontSize": 32,
+            "fontWeight": "700",
+            "nearestLang": "en",
+            "tag": "h1",
+            "role": "heading",
+            "accessibleName": "Orders"
+          },
+          {
+            "selector": "div > h3",
+            "text": "Late orders",
+            "region": {
+              "x": 8,
+              "y": 80,
+              "width": 1424,
+              "height": 22
+            },
+            "fontSize": 18.72,
+            "fontWeight": "700",
+            "nearestLang": "en",
+            "tag": "h3",
+            "role": "heading",
+            "accessibleName": "Late orders"
+          },
+          {
+            "selector": "div > h1:nth-of-type(2)",
+            "text": "Exports",
+            "region": {
+              "x": 8,
+              "y": 123,
+              "width": 1424,
+              "height": 37
+            },
+            "fontSize": 32,
+            "fontWeight": "700",
+            "nearestLang": "en",
+            "tag": "h1",
+            "role": "heading",
+            "accessibleName": "Exports"
+          },
+          {
+            "selector": "div > button:nth-of-type(2)",
+            "text": "View",
+            "region": {
+              "x": 190,
+              "y": 182,
+              "width": 45,
+              "height": 21
+            },
+            "fontSize": 13.3333,
+            "fontWeight": "400",
+            "nearestLang": "en",
+            "tag": "button",
+            "role": "button",
+            "accessibleName": "View"
+          },
+          {
+            "selector": "div > button:nth-of-type(3)",
+            "text": "View",
+            "region": {
+              "x": 239,
+              "y": 182,
+              "width": 45,
+              "height": 21
+            },
+            "fontSize": 13.3333,
+            "fontWeight": "400",
+            "nearestLang": "en",
+            "tag": "button",
+            "role": "button",
+            "accessibleName": "View"
+          },
+          {
+            "selector": "div > button:nth-of-type(4)",
+            "text": "View",
+            "region": {
+              "x": 287,
+              "y": 182,
+              "width": 45,
+              "height": 21
+            },
+            "fontSize": 13.3333,
+            "fontWeight": "400",
+            "nearestLang": "en",
+            "tag": "button",
+            "role": "button",
+            "accessibleName": "View"
+          }
+        ]
+      },
+      "createdAt": "2026-07-09T13:59:14.011Z"
+    },
+    {
+      "id": "aria-snapshot-desktop",
+      "type": "aria-snapshot",
+      "viewport": "desktop",
+      "data": {
+        "viewport": "desktop",
+        "format": "playwright-aria-yaml",
+        "snapshot": "- heading \"Orders\" [level=1]\n- heading \"Late orders\" [level=3]\n- heading \"Exports\" [level=1]\n- button\n- searchbox\n- img\n- button \"View\"\n- button \"View\"\n- button \"View\""
+      },
+      "createdAt": "2026-07-09T13:59:14.023Z"
     },
     {
       "id": "screenshot-mobile",
       "type": "screenshot",
       "path": "screenshots/mobile.png",
       "viewport": "mobile",
-      "createdAt": "2026-07-07T15:05:16.767Z"
+      "createdAt": "2026-07-09T13:59:14.112Z"
     },
     {
       "id": "measurement-mobile",
@@ -352,7 +472,127 @@
         "customControlSemanticsRisks": [],
         "movingContentControlRisks": []
       },
-      "createdAt": "2026-07-07T15:05:16.772Z"
+      "createdAt": "2026-07-09T13:59:14.119Z"
+    },
+    {
+      "id": "text-inventory-mobile",
+      "type": "text-inventory",
+      "viewport": "mobile",
+      "data": {
+        "viewport": "mobile",
+        "count": 6,
+        "truncatedCount": 0,
+        "items": [
+          {
+            "selector": "div > h1:nth-of-type(1)",
+            "text": "Orders",
+            "region": {
+              "x": 8,
+              "y": 21,
+              "width": 374,
+              "height": 37
+            },
+            "fontSize": 32,
+            "fontWeight": "700",
+            "nearestLang": "en",
+            "tag": "h1",
+            "role": "heading",
+            "accessibleName": "Orders"
+          },
+          {
+            "selector": "div > h3",
+            "text": "Late orders",
+            "region": {
+              "x": 8,
+              "y": 80,
+              "width": 374,
+              "height": 22
+            },
+            "fontSize": 18.72,
+            "fontWeight": "700",
+            "nearestLang": "en",
+            "tag": "h3",
+            "role": "heading",
+            "accessibleName": "Late orders"
+          },
+          {
+            "selector": "div > h1:nth-of-type(2)",
+            "text": "Exports",
+            "region": {
+              "x": 8,
+              "y": 123,
+              "width": 374,
+              "height": 37
+            },
+            "fontSize": 32,
+            "fontWeight": "700",
+            "nearestLang": "en",
+            "tag": "h1",
+            "role": "heading",
+            "accessibleName": "Exports"
+          },
+          {
+            "selector": "div > button:nth-of-type(2)",
+            "text": "View",
+            "region": {
+              "x": 190,
+              "y": 182,
+              "width": 45,
+              "height": 21
+            },
+            "fontSize": 13.3333,
+            "fontWeight": "400",
+            "nearestLang": "en",
+            "tag": "button",
+            "role": "button",
+            "accessibleName": "View"
+          },
+          {
+            "selector": "div > button:nth-of-type(3)",
+            "text": "View",
+            "region": {
+              "x": 239,
+              "y": 182,
+              "width": 45,
+              "height": 21
+            },
+            "fontSize": 13.3333,
+            "fontWeight": "400",
+            "nearestLang": "en",
+            "tag": "button",
+            "role": "button",
+            "accessibleName": "View"
+          },
+          {
+            "selector": "div > button:nth-of-type(4)",
+            "text": "View",
+            "region": {
+              "x": 287,
+              "y": 182,
+              "width": 45,
+              "height": 21
+            },
+            "fontSize": 13.3333,
+            "fontWeight": "400",
+            "nearestLang": "en",
+            "tag": "button",
+            "role": "button",
+            "accessibleName": "View"
+          }
+        ]
+      },
+      "createdAt": "2026-07-09T13:59:14.119Z"
+    },
+    {
+      "id": "aria-snapshot-mobile",
+      "type": "aria-snapshot",
+      "viewport": "mobile",
+      "data": {
+        "viewport": "mobile",
+        "format": "playwright-aria-yaml",
+        "snapshot": "- heading \"Orders\" [level=1]\n- heading \"Late orders\" [level=3]\n- heading \"Exports\" [level=1]\n- button\n- searchbox\n- img\n- button \"View\"\n- button \"View\"\n- button \"View\""
+      },
+      "createdAt": "2026-07-09T13:59:14.128Z"
     }
   ],
   "findings": [
@@ -370,7 +610,9 @@
       },
       "evidenceRefs": [
         "screenshot-desktop",
-        "measurement-desktop"
+        "measurement-desktop",
+        "text-inventory-desktop",
+        "aria-snapshot-desktop"
       ],
       "problem": "Interactive element div > button:nth-of-type(1) may not expose a usable accessible name.",
       "recommendation": "Add visible text, aria-label, aria-labelledby, or use a native control with a clear label.",
@@ -409,7 +651,9 @@
       },
       "evidenceRefs": [
         "screenshot-desktop",
-        "measurement-desktop"
+        "measurement-desktop",
+        "text-inventory-desktop",
+        "aria-snapshot-desktop"
       ],
       "problem": "Form control #query may not have a programmatic label.",
       "recommendation": "Associate the control with a visible label, aria-label, or aria-labelledby.",
@@ -446,7 +690,9 @@
       },
       "evidenceRefs": [
         "screenshot-desktop",
-        "measurement-desktop"
+        "measurement-desktop",
+        "text-inventory-desktop",
+        "aria-snapshot-desktop"
       ],
       "problem": "Image div > img does not declare alt text or an intentional decorative alt attribute.",
       "recommendation": "Add meaningful alt text for informative images, or use alt=\"\" for decorative images.",
@@ -482,7 +728,9 @@
       },
       "evidenceRefs": [
         "screenshot-desktop",
-        "measurement-desktop"
+        "measurement-desktop",
+        "text-inventory-desktop",
+        "aria-snapshot-desktop"
       ],
       "problem": "Heading div > h3 jumps from level 1 to level 3.",
       "recommendation": "Use headings to describe page and section structure in a clear order.",
@@ -519,7 +767,9 @@
       },
       "evidenceRefs": [
         "screenshot-desktop",
-        "measurement-desktop"
+        "measurement-desktop",
+        "text-inventory-desktop",
+        "aria-snapshot-desktop"
       ],
       "problem": "Additional H1 div > h1:nth-of-type(2) may make the page top-level structure ambiguous.",
       "recommendation": "Use headings to describe page and section structure in a clear order.",
@@ -549,7 +799,9 @@
       "selector": "body",
       "evidenceRefs": [
         "screenshot-desktop",
-        "measurement-desktop"
+        "measurement-desktop",
+        "text-inventory-desktop",
+        "aria-snapshot-desktop"
       ],
       "problem": "The page does not expose a main landmark in the captured DOM.",
       "recommendation": "Wrap primary page content in a <main> element or role=\"main\" landmark.",
@@ -575,7 +827,9 @@
       "viewport": "desktop",
       "evidenceRefs": [
         "screenshot-desktop",
-        "measurement-desktop"
+        "measurement-desktop",
+        "text-inventory-desktop",
+        "aria-snapshot-desktop"
       ],
       "problem": "The label \"view\" is reused by 3 interactive elements, which may be ambiguous.",
       "recommendation": "Make repeated action labels more specific with visible text or accessible-name context.",
@@ -615,7 +869,9 @@
       },
       "evidenceRefs": [
         "screenshot-desktop",
-        "measurement-desktop"
+        "measurement-desktop",
+        "text-inventory-desktop",
+        "aria-snapshot-desktop"
       ],
       "problem": "Interactive target div > button:nth-of-type(1) appears smaller than the configured minimum target size.",
       "recommendation": "Increase the control hit area or spacing so the target is easier to activate.",
@@ -653,7 +909,9 @@
       },
       "evidenceRefs": [
         "screenshot-desktop",
-        "measurement-desktop"
+        "measurement-desktop",
+        "text-inventory-desktop",
+        "aria-snapshot-desktop"
       ],
       "problem": "Interactive target #query appears smaller than the configured minimum target size.",
       "recommendation": "Increase the control hit area or spacing so the target is easier to activate.",
@@ -691,7 +949,9 @@
       },
       "evidenceRefs": [
         "screenshot-desktop",
-        "measurement-desktop"
+        "measurement-desktop",
+        "text-inventory-desktop",
+        "aria-snapshot-desktop"
       ],
       "problem": "Interactive target div > button:nth-of-type(2) appears smaller than the configured minimum target size.",
       "recommendation": "Increase the control hit area or spacing so the target is easier to activate.",
@@ -729,7 +989,9 @@
       },
       "evidenceRefs": [
         "screenshot-desktop",
-        "measurement-desktop"
+        "measurement-desktop",
+        "text-inventory-desktop",
+        "aria-snapshot-desktop"
       ],
       "problem": "Interactive target div > button:nth-of-type(3) appears smaller than the configured minimum target size.",
       "recommendation": "Increase the control hit area or spacing so the target is easier to activate.",
@@ -767,7 +1029,9 @@
       },
       "evidenceRefs": [
         "screenshot-desktop",
-        "measurement-desktop"
+        "measurement-desktop",
+        "text-inventory-desktop",
+        "aria-snapshot-desktop"
       ],
       "problem": "Interactive target div > button:nth-of-type(4) appears smaller than the configured minimum target size.",
       "recommendation": "Increase the control hit area or spacing so the target is easier to activate.",
@@ -805,7 +1069,9 @@
       },
       "evidenceRefs": [
         "screenshot-mobile",
-        "measurement-mobile"
+        "measurement-mobile",
+        "text-inventory-mobile",
+        "aria-snapshot-mobile"
       ],
       "problem": "Interactive element div > button:nth-of-type(1) may not expose a usable accessible name.",
       "recommendation": "Add visible text, aria-label, aria-labelledby, or use a native control with a clear label.",
@@ -844,7 +1110,9 @@
       },
       "evidenceRefs": [
         "screenshot-mobile",
-        "measurement-mobile"
+        "measurement-mobile",
+        "text-inventory-mobile",
+        "aria-snapshot-mobile"
       ],
       "problem": "Form control #query may not have a programmatic label.",
       "recommendation": "Associate the control with a visible label, aria-label, or aria-labelledby.",
@@ -881,7 +1149,9 @@
       },
       "evidenceRefs": [
         "screenshot-mobile",
-        "measurement-mobile"
+        "measurement-mobile",
+        "text-inventory-mobile",
+        "aria-snapshot-mobile"
       ],
       "problem": "Image div > img does not declare alt text or an intentional decorative alt attribute.",
       "recommendation": "Add meaningful alt text for informative images, or use alt=\"\" for decorative images.",
@@ -917,7 +1187,9 @@
       },
       "evidenceRefs": [
         "screenshot-mobile",
-        "measurement-mobile"
+        "measurement-mobile",
+        "text-inventory-mobile",
+        "aria-snapshot-mobile"
       ],
       "problem": "Heading div > h3 jumps from level 1 to level 3.",
       "recommendation": "Use headings to describe page and section structure in a clear order.",
@@ -954,7 +1226,9 @@
       },
       "evidenceRefs": [
         "screenshot-mobile",
-        "measurement-mobile"
+        "measurement-mobile",
+        "text-inventory-mobile",
+        "aria-snapshot-mobile"
       ],
       "problem": "Additional H1 div > h1:nth-of-type(2) may make the page top-level structure ambiguous.",
       "recommendation": "Use headings to describe page and section structure in a clear order.",
@@ -984,7 +1258,9 @@
       "selector": "body",
       "evidenceRefs": [
         "screenshot-mobile",
-        "measurement-mobile"
+        "measurement-mobile",
+        "text-inventory-mobile",
+        "aria-snapshot-mobile"
       ],
       "problem": "The page does not expose a main landmark in the captured DOM.",
       "recommendation": "Wrap primary page content in a <main> element or role=\"main\" landmark.",
@@ -1010,7 +1286,9 @@
       "viewport": "mobile",
       "evidenceRefs": [
         "screenshot-mobile",
-        "measurement-mobile"
+        "measurement-mobile",
+        "text-inventory-mobile",
+        "aria-snapshot-mobile"
       ],
       "problem": "The label \"view\" is reused by 3 interactive elements, which may be ambiguous.",
       "recommendation": "Make repeated action labels more specific with visible text or accessible-name context.",
@@ -1050,7 +1328,9 @@
       },
       "evidenceRefs": [
         "screenshot-mobile",
-        "measurement-mobile"
+        "measurement-mobile",
+        "text-inventory-mobile",
+        "aria-snapshot-mobile"
       ],
       "problem": "Interactive target div > button:nth-of-type(1) appears smaller than the configured minimum target size.",
       "recommendation": "Increase the control hit area or spacing so the target is easier to activate.",
@@ -1088,7 +1368,9 @@
       },
       "evidenceRefs": [
         "screenshot-mobile",
-        "measurement-mobile"
+        "measurement-mobile",
+        "text-inventory-mobile",
+        "aria-snapshot-mobile"
       ],
       "problem": "Interactive target #query appears smaller than the configured minimum target size.",
       "recommendation": "Increase the control hit area or spacing so the target is easier to activate.",
@@ -1126,7 +1408,9 @@
       },
       "evidenceRefs": [
         "screenshot-mobile",
-        "measurement-mobile"
+        "measurement-mobile",
+        "text-inventory-mobile",
+        "aria-snapshot-mobile"
       ],
       "problem": "Interactive target div > button:nth-of-type(2) appears smaller than the configured minimum target size.",
       "recommendation": "Increase the control hit area or spacing so the target is easier to activate.",
@@ -1164,7 +1448,9 @@
       },
       "evidenceRefs": [
         "screenshot-mobile",
-        "measurement-mobile"
+        "measurement-mobile",
+        "text-inventory-mobile",
+        "aria-snapshot-mobile"
       ],
       "problem": "Interactive target div > button:nth-of-type(3) appears smaller than the configured minimum target size.",
       "recommendation": "Increase the control hit area or spacing so the target is easier to activate.",
@@ -1202,7 +1488,9 @@
       },
       "evidenceRefs": [
         "screenshot-mobile",
-        "measurement-mobile"
+        "measurement-mobile",
+        "text-inventory-mobile",
+        "aria-snapshot-mobile"
       ],
       "problem": "Interactive target div > button:nth-of-type(4) appears smaller than the configured minimum target size.",
       "recommendation": "Increase the control hit area or spacing so the target is easier to activate.",
@@ -1357,9 +1645,9 @@
     "explanation": "Advisory score starts at 100 and subtracts finding deductions by severity, confidence, and evidence-tier weight. Needs-review findings are score-exempt. It is not an objective design-quality grade."
   },
   "timings": {
-    "startedAt": "2026-07-07T15:05:16.499Z",
-    "finishedAt": "2026-07-07T15:05:16.795Z",
-    "durationMs": 296
+    "startedAt": "2026-07-09T13:59:13.834Z",
+    "finishedAt": "2026-07-09T13:59:14.140Z",
+    "durationMs": 306
   },
   "status": "success",
   "failedChecks": []

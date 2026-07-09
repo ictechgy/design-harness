@@ -22,7 +22,19 @@ interface FakeBrowserOptions {
   ariaSnapshot?: string;
   ariaSnapshotError?: Error;
   ariaSnapshotUnavailable?: boolean;
+  passwordInputValues?: string[];
+  observedPasswordInputValues?: string[];
+  observedPasswordAttributes?: Array<Record<string, string>>;
   measurement: ViewportMeasurements;
+}
+
+interface FakePasswordInput {
+  value: string;
+  attributes: Map<string, string>;
+  setAttribute(name: string, value: string): void;
+  getAttribute(name: string): string | null;
+  hasAttribute(name: string): boolean;
+  removeAttribute(name: string): void;
 }
 
 afterEach(async () => {
@@ -139,6 +151,45 @@ describe("auditUrl failure behavior", () => {
     expect(() => assertAuditResultIntegrity(result.auditResult)).not.toThrow();
   });
 
+  it("uses locator aria snapshots so the declared Playwright floor is supported", async () => {
+    const result = await auditUrl({
+      url: "http://localhost:3000",
+      outDir: await tempDir(),
+      viewportPresets: [viewport],
+      launchBrowser: async () =>
+        fakeBrowser({
+          measurement: measurementFor("desktop"),
+          ariaSnapshot: "- document\n  - paragraph: Locator snapshot"
+        })
+    });
+
+    const ariaEvidence = result.auditResult.evidenceAssets.find((asset) => asset.id === "aria-snapshot-desktop");
+    expect(result.auditResult.status).toBe("success");
+    expect(result.auditResult.failedChecks).not.toContain("desktop:aria-snapshot");
+    expect(ariaEvidence?.data?.snapshot).toContain("Locator snapshot");
+  });
+
+  it("does not store password values in DOM attributes while collecting aria snapshots", async () => {
+    const secret = "SUPER_SECRET_PASSWORD";
+    const options: FakeBrowserOptions = {
+      measurement: measurementFor("desktop"),
+      passwordInputValues: [secret]
+    };
+    const result = await auditUrl({
+      url: "http://localhost:3000",
+      outDir: await tempDir(),
+      viewportPresets: [viewport],
+      launchBrowser: async () => fakeBrowser(options)
+    });
+
+    const ariaEvidence = result.auditResult.evidenceAssets.find((asset) => asset.id === "aria-snapshot-desktop");
+    expect(result.auditResult.status).toBe("success");
+    expect(ariaEvidence?.data?.snapshot).toContain("data-design-harness-mask-id");
+    expect(JSON.stringify(result.auditResult)).not.toContain(secret);
+    expect(options.observedPasswordInputValues).toEqual([secret]);
+    expect(JSON.stringify(options.observedPasswordAttributes)).not.toContain(secret);
+  });
+
   it("caps text inventory text-like fields before writing evidence", async () => {
     const result = await auditUrl({
       url: "http://localhost:3000",
@@ -215,7 +266,7 @@ describe("auditUrl failure behavior", () => {
     expect(() => assertAuditResultIntegrity(result.auditResult)).not.toThrow();
   });
 
-  it("records missing aria snapshot support as partial evidence", async () => {
+  it("skips missing aria snapshot support without making the audit partial", async () => {
     const result = await auditUrl({
       url: "http://localhost:3000",
       outDir: await tempDir(),
@@ -227,9 +278,9 @@ describe("auditUrl failure behavior", () => {
         })
     });
 
-    expect(result.auditResult.status).toBe("partial");
-    expect(result.auditResult.failedChecks).toContain("desktop:aria-snapshot");
-    expect(result.auditResult.evidenceAssets.some((asset) => asset.data?.checkName === "aria-snapshot-unavailable")).toBe(true);
+    expect(result.auditResult.status).toBe("success");
+    expect(result.auditResult.failedChecks).not.toContain("desktop:aria-snapshot");
+    expect(result.auditResult.evidenceAssets.some((asset) => asset.data?.checkName === "aria-snapshot-unavailable")).toBe(false);
     expect(() => assertAuditResultIntegrity(result.auditResult)).not.toThrow();
   });
 });
@@ -249,6 +300,7 @@ function fakeBrowser(options: FakeBrowserOptions): BrowserHandle {
 }
 
 function fakePage(options: FakeBrowserOptions): PageHandle {
+  const passwordInputs = (options.passwordInputValues ?? []).map(fakePasswordInput);
   const page: PageHandle = {
     setDefaultTimeout: () => undefined,
     setDefaultNavigationTimeout: () => undefined,
@@ -261,29 +313,93 @@ function fakePage(options: FakeBrowserOptions): PageHandle {
         statusText: () => "OK"
       };
     },
-    evaluate: async (_pageFunction, arg) => {
+    evaluate: async (pageFunction, arg) => {
+      const source = String(pageFunction);
+      if (source.includes("data-design-harness-mask-id")) {
+        return runWithFakeDocument(passwordInputs, () => pageFunction(arg)) as never;
+      }
       if (arg !== undefined) {
         return undefined as never;
       }
       return options.measurement as never;
     },
+    locator: options.ariaSnapshotUnavailable
+      ? undefined
+      : () => ({
+        ariaSnapshot: async () => {
+          if (options.ariaSnapshotError) {
+            throw options.ariaSnapshotError;
+          }
+          return options.ariaSnapshot ?? ariaSnapshotFromPasswordInputs(passwordInputs);
+        }
+      }),
     screenshot: async () => {
       if (options.screenshotError) {
         throw options.screenshotError;
       }
       return undefined;
     },
-    close: async () => undefined
+    close: async () => {
+      options.observedPasswordInputValues = passwordInputs.map((input) => input.value);
+      options.observedPasswordAttributes = passwordInputs.map((input) => Object.fromEntries(input.attributes));
+    }
   };
-  if (!options.ariaSnapshotUnavailable) {
-    page.ariaSnapshot = async () => {
-      if (options.ariaSnapshotError) {
-        throw options.ariaSnapshotError;
-      }
-      return options.ariaSnapshot ?? "- document";
-    };
-  }
   return page;
+}
+
+function fakePasswordInput(value: string): FakePasswordInput {
+  return {
+    value,
+    attributes: new Map<string, string>(),
+    setAttribute(name: string, attributeValue: string) {
+      this.attributes.set(name, attributeValue);
+    },
+    getAttribute(name: string) {
+      return this.attributes.get(name) ?? null;
+    },
+    hasAttribute(name: string) {
+      return this.attributes.has(name);
+    },
+    removeAttribute(name: string) {
+      this.attributes.delete(name);
+    }
+  };
+}
+
+function ariaSnapshotFromPasswordInputs(inputs: FakePasswordInput[]): string {
+  if (inputs.length === 0) {
+    return "- document";
+  }
+
+  return inputs.map((input, index) => {
+    const attributes = JSON.stringify(Object.fromEntries(input.attributes));
+    return `- password-input-${index}: value=${input.value} attributes=${attributes}`;
+  }).join("\n");
+}
+
+function runWithFakeDocument<T>(inputs: FakePasswordInput[], callback: () => T | Promise<T>): T | Promise<T> {
+  const previousDocument = globalThis.document;
+  const document = {
+    querySelectorAll(selector: string) {
+      if (selector === "input[type='password']") {
+        return inputs;
+      }
+      return [];
+    },
+    querySelector(selector: string) {
+      const match = selector.match(/^input\[data-design-harness-mask-id="([^"]+)"\]$/);
+      if (!match) {
+        return null;
+      }
+      return inputs.find((input) => input.getAttribute("data-design-harness-mask-id") === match[1]) ?? null;
+    }
+  };
+  globalThis.document = document as unknown as Document;
+  try {
+    return callback();
+  } finally {
+    globalThis.document = previousDocument;
+  }
 }
 
 function measurementFor(name: string): ViewportMeasurements {

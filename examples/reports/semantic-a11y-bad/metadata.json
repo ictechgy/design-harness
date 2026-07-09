@@ -1,12 +1,12 @@
 {
-  "schemaVersion": "0.1",
+  "schemaVersion": "0.2",
   "harnessVersion": "0.3.1",
-  "runId": "2026-07-07-150516499Z",
+  "runId": "2026-07-09-135913834Z",
   "status": "success",
-  "targetUrl": "http://localhost:4173/semantic-a11y-bad.html",
-  "startedAt": "2026-07-07T15:05:16.499Z",
-  "finishedAt": "2026-07-07T15:05:16.795Z",
-  "durationMs": 296,
+  "targetUrl": "http://localhost:4174/semantic-a11y-bad.html",
+  "startedAt": "2026-07-09T13:59:13.834Z",
+  "finishedAt": "2026-07-09T13:59:14.140Z",
+  "durationMs": 306,
   "viewportPresets": [
     {
       "name": "desktop",

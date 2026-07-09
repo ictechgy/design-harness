@@ -82,7 +82,11 @@ function epistemicWeightForFinding(finding: Finding): number {
     return 0.25;
   }
 
-  return 1;
+  if (finding.determinism === "subjective") {
+    return 0;
+  }
+
+  return 0.25;
 }
 
 function deductionReason(finding: Finding, epistemicWeight: number): string {
