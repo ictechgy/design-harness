@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseArgs } from "./args.js";
+import { helpText, parseArgs } from "./args.js";
 import { assertLocalHttpUrl } from "./url.js";
 
 describe("parseArgs", () => {
@@ -35,6 +35,13 @@ describe("parseArgs", () => {
 
   it("ignores a leading script argument separator", () => {
     expect(parseArgs(["--", "help"])).toEqual({ command: "help" });
+  });
+});
+
+describe("helpText", () => {
+  it("describes the local URL policy without stale version labels", () => {
+    expect(helpText()).toContain("Audit targets must be local http(s) URLs");
+    expect(helpText()).not.toContain("v0.3");
   });
 });
 

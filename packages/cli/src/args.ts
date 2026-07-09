@@ -69,7 +69,7 @@ export function helpText(): string {
     "  audit    Capture desktop/mobile screenshots and write audit artifacts.",
     "",
     "Notes:",
-    "  v0.3 only accepts local http(s) URLs such as http://localhost:3000.",
+    "  Audit targets must be local http(s) URLs such as http://localhost:3000.",
     "  Partial audits write artifacts and exit 2 unless --allow-partial is set."
   ].join("\n");
 }
