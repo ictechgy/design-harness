@@ -46,7 +46,12 @@
     "nonBlankString": {
       "type": "string",
       "minLength": 1,
-      "pattern": "\\S"
+      "pattern": "^\\S(?:[\\s\\S]*\\S)?$",
+      "description": "A non-empty string with no leading or trailing whitespace."
+    },
+    "lowercaseToken": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*$"
     },
     "copySurface": {
       "type": "string",
@@ -111,7 +116,7 @@
     "surfaceMapping": {
       "type": "array",
       "minItems": 1,
-      "description": "Ordered rules. The first matching rule wins; unmatched nodes remain unconfigured.",
+      "description": "Ordered rules evaluated by one capture-side materializer. The first matching rule wins; unmatched nodes remain unconfigured.",
       "items": {
         "$ref": "#/$defs/surfaceRule"
       }
@@ -143,9 +148,6 @@
           "$ref": "#/$defs/roleMatcher"
         },
         {
-          "$ref": "#/$defs/tagMatcher"
-        },
-        {
           "$ref": "#/$defs/adapterMatcher"
         }
       ]
@@ -162,29 +164,14 @@
           "const": "role"
         },
         "value": {
-          "$ref": "#/$defs/nonBlankString"
-        }
-      }
-    },
-    "tagMatcher": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": [
-        "kind",
-        "value"
-      ],
-      "properties": {
-        "kind": {
-          "const": "tag"
-        },
-        "value": {
-          "$ref": "#/$defs/nonBlankString"
+          "$ref": "#/$defs/lowercaseToken"
         }
       }
     },
     "adapterMatcher": {
       "type": "object",
       "additionalProperties": false,
+      "description": "The named capture adapter owns validation and evaluation of value.",
       "required": [
         "kind",
         "adapter",
@@ -195,7 +182,7 @@
           "const": "adapter"
         },
         "adapter": {
-          "$ref": "#/$defs/nonBlankString"
+          "$ref": "#/$defs/lowercaseToken"
         },
         "value": {
           "$ref": "#/$defs/nonBlankString"
@@ -231,7 +218,7 @@
           }
         },
         "note": {
-          "type": "string"
+          "$ref": "#/$defs/nonBlankString"
         }
       }
     },
@@ -257,7 +244,7 @@
           }
         },
         "reason": {
-          "type": "string"
+          "$ref": "#/$defs/nonBlankString"
         }
       }
     }

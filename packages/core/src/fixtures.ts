@@ -41,7 +41,6 @@ export function createExampleCopyStyle(): CopyStyle {
         surface: "button",
         matchers: [
           { kind: "role", value: "button" },
-          { kind: "tag", value: "button" },
           { kind: "adapter", adapter: "web-dom", value: "a.btn" }
         ]
       },
@@ -56,8 +55,8 @@ export function createExampleCopyStyle(): CopyStyle {
       {
         surface: "marketing",
         matchers: [
-          { kind: "tag", value: "h1" },
-          { kind: "tag", value: "h2" },
+          { kind: "adapter", adapter: "web-dom", value: "h1" },
+          { kind: "adapter", adapter: "web-dom", value: "h2" },
           { kind: "adapter", adapter: "web-dom", value: ".hero" },
           { kind: "adapter", adapter: "web-dom", value: "[data-copy-surface=\"marketing\"]" }
         ]

@@ -88,7 +88,7 @@ describe("core schemas", () => {
         },
         {
           surface: "button",
-          matchers: [{ kind: "tag", value: 42 }]
+          matchers: [{ kind: "role", value: 42 }]
         }
       ]
     };
@@ -117,27 +117,44 @@ describe("core schemas", () => {
         {
           surface: "body",
           matchers: []
+        },
+        {
+          surface: "error",
+          matchers: [{ kind: "role", value: "Alert" }]
+        },
+        {
+          surface: "marketing",
+          matchers: [{ kind: "adapter", adapter: "web dom", value: " .hero" }]
         }
       ],
-      glossary: [{ term: " ", tier: "approved" }],
-      bannedPhrases: [{ phrase: " " }]
+      glossary: [{ term: " ", tier: "approved", note: " " }],
+      bannedPhrases: [{ phrase: " ", reason: " " }]
     });
 
     expect(result.valid).toBe(false);
     expect(result.issues.map((issue) => issue.path)).toEqual(expect.arrayContaining([
       "$.surfaceMapping[0].matchers[0]",
       "$.surfaceMapping[1].matchers",
+      "$.surfaceMapping[2].matchers[0]",
+      "$.surfaceMapping[3].matchers[0]",
       "$.glossary[0].term",
-      "$.bannedPhrases[0].phrase"
+      "$.glossary[0].note",
+      "$.bannedPhrases[0].phrase",
+      "$.bannedPhrases[0].reason"
     ]));
   });
 
   it("keeps copy style runtime enums in schema lockstep", () => {
     const schema = loadSchema("copy-style") as {
-      $defs: Record<string, { enum?: unknown[]; default?: unknown }>;
+      $defs: Record<string, {
+        enum?: unknown[];
+        default?: unknown;
+        properties?: Record<string, unknown>;
+      }>;
     };
 
     expect(schema.$defs.copySurface?.enum).toEqual([...COPY_SURFACES]);
+    expect(Object.keys(schema.$defs.surfaceRegisters?.properties ?? {})).toEqual([...COPY_SURFACES]);
     expect(schema.$defs.copyRegister?.enum).toEqual([...COPY_REGISTERS]);
     expect(schema.$defs.glossaryTier?.enum).toEqual([...GLOSSARY_TIERS]);
     expect(schema.$defs.glossaryMatchMode?.enum).toEqual([...GLOSSARY_MATCH_MODES]);

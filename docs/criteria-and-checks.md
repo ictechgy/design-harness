@@ -34,7 +34,7 @@ Source strengths:
 
 The exhaustive sourceStrength x determinism x resultKind matrix (ceiling semantics — downgrading is always allowed) is defined in [ADR-001](adr/ADR-001-copy-audit-foundations.md) and enforced at the criterion level by `pnpm check:criteria-policy` (`packages/core/src/criteria-policy.ts`).
 
-## Copy Style Contract
+### Copy Style Contract
 
 `copy-style.yaml` is the project-declared contract for rendered-copy checks. The core schema is `packages/core/schemas/copy-style.schema.json`; until CLI YAML parsing is implemented with an approved dependency, JSON-equivalent fixtures validate the same structure.
 
@@ -49,19 +49,21 @@ The v1 contract includes:
   - `banmal` = 반말
 - `glossary`: typed term tiers `approved`, `banned`, and `use-carefully`, with optional `literal` or `lemma` matching.
 - `bannedPhrases`: configured phrases that are contract risks only when the project declares them.
-- `surfaceMapping`: an ordered list of surface rules. Each rule has one or more OR-ed `role`, `tag`, or namespaced `adapter` matchers.
+- `surfaceMapping`: an ordered list of surface rules. Each rule has one or more OR-ed `role` or namespaced `adapter` matchers.
 
-Supported surfaces are `button`, `error`, `marketing`, and `body`. Rules run in array order and the first match wins. Capture adapters evaluate adapter-specific matchers against the live surface, then materialize `copySurface: { surface, ruleIndex, matcher }` on the text-inventory item. The pure copy analyzer consumes that resolution and never replays a CSS query against the serialized diagnostic selector.
+Supported surfaces are `button`, `error`, `marketing`, and `body`. One capture-side materializer evaluates the entire rule list in array order. Matchers inside a rule run in order: `role` matches the node's resolved lowercase role token, while an `adapter` matcher is evaluated only by the adapter that owns its lowercase namespace. The first matching matcher is recorded as `copySurface: { surface, ruleIndex, matcher }`, then resolution stops. The pure copy analyzer consumes that resolution and never replays matchers against serialized evidence.
 
 No rule match means unconfigured; `body` is not an automatic fallback. Register checks run only when both a node surface and `surfaceRegisters[surface]` are configured. For glossary terms and banned phrases, omitted `surfaces` means all rendered copy, including unresolved nodes; a present non-empty list limits the rule to nodes resolved to those surfaces.
+
+A supported adapter with a valid query that finds nothing is a normal non-match. An unsupported adapter namespace or malformed adapter query emits an explicit non-failing configuration notice and never matches; it must not silently look like a valid query that found nothing.
 
 Recommended authoring rules, not built-in defaults:
 
 | Surface | High-confidence matcher examples |
 |---|---|
-| `button` | role `button`, tag `button`, or `web-dom` query `a.btn` |
+| `button` | role `button`, or `web-dom` query `button` / `a.btn` |
 | `error` | role `alert`, or `web-dom` query `[aria-live]` / `.error` |
-| `marketing` | tags `h1` / `h2`, or `web-dom` query `.hero` |
+| `marketing` | `web-dom` query `h1` / `h2` / `.hero` |
 | `body` | explicit `web-dom` queries such as `main p` / `article p` |
 
 Copy-style-backed criteria use `sourceStrength: "project-contract"` and can emit deterministic `risk` at most. They assert "this captured copy conflicts with your declared contract", not universal language quality.

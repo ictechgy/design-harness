@@ -86,12 +86,11 @@ export const DEFAULT_JOSA_HEDGE_POLICY: JosaHedgePolicy = "flag";
 
 export type CopyStyleSurfaceMatcher =
   | { kind: "role"; value: string }
-  | { kind: "tag"; value: string }
   | { kind: "adapter"; adapter: string; value: string };
 
 export interface CopyStyleSurfaceRule {
   surface: CopySurface;
-  matchers: CopyStyleSurfaceMatcher[];
+  matchers: [CopyStyleSurfaceMatcher, ...CopyStyleSurfaceMatcher[]];
 }
 
 export interface CopySurfaceResolution {
@@ -107,14 +106,14 @@ export interface CopyStyleGlossaryTerm {
   tier: GlossaryTier;
   preferredTerm?: string;
   match?: GlossaryMatchMode;
-  surfaces?: CopySurface[];
+  surfaces?: [CopySurface, ...CopySurface[]];
   note?: string;
 }
 
 export interface CopyStyleBannedPhrase {
   phrase: string;
   suggestedReplacement?: string;
-  surfaces?: CopySurface[];
+  surfaces?: [CopySurface, ...CopySurface[]];
   reason?: string;
 }
 
@@ -123,7 +122,7 @@ export interface CopyStyle {
   locale: string;
   josaHedgePolicy?: JosaHedgePolicy;
   surfaceRegisters?: CopyStyleSurfaceMap<CopyRegister>;
-  surfaceMapping?: CopyStyleSurfaceRule[];
+  surfaceMapping?: [CopyStyleSurfaceRule, ...CopyStyleSurfaceRule[]];
   glossary?: CopyStyleGlossaryTerm[];
   bannedPhrases?: CopyStyleBannedPhrase[];
 }
