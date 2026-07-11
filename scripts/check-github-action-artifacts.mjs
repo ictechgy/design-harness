@@ -7,10 +7,12 @@ const workflow = await readFile(workflowPath, "utf8");
 const requiredFragments = [
   "pnpm release:check",
   "pnpm smoke:example",
+  "pnpm smoke:copy",
   "actions/upload-artifact@v4",
   "if: always()",
   "name: design-harness-example-smoke",
-  "path: runs/example-smoke",
+  "runs/example-smoke",
+  "runs/copy-smoke",
   "if-no-files-found: warn"
 ];
 
@@ -19,8 +21,10 @@ if (missing.length > 0) {
   throw new Error(`Missing required GitHub Actions artifact fragment(s): ${missing.join(", ")}`);
 }
 
-if (workflow.indexOf("actions/upload-artifact@v4") < workflow.indexOf("pnpm smoke:example")) {
-  throw new Error("Artifact upload step must run after the example smoke audit step.");
+const uploadIndex = workflow.indexOf("actions/upload-artifact@v4");
+const lastSmokeIndex = Math.max(workflow.indexOf("pnpm smoke:example"), workflow.indexOf("pnpm smoke:copy"));
+if (uploadIndex < lastSmokeIndex) {
+  throw new Error("Artifact upload step must run after the example and copy smoke audit steps.");
 }
 
 console.log("Validated GitHub Actions artifact upload scaffold.");

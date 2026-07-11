@@ -5,13 +5,16 @@ import {
   HARNESS_VERSION,
   SCHEMA_VERSION,
   scoreFindings,
+  type AuditNotice,
   type AuditResult,
+  type CopyStyle,
   type EvidenceAsset,
   type Finding,
   type RunMetadata,
   type RunStatus,
   type ViewportPreset
 } from "@design-harness/core";
+import { analyzeCopy, copyAuditCapabilityNotices } from "@design-harness/copy-audit";
 import { chromium, errors } from "playwright";
 import { collectViewportMeasurements } from "./browser-measurements.js";
 import { createRenderFailureFinding, findingsFromMeasurements, type ViewportMeasurements } from "./checks.js";
@@ -26,6 +29,7 @@ export interface AuditUrlOptions {
   runId?: string;
   timeoutMs?: number;
   viewportPresets?: ViewportPreset[];
+  copyStyle?: CopyStyle;
   launchBrowser?: () => Promise<BrowserHandle>;
 }
 
@@ -78,6 +82,9 @@ export async function auditUrl(options: AuditUrlOptions): Promise<AuditUrlResult
   const measurementRecords: MeasurementRecord[] = [];
   const findings: Finding[] = [];
   const failedChecks: string[] = [];
+  const noticeCandidates: AuditNotice[] = options.copyStyle
+    ? copyAuditCapabilityNotices(options.copyStyle)
+    : [];
 
   await mkdir(screenshotsDir, { recursive: true });
 
@@ -187,7 +194,9 @@ export async function auditUrl(options: AuditUrlOptions): Promise<AuditUrlResult
       }
 
       try {
-        const measurement = await collectViewportMeasurements(page);
+        const collection = await collectViewportMeasurements(page, options.copyStyle?.surfaceMapping);
+        const measurement = collection.measurements;
+        noticeCandidates.push(...collection.notices);
         const measurementEvidenceId = `measurement-${viewport.name}`;
         evidenceAssets.push({
           id: measurementEvidenceId,
@@ -206,6 +215,13 @@ export async function auditUrl(options: AuditUrlOptions): Promise<AuditUrlResult
           createdAt: new Date().toISOString()
         });
         viewportEvidenceRefs.push(textInventoryEvidenceId);
+        if (options.copyStyle) {
+          findings.push(...analyzeCopy({
+            viewport: measurement.viewport,
+            evidenceRef: textInventoryEvidenceId,
+            items: measurement.textInventory
+          }, options.copyStyle));
+        }
         viewportEvidenceRefs.push(...await recordAriaSnapshotEvidence(page, evidenceAssets, viewport.name, failedChecks));
         measurementRecords.push({
           measurement,
@@ -229,6 +245,7 @@ export async function auditUrl(options: AuditUrlOptions): Promise<AuditUrlResult
   const finishedAtMs = Date.now();
   const finishedAt = new Date(finishedAtMs).toISOString();
   const status: RunStatus = failedChecks.length > 0 ? "partial" : "success";
+  const notices = deduplicateNotices(noticeCandidates);
   const auditResult: AuditResult = {
     schemaVersion: SCHEMA_VERSION,
     harnessVersion: HARNESS_VERSION,
@@ -248,7 +265,8 @@ export async function auditUrl(options: AuditUrlOptions): Promise<AuditUrlResult
       durationMs: finishedAtMs - startedAtMs
     },
     status,
-    failedChecks
+    failedChecks,
+    ...(notices.length > 0 ? { notices } : {})
   };
   const outputFiles = [
     "metadata.json",
@@ -272,6 +290,7 @@ export async function auditUrl(options: AuditUrlOptions): Promise<AuditUrlResult
     toolVersions: {
       "@design-harness/core": HARNESS_VERSION,
       "@design-harness/visual-audit": HARNESS_VERSION,
+      ...(options.copyStyle ? { "@design-harness/copy-audit": HARNESS_VERSION } : {}),
       playwright: browserVersion ?? "unknown"
     },
     browserVersion,
@@ -313,6 +332,38 @@ function textInventoryEvidenceData(measurement: ViewportMeasurements): Record<st
     truncatedCount,
     items
   };
+}
+
+function deduplicateNotices(notices: AuditNotice[]): AuditNotice[] {
+  const deduplicated = new Map<string, AuditNotice>();
+  for (const notice of notices) {
+    const details = notice.details === undefined
+      ? undefined
+      : canonicalizeJsonValue(notice.details) as Record<string, unknown>;
+    const key = `${notice.code}\u0000${JSON.stringify(details ?? null)}`;
+    if (!deduplicated.has(key)) {
+      deduplicated.set(key, {
+        code: notice.code,
+        message: notice.message,
+        ...(details === undefined ? {} : { details })
+      });
+    }
+  }
+  return [...deduplicated.values()];
+}
+
+function canonicalizeJsonValue(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    return value.map(canonicalizeJsonValue);
+  }
+  if (value !== null && typeof value === "object") {
+    return Object.fromEntries(
+      Object.entries(value as Record<string, unknown>)
+        .sort(([left], [right]) => left.localeCompare(right))
+        .map(([key, child]) => [key, canonicalizeJsonValue(child)])
+    );
+  }
+  return value;
 }
 
 async function recordAriaSnapshotEvidence(

@@ -1,24 +1,24 @@
 {
-  "name": "@design-harness/visual-audit",
+  "name": "@design-harness/copy-audit",
   "version": "0.4.1",
-  "description": "Playwright-based visual audit runner for Design Harness.",
+  "description": "Capture-neutral copy analysis for Design Harness.",
   "license": "Apache-2.0",
   "type": "module",
   "homepage": "https://github.com/ictechgy/design-harness#readme",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/ictechgy/design-harness.git",
-    "directory": "packages/visual-audit"
+    "directory": "packages/copy-audit"
   },
   "bugs": {
     "url": "https://github.com/ictechgy/design-harness/issues"
   },
   "keywords": [
     "ui-ux",
-    "visual-qa",
-    "ai-agents",
-    "playwright",
-    "accessibility"
+    "copy-qa",
+    "content-quality",
+    "korean-copy",
+    "ai-agents"
   ],
   "engines": {
     "node": ">=22.0.0"
@@ -44,8 +44,6 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@design-harness/copy-audit": "workspace:^",
-    "@design-harness/core": "workspace:^",
-    "playwright": "^1.49.1"
+    "@design-harness/core": "workspace:^"
   }
 }

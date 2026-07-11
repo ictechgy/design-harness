@@ -1,13 +1,13 @@
 # AGENTS.md — Working Guide for AI Agents
 
-Design Harness is an open-source, model-agnostic UI/UX QA loop for AI coding agents: local URL → Playwright screenshots → source-backed checks → `audit.json` / `report.md` → coding agent fixes. Monorepo: `@design-harness/core` (criteria, schemas, scoring, report), `@design-harness/visual-audit` (browser measurements + checks), `@design-harness/cli`. Published on npm since v0.3.1.
+Design Harness is an open-source, model-agnostic UI/UX QA loop for AI coding agents: local URL → Playwright screenshots → source-backed checks → `audit.json` / `report.md` → coding agent fixes. Monorepo: `@design-harness/core` (contracts), `@design-harness/copy-audit` (pure copy analysis), `@design-harness/visual-audit` (browser capture/checks), `@design-harness/cli`. Published on npm since v0.3.1.
 
 **Authority on conflict**: owner's current-session instruction > this file > committed docs (`docs/ROADMAP.md`, `docs/agent-protocol.md`, `docs/criteria-and-checks.md`) > git-ignored local notes (`REPORT.md`, `.omx/`) > your judgment. Every MUST lives in this file or in a machine check; `REPORT.md` (Korean strategy rationale) and `.omx/` are optional background — never block on their absence, and if you find a MUST that exists only there, promote it here.
 
 ## HARD RULES (never violate)
 
 1. **Epistemic discipline is the product.** A finding with `determinism: heuristic` or `subjective` may NEVER have `resultKind: failure` (enforced at finding level by `packages/core/src/integrity.ts`, at criterion level by `check:criteria-policy` per ADR-001 — do not weaken either). Deterministic `failure` language is reserved for official-testable sources (WCAG 2.2), including determinations resolved by explicit project-declared config (`lang` vs `--locale`); `project-contract`-sourced criteria cap at deterministic `risk` (ADR-001 matrix). **Computation determinism never upgrades criterion strength**: exactly countable metrics (colors, font variants, density) with research-grade criteria stay heuristic risk — see `docs/criteria-and-checks.md`. When unsure, downgrade.
-2. **No npm publish, version bump, tag, or GitHub release without the owner's explicit approval in the current session.** Publish order: core → visual-audit → cli. *Enforced for Claude Code by a PreToolUse hook (`.claude/settings.json` → `scripts/hooks/block-release-commands.mjs`). For Codex no hook exists: Codex agents must not run publish/version/tag/release commands at all — ask the owner to run them, unless the owner approves the exact command text in the current session.*
+2. **No npm publish, version bump, tag, or GitHub release without the owner's explicit approval in the current session.** Publish order: core → copy-audit → visual-audit → cli. *Enforced for Claude Code by a PreToolUse hook (`.claude/settings.json` → `scripts/hooks/block-release-commands.mjs`). For Codex no hook exists: Codex agents must not run publish/version/tag/release commands at all — ask the owner to run them, unless the owner approves the exact command text in the current session.*
 3. **Never commit generated Midjourney images** or binaries from `datasets/midjourney-reference-lab/local-assets/`. *Enforced: `check:midjourney-policy`, `check:tracked-hygiene`.* Distilled token files derived from images are fine.
 4. **Never add hanspell / py-hanspell / Pusan / Naver / Daum spellcheck endpoints** as dependencies or defaults (ToS-restricted, breakage history). Bareun and other hosted APIs: opt-in provider only, never a default path. *Enforced: `check:deps-policy`.*
 5. **License hygiene (Korean copy stack)**: `kiwi-nlp` is LGPL (npm metadata says LGPL-2.1-or-later; its repo README says LGPL v3 — trust the npm declaration, record the discrepancy). Never statically vendor it; lazy-load behind the `--copy` flag. The `spellcheck-ko` dictionary is GPL-3.0 project / CC-BY-SA-4.0 data — never bundled; fetched only via an explicit, documented prepare step (opt-in spelling provider), not silently inside `--copy`. *Enforced in part: `check:deps-policy`.*
@@ -25,7 +25,7 @@ npm publish / version tags / GitHub releases / any external publication · addin
 ## Commands
 
 ```bash
-pnpm install && pnpm build          # build workspace (core → visual-audit → cli)
+pnpm install && pnpm build          # build workspace in dependency order
 pnpm test                           # all package tests (CI=true for non-interactive)
 pnpm release:check                  # build + typecheck + test + validate + pack + smoke
 pnpm validate                       # schemas, manifests, policy + guard scripts below
@@ -34,9 +34,11 @@ pnpm check:criteria-policy          # criterion registry vs ADR-001 policy matri
 pnpm check:version-consistency      # package/HARNESS_VERSION + schemaVersion lockstep
 pnpm check:release-hook-policy      # release-block hook sample coverage
 pnpm check:core-purity              # core stays capture-agnostic (ADR-002)
+pnpm check:package-boundaries       # package imports/manifests stay one-way
 pnpm check:deps-policy              # ToS/GPL dependency policy
 pnpm check:tracked-hygiene          # local-only files untracked; AGENTS.md line budget
 pnpm example:serve                  # merchant-dashboard fixture on :4173
+pnpm smoke:copy                     # live parser-free copy/materializer golden path
 pnpm design-harness -- audit --url http://localhost:4173 --out runs/demo
 ```
 

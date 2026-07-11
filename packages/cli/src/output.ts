@@ -5,7 +5,7 @@ import {
   SCHEMA_VERSION,
   assertAuditResultIntegrity,
   assertValidSchema,
-  renderMarkdownReport,
+  buildMarkdownReport,
   type AuditResult,
   type ReportManifest,
   type RunMetadata
@@ -27,6 +27,7 @@ export async function writeAuditArtifacts(input: WriteAuditArtifactsInput): Prom
   const auditPath = join(input.outDir, "audit.json");
   const reportPath = join(input.outDir, "report.md");
   const reportManifestPath = join(input.outDir, "report-manifest.json");
+  const report = buildMarkdownReport({ auditResult: input.auditResult });
   const reportManifest: ReportManifest = {
     schemaVersion: SCHEMA_VERSION,
     harnessVersion: HARNESS_VERSION,
@@ -34,22 +35,13 @@ export async function writeAuditArtifacts(input: WriteAuditArtifactsInput): Prom
     format: "markdown",
     reportPath: "report.md",
     sourceAuditPath: "audit.json",
-    sections: [
-      "Run Summary",
-      "Advisory Score",
-      "Findings",
-      "Source-Backed Criteria",
-      "Evidence Links",
-      "Recommendations",
-      "Iteration Prompt Scaffold",
-      "Optional Subjective Critique"
-    ],
+    sections: report.sections,
     createdAt: new Date().toISOString()
   };
   assertValidSchema("report", reportManifest);
 
   await writeFile(metadataPath, `${JSON.stringify(input.metadata, null, 2)}\n`);
   await writeFile(auditPath, `${JSON.stringify(input.auditResult, null, 2)}\n`);
-  await writeFile(reportPath, renderMarkdownReport({ auditResult: input.auditResult }));
+  await writeFile(reportPath, report.markdown);
   await writeFile(reportManifestPath, `${JSON.stringify(reportManifest, null, 2)}\n`);
 }

@@ -1,4 +1,4 @@
-import { mkdtemp, rm, stat } from "node:fs/promises";
+import { mkdtemp, readFile, rm, stat } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { afterEach, describe, expect, it } from "vitest";
@@ -25,6 +25,63 @@ describe("writeAuditArtifacts", () => {
     await expect(stat(join(outDir, "audit.json"))).resolves.toBeTruthy();
     await expect(stat(join(outDir, "report.md"))).resolves.toBeTruthy();
     await expect(stat(join(outDir, "report-manifest.json"))).resolves.toBeTruthy();
+
+    const report = await readFile(join(outDir, "report.md"), "utf8");
+    const reportManifest = JSON.parse(await readFile(join(outDir, "report-manifest.json"), "utf8")) as {
+      sections: string[];
+    };
+    expect(reportManifest.sections).toEqual([
+      "Run Summary",
+      "Advisory Score",
+      "Findings",
+      "Source-Backed Criteria",
+      "Evidence Links",
+      "Recommendations",
+      "Iteration Prompt Scaffold",
+      "Optional Subjective Critique"
+    ]);
+    expect(report).not.toContain("## Notices");
+    expect(report).toContain("## Optional Subjective Critique");
+  });
+
+  it("keeps notice-bearing report content and manifest sections in parity", async () => {
+    const outDir = await tempDir();
+    const auditResult = createExampleAuditResult();
+    auditResult.status = "partial";
+    auditResult.failedChecks = ["desktop:screenshot"];
+    auditResult.notices = [{
+      code: "copy-surface-unsupported-adapter",
+      message: "A configured surface adapter is unavailable."
+    }];
+    const metadata = createExampleMetadata();
+    metadata.status = auditResult.status;
+    metadata.failedChecks = [...auditResult.failedChecks];
+
+    await writeAuditArtifacts({
+      outDir,
+      auditResult,
+      metadata
+    });
+
+    const report = await readFile(join(outDir, "report.md"), "utf8");
+    const reportManifest = JSON.parse(await readFile(join(outDir, "report-manifest.json"), "utf8")) as {
+      sections: string[];
+    };
+    expect(reportManifest.sections).toEqual([
+      "Run Summary",
+      "Failed Checks",
+      "Notices",
+      "Advisory Score",
+      "Findings",
+      "Source-Backed Criteria",
+      "Evidence Links",
+      "Recommendations",
+      "Iteration Prompt Scaffold",
+      "Optional Subjective Critique"
+    ]);
+    expect(report).toContain("## Failed Checks");
+    expect(report).toContain("## Notices");
+    expect(reportManifest.sections).toContain("Optional Subjective Critique");
   });
 
   it("rejects schema-invalid audit artifacts", async () => {

@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://design-harness.dev/schemas/korean-copy-fixture-provenance.json",
+  "title": "Korean Copy Fixture Provenance",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "fixturePath",
+    "source",
+    "license",
+    "redistributionStatus",
+    "synthetic",
+    "derived"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": "korean-copy-fixtures/v1"
+    },
+    "fixturePath": {
+      "type": "string",
+      "pattern": "^examples/ui-quality-fixtures/(korean-[^/]+|korean/[^/]+)\\.html$"
+    },
+    "source": {
+      "type": "string",
+      "minLength": 1
+    },
+    "license": {
+      "type": "string",
+      "minLength": 1
+    },
+    "redistributionStatus": {
+      "enum": [
+        "allowed",
+        "internal-only",
+        "prohibited"
+      ]
+    },
+    "synthetic": {
+      "type": "boolean"
+    },
+    "derived": {
+      "type": "boolean"
+    },
+    "notes": {
+      "type": "string",
+      "minLength": 1
+    }
+  }
+}

@@ -1,14 +1,113 @@
+import type { AuditNotice, CopyStyleSurfaceRule } from "@design-harness/core";
 import type { ViewportMeasurements } from "./checks.js";
 
+export interface ViewportCollectionResult {
+  measurements: ViewportMeasurements;
+  notices: AuditNotice[];
+}
+
 export async function collectViewportMeasurements(page: {
-  evaluate: <T>(pageFunction: () => T | Promise<T>) => Promise<T>;
-}): Promise<ViewportMeasurements> {
-  return page.evaluate(() => {
+  evaluate: <T>(pageFunction: ((arg?: unknown) => T | Promise<T>), arg?: unknown) => Promise<T>;
+}, surfaceMapping?: CopyStyleSurfaceRule[]): Promise<ViewportCollectionResult> {
+  return page.evaluate((rawSurfaceMapping): ViewportCollectionResult => {
     const MAX_TEXT_INVENTORY_TEXT_LENGTH = 2_000;
+    const surfaceRules = Array.isArray(rawSurfaceMapping)
+      ? rawSurfaceMapping as CopyStyleSurfaceRule[]
+      : [];
+    const notices: AuditNotice[] = [];
+    const unusableMatcherKeys = new Set<string>();
+    const noticeKeys = new Set<string>();
+    const concreteAriaRoles = new Set([
+      "alert",
+      "alertdialog",
+      "application",
+      "article",
+      "banner",
+      "blockquote",
+      "button",
+      "caption",
+      "cell",
+      "checkbox",
+      "code",
+      "columnheader",
+      "combobox",
+      "complementary",
+      "contentinfo",
+      "definition",
+      "deletion",
+      "dialog",
+      "directory",
+      "document",
+      "emphasis",
+      "feed",
+      "figure",
+      "form",
+      "generic",
+      "grid",
+      "gridcell",
+      "group",
+      "heading",
+      "img",
+      "insertion",
+      "link",
+      "list",
+      "listbox",
+      "listitem",
+      "log",
+      "main",
+      "marquee",
+      "math",
+      "menu",
+      "menubar",
+      "menuitem",
+      "menuitemcheckbox",
+      "menuitemradio",
+      "meter",
+      "navigation",
+      "none",
+      "note",
+      "option",
+      "paragraph",
+      "presentation",
+      "progressbar",
+      "radio",
+      "radiogroup",
+      "region",
+      "row",
+      "rowgroup",
+      "rowheader",
+      "scrollbar",
+      "search",
+      "searchbox",
+      "separator",
+      "slider",
+      "spinbutton",
+      "status",
+      "strong",
+      "subscript",
+      "superscript",
+      "switch",
+      "tab",
+      "table",
+      "tablist",
+      "tabpanel",
+      "term",
+      "textbox",
+      "time",
+      "timer",
+      "toolbar",
+      "tooltip",
+      "tree",
+      "treegrid",
+      "treeitem"
+    ]);
+    const viewportName = document.documentElement.dataset.designHarnessViewport || "unknown";
     const viewport = {
       width: window.innerWidth,
       height: window.innerHeight
     };
+
+    prepareSurfaceMatchers();
 
     const textElements = Array.from(document.body.querySelectorAll<HTMLElement>("body *"))
       .filter((element) => {
@@ -106,8 +205,8 @@ export async function collectViewportMeasurements(page: {
     const movingContentControlRisks = collectMovingContentControlRisks();
     const textInventory = collectTextInventory();
 
-    return {
-      viewport: document.documentElement.dataset.designHarnessViewport || "unknown",
+    const measurements: ViewportMeasurements = {
+      viewport: viewportName,
       viewportWidth: viewport.width,
       viewportHeight: viewport.height,
       documentScrollWidth: document.documentElement.scrollWidth,
@@ -140,6 +239,8 @@ export async function collectViewportMeasurements(page: {
       textInventory
     };
 
+    return { measurements, notices };
+
     function sampleElement(element: HTMLElement) {
       const rect = element.getBoundingClientRect();
       return {
@@ -167,6 +268,8 @@ export async function collectViewportMeasurements(page: {
           const rect = element.getBoundingClientRect();
           const textValue = truncateTextForInventory(text);
           const accessibleName = truncateTextForInventory(accessibleNameFor(element));
+          const role = roleFor(element);
+          const copySurface = resolveCopySurface(element, surfaceRoleFor(element));
           return {
             selector: selectorFor(element),
             text: textValue.text,
@@ -181,10 +284,108 @@ export async function collectViewportMeasurements(page: {
             fontWeight: style.fontWeight || "400",
             nearestLang: nearestLangFor(element),
             tag: element.tagName.toLowerCase(),
-            role: roleFor(element),
-            accessibleName: accessibleName.text
+            role,
+            accessibleName: accessibleName.text,
+            ...(copySurface ? { copySurface } : {})
           };
         });
+    }
+
+    function prepareSurfaceMatchers(): void {
+      for (const [ruleIndex, rule] of surfaceRules.entries()) {
+        for (const [matcherIndex, matcher] of rule.matchers.entries()) {
+          const key = matcherKey(ruleIndex, matcherIndex);
+          if (matcher.kind !== "adapter") {
+            continue;
+          }
+          if (matcher.adapter !== "web-dom") {
+            unusableMatcherKeys.add(key);
+            addSurfaceNotice(
+              "copy-surface-unsupported-adapter",
+              `Copy surface adapter "${matcher.adapter}" is not supported and was skipped.`,
+              matcher,
+              ruleIndex,
+              matcherIndex
+            );
+            continue;
+          }
+          try {
+            document.documentElement.matches(matcher.value);
+          } catch {
+            unusableMatcherKeys.add(key);
+            addSurfaceNotice(
+              "copy-surface-invalid-query",
+              `Copy surface query "${matcher.value}" is invalid and was skipped.`,
+              matcher,
+              ruleIndex,
+              matcherIndex
+            );
+          }
+        }
+      }
+    }
+
+    function resolveCopySurface(element: HTMLElement, role: string) {
+      for (const [ruleIndex, rule] of surfaceRules.entries()) {
+        for (const [matcherIndex, matcher] of rule.matchers.entries()) {
+          if (unusableMatcherKeys.has(matcherKey(ruleIndex, matcherIndex))) {
+            continue;
+          }
+          if (matcher.kind === "role") {
+            if (role === matcher.value.trim().toLowerCase()) {
+              return { surface: rule.surface, ruleIndex, matcher };
+            }
+            continue;
+          }
+          if (matcher.adapter !== "web-dom") {
+            continue;
+          }
+          try {
+            if (element.matches(matcher.value)) {
+              return { surface: rule.surface, ruleIndex, matcher };
+            }
+          } catch {
+            unusableMatcherKeys.add(matcherKey(ruleIndex, matcherIndex));
+            addSurfaceNotice(
+              "copy-surface-invalid-query",
+              `Copy surface query "${matcher.value}" is invalid and was skipped.`,
+              matcher,
+              ruleIndex,
+              matcherIndex
+            );
+          }
+        }
+      }
+      return undefined;
+    }
+
+    function addSurfaceNotice(
+      code: "copy-surface-unsupported-adapter" | "copy-surface-invalid-query",
+      message: string,
+      matcher: Extract<CopyStyleSurfaceRule["matchers"][number], { kind: "adapter" }>,
+      ruleIndex: number,
+      matcherIndex: number
+    ): void {
+      const key = [code, matcher.adapter, matcher.value, ruleIndex, matcherIndex].join("\u0000");
+      if (noticeKeys.has(key)) {
+        return;
+      }
+      noticeKeys.add(key);
+      notices.push({
+        code,
+        message,
+        viewport: viewportName,
+        details: {
+          adapter: matcher.adapter,
+          value: matcher.value,
+          ruleIndex,
+          matcherIndex
+        }
+      });
+    }
+
+    function matcherKey(ruleIndex: number, matcherIndex: number): string {
+      return `${ruleIndex}:${matcherIndex}`;
     }
 
     function isTextInventoryCandidate(element: HTMLElement): boolean {
@@ -274,6 +475,72 @@ export async function collectViewportMeasurements(page: {
       }
       if (tag === "TEXTAREA") return "textbox";
       if (tag === "SELECT") return "combobox";
+      return "";
+    }
+
+    function surfaceRoleFor(element: HTMLElement): string {
+      const explicitRole = element.getAttribute("role")?.trim();
+      if (explicitRole) {
+        const concreteRole = explicitRole
+          .toLowerCase()
+          .split(/\s+/)
+          .find((token) => concreteAriaRoles.has(token));
+        if (concreteRole) {
+          return concreteRole;
+        }
+      }
+
+      return nativeSurfaceRoleFor(element);
+    }
+
+    function nativeSurfaceRoleFor(element: HTMLElement): string {
+      const tag = element.tagName;
+      if ((tag === "A" || tag === "AREA") && element.hasAttribute("href")) return "link";
+      if (tag === "ARTICLE") return "article";
+      if (tag === "ASIDE") return "complementary";
+      if (tag === "BUTTON" || tag === "SUMMARY") return "button";
+      if (tag === "DATALIST") return "listbox";
+      if (tag === "DETAILS" || tag === "FIELDSET" || tag === "OPTGROUP") return "group";
+      if (tag === "DIALOG") return "dialog";
+      if (tag === "FIGURE") return "figure";
+      if (tag === "FORM") return "form";
+      if (/^H[1-6]$/.test(tag)) return "heading";
+      if (tag === "HR") return "separator";
+      if (tag === "IMG") return "img";
+      if (tag === "MAIN") return "main";
+      if (tag === "MATH") return "math";
+      if (tag === "METER") return "meter";
+      if (tag === "NAV") return "navigation";
+      if (tag === "HEADER") return "banner";
+      if (tag === "FOOTER") return "contentinfo";
+      if (tag === "UL" || tag === "OL" || tag === "MENU") return "list";
+      if (tag === "LI") return "listitem";
+      if (tag === "OPTION") return "option";
+      if (tag === "OUTPUT") return "status";
+      if (tag === "PROGRESS") return "progressbar";
+      if (tag === "TABLE") return "table";
+      if (tag === "THEAD" || tag === "TBODY" || tag === "TFOOT") return "rowgroup";
+      if (tag === "TR") return "row";
+      if (tag === "TD") return "cell";
+      if (tag === "TH") {
+        return element.getAttribute("scope")?.toLowerCase() === "row" ? "rowheader" : "columnheader";
+      }
+      if (tag === "INPUT") {
+        const input = element as HTMLInputElement;
+        if (["button", "image", "reset", "submit"].includes(input.type)) return "button";
+        if (input.type === "checkbox") return "checkbox";
+        if (input.type === "number") return "spinbutton";
+        if (input.type === "radio") return "radio";
+        if (input.type === "range") return "slider";
+        if (input.list) return "combobox";
+        if (input.type === "search") return "searchbox";
+        return "textbox";
+      }
+      if (tag === "TEXTAREA") return "textbox";
+      if (tag === "SELECT") {
+        const select = element as HTMLSelectElement;
+        return select.multiple || select.size > 1 ? "listbox" : "combobox";
+      }
       return "";
     }
 
@@ -948,5 +1215,5 @@ export async function collectViewportMeasurements(page: {
       const variance = values.reduce((sum, value) => sum + (value - average) ** 2, 0) / Math.max(values.length, 1);
       return Math.sqrt(variance);
     }
-  });
+  }, surfaceMapping);
 }
