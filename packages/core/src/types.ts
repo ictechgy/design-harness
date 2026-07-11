@@ -70,6 +70,48 @@ export interface DesignBrief {
   successCriteria?: string[];
 }
 
+export type CopySurface = "button" | "error" | "marketing" | "body";
+export type CopyRegister = "haeyoche" | "hapsyoche" | "noun-form" | "banmal";
+export type GlossaryTier = "approved" | "banned" | "use-carefully";
+export type GlossaryMatchMode = "literal" | "lemma";
+export type JosaHedgePolicy = "flag" | "allow";
+
+export interface CopyStyleSurfaceRule {
+  selectors?: string[];
+  roles?: string[];
+  tags?: string[];
+  regions?: string[];
+  ariaLive?: boolean;
+}
+
+export type CopyStyleSurfaceMap<T> = Partial<Record<CopySurface, T>>;
+
+export interface CopyStyleGlossaryTerm {
+  term: string;
+  tier: GlossaryTier;
+  preferredTerm?: string;
+  match?: GlossaryMatchMode;
+  surfaces?: CopySurface[];
+  note?: string;
+}
+
+export interface CopyStyleBannedPhrase {
+  phrase: string;
+  suggestedReplacement?: string;
+  surfaces?: CopySurface[];
+  reason?: string;
+}
+
+export interface CopyStyle {
+  schemaVersion: string;
+  locale: string;
+  josaHedgePolicy?: JosaHedgePolicy;
+  surfaceRegisters?: CopyStyleSurfaceMap<CopyRegister>;
+  surfaceMapping?: CopyStyleSurfaceMap<CopyStyleSurfaceRule>;
+  glossary?: CopyStyleGlossaryTerm[];
+  bannedPhrases?: CopyStyleBannedPhrase[];
+}
+
 export interface AuditTarget {
   schemaVersion: string;
   kind: "url";

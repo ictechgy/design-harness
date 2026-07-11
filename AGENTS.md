@@ -48,7 +48,7 @@ Criterion in `packages/core/src/criteria.ts` (with `CRITERION_SOURCES` entry) �
 
 ## Roadmap
 
-**Current milestone: v0.4a** — ADR-001 (`model-judged` runtime, `project-contract` source strength, policy matrix, `check:criteria-policy`, scoring weights), `content` category + schema/enum consolidation, page-wide text inventory + ariaSnapshot evidence, axe-core >= 4.12.1 pin. Full specs and acceptance criteria: **`docs/ROADMAP.md`** (committed, canonical). Do not start a future milestone without reading its spec there. (v0.3.2 completed 2026-07-08.)
+**Current milestone: v0.4b** — `@design-harness/copy-audit`, `copy-style.yaml`, Korean fixtures/provenance, and calibration runner. Full specs and acceptance criteria: **`docs/ROADMAP.md`** (committed, canonical). Do not start a future milestone without reading its spec there. (v0.4.1 completed 2026-07-10.)
 
 **Cut list (do NOT build now)**: MCP server (file contract `audit.json`/`report.md` is canonical; capture is commoditized) · best-of-N picker · community fixture pipeline · interaction-simulation / below-fold sweep / pixel contrast · more than two agent surfaces (Claude Code + Codex) · `guide from-references` CLI before the manual workflow proves value · Open Design integration · **evidence-against, do not build**: hue-template color harmony, symmetry/balance scoring for real UIs, scored Korean readability, MQM translation LQA, Figma-plugin surface, generic English style-guide enforcement (details: `docs/ROADMAP.md` cut list).
 

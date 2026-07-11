@@ -1,6 +1,6 @@
 import { HARNESS_VERSION, SCHEMA_VERSION } from "./version.js";
 import { CRITERIA } from "./criteria.js";
-import type { AuditResult, Criterion, DesignBrief, Finding, ReportManifest, RunMetadata } from "./types.js";
+import type { AuditResult, CopyStyle, Criterion, DesignBrief, Finding, ReportManifest, RunMetadata } from "./types.js";
 import { DEFAULT_VIEWPORT_PRESETS } from "./viewport-presets.js";
 import { scoreFindings } from "./scoring.js";
 
@@ -13,6 +13,76 @@ export function createExampleBrief(): DesignBrief {
     targetUsers: ["Local shop owner"],
     constraints: ["Must work on mobile and desktop"],
     successCriteria: ["Primary metrics are visible without horizontal scrolling"]
+  };
+}
+
+export function createExampleCopyStyle(): CopyStyle {
+  return {
+    schemaVersion: SCHEMA_VERSION,
+    locale: "ko-KR",
+    josaHedgePolicy: "flag",
+    surfaceRegisters: {
+      button: "noun-form",
+      error: "haeyoche",
+      marketing: "haeyoche",
+      body: "haeyoche"
+    },
+    surfaceMapping: {
+      button: {
+        selectors: ["button", "[role=\"button\"]", "a.btn"],
+        roles: ["button"],
+        tags: ["button"]
+      },
+      error: {
+        selectors: ["[role=\"alert\"]", "[aria-live]", ".error"],
+        roles: ["alert"],
+        ariaLive: true
+      },
+      marketing: {
+        selectors: ["h1", ".hero", "[data-copy-surface=\"marketing\"]"],
+        tags: ["h1", "h2"]
+      },
+      body: {
+        selectors: ["main p", "article p"],
+        tags: ["p"]
+      }
+    },
+    glossary: [
+      {
+        term: "잔액",
+        tier: "approved",
+        match: "lemma",
+        surfaces: ["body", "error"]
+      },
+      {
+        term: "잔고",
+        tier: "use-carefully",
+        preferredTerm: "잔액",
+        match: "lemma",
+        note: "Prefer the product's configured financial term."
+      },
+      {
+        term: "충전하기",
+        tier: "banned",
+        preferredTerm: "입금하기",
+        surfaces: ["button"]
+      }
+    ],
+    bannedPhrases: [
+      {
+        phrase: "빠르고 쉽습니다",
+        suggestedReplacement: "소요 시간과 다음 단계를 구체적으로 안내하세요.",
+        surfaces: ["marketing"],
+        reason: "Generic marketing copy is not actionable in this product surface."
+      }
+    ]
+  };
+}
+
+export function createMinimalCopyStyle(): CopyStyle {
+  return {
+    schemaVersion: SCHEMA_VERSION,
+    locale: "ko-KR"
   };
 }
 

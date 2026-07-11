@@ -34,6 +34,36 @@ Source strengths:
 
 The exhaustive sourceStrength x determinism x resultKind matrix (ceiling semantics — downgrading is always allowed) is defined in [ADR-001](adr/ADR-001-copy-audit-foundations.md) and enforced at the criterion level by `pnpm check:criteria-policy` (`packages/core/src/criteria-policy.ts`).
 
+## Copy Style Contract
+
+`copy-style.yaml` is the project-declared contract for rendered-copy checks. The core schema is `packages/core/schemas/copy-style.schema.json`; until CLI YAML parsing is implemented with an approved dependency, JSON-equivalent fixtures validate the same structure.
+
+The v1 contract includes:
+
+- `locale`: BCP47-style locale such as `ko-KR`.
+- `josaHedgePolicy`: `flag` or `allow` for rendered josa hedge forms such as `을(를)`.
+- `surfaceRegisters`: optional per-surface register targets using canonical slugs:
+  - `haeyoche` = 해요체
+  - `hapsyoche` = 합쇼체
+  - `noun-form` = 명사형
+  - `banmal` = 반말
+- `glossary`: typed term tiers `approved`, `banned`, and `use-carefully`, with optional `literal` or `lemma` matching.
+- `bannedPhrases`: configured phrases that are contract risks only when the project declares them.
+- `surfaceMapping`: DOM/ARIA hints that map text inventory nodes to configured surfaces.
+
+Supported surfaces are `button`, `error`, `marketing`, and `body`. Text nodes that cannot be mapped to a configured surface are treated as unconfigured; surface-specific copy checks must stay silent for them.
+
+Default mapping guidance:
+
+| Surface | High-confidence hints |
+|---|---|
+| `button` | `button`, `[role="button"]`, button-like links such as `a.btn` |
+| `error` | `[role="alert"]`, `aria-live`, error-like selectors such as `.error` |
+| `marketing` | headings, hero selectors, or explicit `data-copy-surface="marketing"` |
+| `body` | paragraph and article text that is not claimed by a more specific surface |
+
+Copy-style-backed criteria use `sourceStrength: "project-contract"` and can emit deterministic `risk` at most. They assert "this captured copy conflicts with your declared contract", not universal language quality.
+
 ### Computation Determinism Never Upgrades Criterion Strength
 
 A check can be deterministically computable while its criterion is research-grade. Color counts, font-variant counts, and density budgets are exact measurements, but the claim "this hurts design quality" rests on research whose best validated metric sets explain only ~30-50% of variance in human aesthetic ratings (Reinecke et al. CHI 2013, adj R² = .48; Miniukovich & De Angeli CHI 2015, 49% web / 32% app). Such checks land as `research-emerging` or `industry-heuristic` source strength, `heuristic` determinism, and `risk` or `needs-review` result kind — and the advisory score must never be presented as an objective design-quality grade. Evidence table: [Visual Metrics Evidence](research/visual-metrics-evidence.md).

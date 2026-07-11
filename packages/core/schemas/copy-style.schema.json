@@ -1,0 +1,208 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://design-harness.dev/schemas/copy-style.schema.json",
+  "title": "CopyStyle",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "locale"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "type": "string",
+      "const": "0.2"
+    },
+    "locale": {
+      "type": "string",
+      "minLength": 2,
+      "pattern": "^[a-z]{2,3}(-[A-Z]{2})?$"
+    },
+    "josaHedgePolicy": {
+      "type": "string",
+      "enum": [
+        "flag",
+        "allow"
+      ]
+    },
+    "surfaceRegisters": {
+      "$ref": "#/$defs/surfaceRegisters"
+    },
+    "surfaceMapping": {
+      "$ref": "#/$defs/surfaceMapping"
+    },
+    "glossary": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/glossaryTerm"
+      }
+    },
+    "bannedPhrases": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/bannedPhrase"
+      }
+    }
+  },
+  "$defs": {
+    "copySurface": {
+      "type": "string",
+      "enum": [
+        "button",
+        "error",
+        "marketing",
+        "body"
+      ]
+    },
+    "copyRegister": {
+      "type": "string",
+      "enum": [
+        "haeyoche",
+        "hapsyoche",
+        "noun-form",
+        "banmal"
+      ]
+    },
+    "surfaceRegisters": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "button": {
+          "$ref": "#/$defs/copyRegister"
+        },
+        "error": {
+          "$ref": "#/$defs/copyRegister"
+        },
+        "marketing": {
+          "$ref": "#/$defs/copyRegister"
+        },
+        "body": {
+          "$ref": "#/$defs/copyRegister"
+        }
+      }
+    },
+    "surfaceMapping": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "button": {
+          "$ref": "#/$defs/surfaceRule"
+        },
+        "error": {
+          "$ref": "#/$defs/surfaceRule"
+        },
+        "marketing": {
+          "$ref": "#/$defs/surfaceRule"
+        },
+        "body": {
+          "$ref": "#/$defs/surfaceRule"
+        }
+      }
+    },
+    "surfaceRule": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "selectors": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "roles": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "regions": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "ariaLive": {
+          "type": "boolean"
+        }
+      }
+    },
+    "glossaryTerm": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "term",
+        "tier"
+      ],
+      "properties": {
+        "term": {
+          "type": "string",
+          "minLength": 1
+        },
+        "tier": {
+          "type": "string",
+          "enum": [
+            "approved",
+            "banned",
+            "use-carefully"
+          ]
+        },
+        "preferredTerm": {
+          "type": "string",
+          "minLength": 1
+        },
+        "match": {
+          "type": "string",
+          "enum": [
+            "literal",
+            "lemma"
+          ]
+        },
+        "surfaces": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/copySurface"
+          }
+        },
+        "note": {
+          "type": "string"
+        }
+      }
+    },
+    "bannedPhrase": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "phrase"
+      ],
+      "properties": {
+        "phrase": {
+          "type": "string",
+          "minLength": 1
+        },
+        "suggestedReplacement": {
+          "type": "string",
+          "minLength": 1
+        },
+        "surfaces": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/copySurface"
+          }
+        },
+        "reason": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

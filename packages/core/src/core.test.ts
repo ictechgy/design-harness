@@ -6,10 +6,12 @@ import {
   assertLocalHttpUrl,
   createExampleAuditResult,
   createExampleBrief,
+  createExampleCopyStyle,
   createExampleCriterion,
   createExampleFinding,
   createExampleMetadata,
   createExampleReportManifest,
+  createMinimalCopyStyle,
   CRITERIA,
   findingMetadataForCheck,
   renderMarkdownReport,
@@ -46,6 +48,51 @@ describe("core schemas", () => {
     expect(result.valid).toBe(false);
     expect(result.issues.map((issue) => issue.path)).toContain("$.goals");
     expect(result.issues.map((issue) => issue.path)).toContain("$.targetUsers");
+  });
+
+  it("accepts valid minimal and full copy style contracts", () => {
+    expect(validateSchema("copy-style", createMinimalCopyStyle()).valid).toBe(true);
+    expect(validateSchema("copy-style", createExampleCopyStyle()).valid).toBe(true);
+  });
+
+  it("rejects invalid copy style contract values", () => {
+    const invalidCopyStyle = {
+      ...createExampleCopyStyle(),
+      surfaceRegisters: {
+        button: "casual"
+      },
+      glossary: [
+        {
+          term: "잔액",
+          tier: "preferred"
+        }
+      ],
+      bannedPhrases: [
+        {
+          phrase: ""
+        }
+      ],
+      josaHedgePolicy: "warn",
+      surfaceMapping: {
+        dialog: {
+          selectors: [".modal"]
+        },
+        button: {
+          selectors: [".primary", 42]
+        }
+      }
+    };
+
+    const result = validateSchema("copy-style", invalidCopyStyle);
+    expect(result.valid).toBe(false);
+    expect(result.issues.map((issue) => issue.path)).toEqual(expect.arrayContaining([
+      "$.josaHedgePolicy",
+      "$.surfaceRegisters.button",
+      "$.surfaceMapping.dialog",
+      "$.surfaceMapping.button.selectors[1]",
+      "$.glossary[0].tier",
+      "$.bannedPhrases[0].phrase"
+    ]));
   });
 
   it("requires evidence-backed findings", () => {

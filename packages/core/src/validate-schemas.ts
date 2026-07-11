@@ -3,6 +3,7 @@ import { assertValidSchema } from "./validation.js";
 import {
   createExampleAuditResult,
   createExampleBrief,
+  createExampleCopyStyle,
   createExampleCriterion,
   createExampleFinding,
   createExampleMetadata,
@@ -18,6 +19,7 @@ for (const [name, schema] of Object.entries(schemas)) {
 }
 
 assertValidSchema("brief", createExampleBrief());
+assertValidSchema("copy-style", createExampleCopyStyle());
 assertValidSchema("criterion", createExampleCriterion());
 assertValidSchema("finding", createExampleFinding());
 assertValidSchema("audit-result", createExampleAuditResult());
