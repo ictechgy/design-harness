@@ -2,6 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://design-harness.dev/schemas/copy-style.schema.json",
   "title": "CopyStyle",
+  "description": "Project-declared copy rules and ordered surface-resolution bindings.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -16,14 +17,11 @@
     "locale": {
       "type": "string",
       "minLength": 2,
-      "pattern": "^[a-z]{2,3}(-[A-Z]{2})?$"
+      "pattern": "^[a-z]{2,3}(-[A-Z]{2})?$",
+      "description": "Primary language subtag with an optional uppercase two-letter region, such as ko or ko-KR."
     },
     "josaHedgePolicy": {
-      "type": "string",
-      "enum": [
-        "flag",
-        "allow"
-      ]
+      "$ref": "#/$defs/josaHedgePolicy"
     },
     "surfaceRegisters": {
       "$ref": "#/$defs/surfaceRegisters"
@@ -45,6 +43,11 @@
     }
   },
   "$defs": {
+    "nonBlankString": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "\\S"
+    },
     "copySurface": {
       "type": "string",
       "enum": [
@@ -62,6 +65,30 @@
         "noun-form",
         "banmal"
       ]
+    },
+    "glossaryTier": {
+      "type": "string",
+      "enum": [
+        "approved",
+        "banned",
+        "use-carefully"
+      ]
+    },
+    "glossaryMatchMode": {
+      "type": "string",
+      "enum": [
+        "literal",
+        "lemma"
+      ]
+    },
+    "josaHedgePolicy": {
+      "type": "string",
+      "enum": [
+        "flag",
+        "allow"
+      ],
+      "default": "flag",
+      "description": "When omitted, consumers must behave as if flag was configured."
     },
     "surfaceRegisters": {
       "type": "object",
@@ -82,57 +109,96 @@
       }
     },
     "surfaceMapping": {
-      "type": "object",
-      "additionalProperties": false,
-      "properties": {
-        "button": {
-          "$ref": "#/$defs/surfaceRule"
-        },
-        "error": {
-          "$ref": "#/$defs/surfaceRule"
-        },
-        "marketing": {
-          "$ref": "#/$defs/surfaceRule"
-        },
-        "body": {
-          "$ref": "#/$defs/surfaceRule"
-        }
+      "type": "array",
+      "minItems": 1,
+      "description": "Ordered rules. The first matching rule wins; unmatched nodes remain unconfigured.",
+      "items": {
+        "$ref": "#/$defs/surfaceRule"
       }
     },
     "surfaceRule": {
       "type": "object",
       "additionalProperties": false,
+      "required": [
+        "surface",
+        "matchers"
+      ],
       "properties": {
-        "selectors": {
-          "type": "array",
-          "items": {
-            "type": "string",
-            "minLength": 1
-          }
+        "surface": {
+          "$ref": "#/$defs/copySurface"
         },
-        "roles": {
+        "matchers": {
           "type": "array",
+          "minItems": 1,
+          "description": "Matchers inside a rule are ORed.",
           "items": {
-            "type": "string",
-            "minLength": 1
+            "$ref": "#/$defs/surfaceMatcher"
           }
+        }
+      }
+    },
+    "surfaceMatcher": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/roleMatcher"
         },
-        "tags": {
-          "type": "array",
-          "items": {
-            "type": "string",
-            "minLength": 1
-          }
+        {
+          "$ref": "#/$defs/tagMatcher"
         },
-        "regions": {
-          "type": "array",
-          "items": {
-            "type": "string",
-            "minLength": 1
-          }
+        {
+          "$ref": "#/$defs/adapterMatcher"
+        }
+      ]
+    },
+    "roleMatcher": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "value"
+      ],
+      "properties": {
+        "kind": {
+          "const": "role"
         },
-        "ariaLive": {
-          "type": "boolean"
+        "value": {
+          "$ref": "#/$defs/nonBlankString"
+        }
+      }
+    },
+    "tagMatcher": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "value"
+      ],
+      "properties": {
+        "kind": {
+          "const": "tag"
+        },
+        "value": {
+          "$ref": "#/$defs/nonBlankString"
+        }
+      }
+    },
+    "adapterMatcher": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "adapter",
+        "value"
+      ],
+      "properties": {
+        "kind": {
+          "const": "adapter"
+        },
+        "adapter": {
+          "$ref": "#/$defs/nonBlankString"
+        },
+        "value": {
+          "$ref": "#/$defs/nonBlankString"
         }
       }
     },
@@ -145,30 +211,21 @@
       ],
       "properties": {
         "term": {
-          "type": "string",
-          "minLength": 1
+          "$ref": "#/$defs/nonBlankString"
         },
         "tier": {
-          "type": "string",
-          "enum": [
-            "approved",
-            "banned",
-            "use-carefully"
-          ]
+          "$ref": "#/$defs/glossaryTier"
         },
         "preferredTerm": {
-          "type": "string",
-          "minLength": 1
+          "$ref": "#/$defs/nonBlankString"
         },
         "match": {
-          "type": "string",
-          "enum": [
-            "literal",
-            "lemma"
-          ]
+          "$ref": "#/$defs/glossaryMatchMode"
         },
         "surfaces": {
           "type": "array",
+          "minItems": 1,
+          "description": "When omitted, the term applies to all rendered copy. When present, it applies only to nodes resolved to one of these surfaces.",
           "items": {
             "$ref": "#/$defs/copySurface"
           }
@@ -186,15 +243,15 @@
       ],
       "properties": {
         "phrase": {
-          "type": "string",
-          "minLength": 1
+          "$ref": "#/$defs/nonBlankString"
         },
         "suggestedReplacement": {
-          "type": "string",
-          "minLength": 1
+          "$ref": "#/$defs/nonBlankString"
         },
         "surfaces": {
           "type": "array",
+          "minItems": 1,
+          "description": "When omitted, the phrase applies to all rendered copy. When present, it applies only to nodes resolved to one of these surfaces.",
           "items": {
             "$ref": "#/$defs/copySurface"
           }

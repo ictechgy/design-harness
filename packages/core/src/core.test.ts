@@ -12,8 +12,15 @@ import {
   createExampleMetadata,
   createExampleReportManifest,
   createMinimalCopyStyle,
+  COPY_REGISTERS,
+  COPY_SURFACES,
   CRITERIA,
+  DEFAULT_JOSA_HEDGE_POLICY,
   findingMetadataForCheck,
+  GLOSSARY_MATCH_MODES,
+  GLOSSARY_TIERS,
+  JOSA_HEDGE_POLICIES,
+  loadSchema,
   renderMarkdownReport,
   resolveWorkspacePath,
   scoreFindings,
@@ -64,7 +71,8 @@ describe("core schemas", () => {
       glossary: [
         {
           term: "잔액",
-          tier: "preferred"
+          tier: "preferred",
+          surfaces: []
         }
       ],
       bannedPhrases: [
@@ -73,14 +81,16 @@ describe("core schemas", () => {
         }
       ],
       josaHedgePolicy: "warn",
-      surfaceMapping: {
-        dialog: {
-          selectors: [".modal"]
+      surfaceMapping: [
+        {
+          surface: "dialog",
+          matchers: [{ kind: "adapter", adapter: "web-dom", value: ".modal" }]
         },
-        button: {
-          selectors: [".primary", 42]
+        {
+          surface: "button",
+          matchers: [{ kind: "tag", value: 42 }]
         }
-      }
+      ]
     };
 
     const result = validateSchema("copy-style", invalidCopyStyle);
@@ -88,11 +98,51 @@ describe("core schemas", () => {
     expect(result.issues.map((issue) => issue.path)).toEqual(expect.arrayContaining([
       "$.josaHedgePolicy",
       "$.surfaceRegisters.button",
-      "$.surfaceMapping.dialog",
-      "$.surfaceMapping.button.selectors[1]",
+      "$.surfaceMapping[0].surface",
+      "$.surfaceMapping[1].matchers[0]",
       "$.glossary[0].tier",
+      "$.glossary[0].surfaces",
       "$.bannedPhrases[0].phrase"
     ]));
+  });
+
+  it("rejects blank copy match values and empty surface rules", () => {
+    const result = validateSchema("copy-style", {
+      ...createMinimalCopyStyle(),
+      surfaceMapping: [
+        {
+          surface: "button",
+          matchers: [{ kind: "adapter", adapter: " ", value: " " }]
+        },
+        {
+          surface: "body",
+          matchers: []
+        }
+      ],
+      glossary: [{ term: " ", tier: "approved" }],
+      bannedPhrases: [{ phrase: " " }]
+    });
+
+    expect(result.valid).toBe(false);
+    expect(result.issues.map((issue) => issue.path)).toEqual(expect.arrayContaining([
+      "$.surfaceMapping[0].matchers[0]",
+      "$.surfaceMapping[1].matchers",
+      "$.glossary[0].term",
+      "$.bannedPhrases[0].phrase"
+    ]));
+  });
+
+  it("keeps copy style runtime enums in schema lockstep", () => {
+    const schema = loadSchema("copy-style") as {
+      $defs: Record<string, { enum?: unknown[]; default?: unknown }>;
+    };
+
+    expect(schema.$defs.copySurface?.enum).toEqual([...COPY_SURFACES]);
+    expect(schema.$defs.copyRegister?.enum).toEqual([...COPY_REGISTERS]);
+    expect(schema.$defs.glossaryTier?.enum).toEqual([...GLOSSARY_TIERS]);
+    expect(schema.$defs.glossaryMatchMode?.enum).toEqual([...GLOSSARY_MATCH_MODES]);
+    expect(schema.$defs.josaHedgePolicy?.enum).toEqual([...JOSA_HEDGE_POLICIES]);
+    expect(schema.$defs.josaHedgePolicy?.default).toBe(DEFAULT_JOSA_HEDGE_POLICY);
   });
 
   it("requires evidence-backed findings", () => {

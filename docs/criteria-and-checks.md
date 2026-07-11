@@ -40,8 +40,8 @@ The exhaustive sourceStrength x determinism x resultKind matrix (ceiling semanti
 
 The v1 contract includes:
 
-- `locale`: BCP47-style locale such as `ko-KR`.
-- `josaHedgePolicy`: `flag` or `allow` for rendered josa hedge forms such as `을(를)`.
+- `locale`: a primary language subtag plus an optional uppercase two-letter region, such as `ko` or `ko-KR`.
+- `josaHedgePolicy`: `flag` or `allow` for rendered josa hedge forms such as `을(를)`; omission means `flag`.
 - `surfaceRegisters`: optional per-surface register targets using canonical slugs:
   - `haeyoche` = 해요체
   - `hapsyoche` = 합쇼체
@@ -49,18 +49,20 @@ The v1 contract includes:
   - `banmal` = 반말
 - `glossary`: typed term tiers `approved`, `banned`, and `use-carefully`, with optional `literal` or `lemma` matching.
 - `bannedPhrases`: configured phrases that are contract risks only when the project declares them.
-- `surfaceMapping`: DOM/ARIA hints that map text inventory nodes to configured surfaces.
+- `surfaceMapping`: an ordered list of surface rules. Each rule has one or more OR-ed `role`, `tag`, or namespaced `adapter` matchers.
 
-Supported surfaces are `button`, `error`, `marketing`, and `body`. Text nodes that cannot be mapped to a configured surface are treated as unconfigured; surface-specific copy checks must stay silent for them.
+Supported surfaces are `button`, `error`, `marketing`, and `body`. Rules run in array order and the first match wins. Capture adapters evaluate adapter-specific matchers against the live surface, then materialize `copySurface: { surface, ruleIndex, matcher }` on the text-inventory item. The pure copy analyzer consumes that resolution and never replays a CSS query against the serialized diagnostic selector.
 
-Default mapping guidance:
+No rule match means unconfigured; `body` is not an automatic fallback. Register checks run only when both a node surface and `surfaceRegisters[surface]` are configured. For glossary terms and banned phrases, omitted `surfaces` means all rendered copy, including unresolved nodes; a present non-empty list limits the rule to nodes resolved to those surfaces.
 
-| Surface | High-confidence hints |
+Recommended authoring rules, not built-in defaults:
+
+| Surface | High-confidence matcher examples |
 |---|---|
-| `button` | `button`, `[role="button"]`, button-like links such as `a.btn` |
-| `error` | `[role="alert"]`, `aria-live`, error-like selectors such as `.error` |
-| `marketing` | headings, hero selectors, or explicit `data-copy-surface="marketing"` |
-| `body` | paragraph and article text that is not claimed by a more specific surface |
+| `button` | role `button`, tag `button`, or `web-dom` query `a.btn` |
+| `error` | role `alert`, or `web-dom` query `[aria-live]` / `.error` |
+| `marketing` | tags `h1` / `h2`, or `web-dom` query `.hero` |
+| `body` | explicit `web-dom` queries such as `main p` / `article p` |
 
 Copy-style-backed criteria use `sourceStrength: "project-contract"` and can emit deterministic `risk` at most. They assert "this captured copy conflicts with your declared contract", not universal language quality.
 

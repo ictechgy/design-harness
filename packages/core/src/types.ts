@@ -70,18 +70,34 @@ export interface DesignBrief {
   successCriteria?: string[];
 }
 
-export type CopySurface = "button" | "error" | "marketing" | "body";
-export type CopyRegister = "haeyoche" | "hapsyoche" | "noun-form" | "banmal";
-export type GlossaryTier = "approved" | "banned" | "use-carefully";
-export type GlossaryMatchMode = "literal" | "lemma";
-export type JosaHedgePolicy = "flag" | "allow";
+export const COPY_SURFACES = ["button", "error", "marketing", "body"] as const;
+export const COPY_REGISTERS = ["haeyoche", "hapsyoche", "noun-form", "banmal"] as const;
+export const GLOSSARY_TIERS = ["approved", "banned", "use-carefully"] as const;
+export const GLOSSARY_MATCH_MODES = ["literal", "lemma"] as const;
+export const JOSA_HEDGE_POLICIES = ["flag", "allow"] as const;
+
+export type CopySurface = (typeof COPY_SURFACES)[number];
+export type CopyRegister = (typeof COPY_REGISTERS)[number];
+export type GlossaryTier = (typeof GLOSSARY_TIERS)[number];
+export type GlossaryMatchMode = (typeof GLOSSARY_MATCH_MODES)[number];
+export type JosaHedgePolicy = (typeof JOSA_HEDGE_POLICIES)[number];
+
+export const DEFAULT_JOSA_HEDGE_POLICY: JosaHedgePolicy = "flag";
+
+export type CopyStyleSurfaceMatcher =
+  | { kind: "role"; value: string }
+  | { kind: "tag"; value: string }
+  | { kind: "adapter"; adapter: string; value: string };
 
 export interface CopyStyleSurfaceRule {
-  selectors?: string[];
-  roles?: string[];
-  tags?: string[];
-  regions?: string[];
-  ariaLive?: boolean;
+  surface: CopySurface;
+  matchers: CopyStyleSurfaceMatcher[];
+}
+
+export interface CopySurfaceResolution {
+  surface: CopySurface;
+  ruleIndex: number;
+  matcher: CopyStyleSurfaceMatcher;
 }
 
 export type CopyStyleSurfaceMap<T> = Partial<Record<CopySurface, T>>;
@@ -107,7 +123,7 @@ export interface CopyStyle {
   locale: string;
   josaHedgePolicy?: JosaHedgePolicy;
   surfaceRegisters?: CopyStyleSurfaceMap<CopyRegister>;
-  surfaceMapping?: CopyStyleSurfaceMap<CopyStyleSurfaceRule>;
+  surfaceMapping?: CopyStyleSurfaceRule[];
   glossary?: CopyStyleGlossaryTerm[];
   bannedPhrases?: CopyStyleBannedPhrase[];
 }

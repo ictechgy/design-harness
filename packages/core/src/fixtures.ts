@@ -1,6 +1,15 @@
 import { HARNESS_VERSION, SCHEMA_VERSION } from "./version.js";
 import { CRITERIA } from "./criteria.js";
-import type { AuditResult, CopyStyle, Criterion, DesignBrief, Finding, ReportManifest, RunMetadata } from "./types.js";
+import {
+  DEFAULT_JOSA_HEDGE_POLICY,
+  type AuditResult,
+  type CopyStyle,
+  type Criterion,
+  type DesignBrief,
+  type Finding,
+  type ReportManifest,
+  type RunMetadata
+} from "./types.js";
 import { DEFAULT_VIEWPORT_PRESETS } from "./viewport-presets.js";
 import { scoreFindings } from "./scoring.js";
 
@@ -20,33 +29,47 @@ export function createExampleCopyStyle(): CopyStyle {
   return {
     schemaVersion: SCHEMA_VERSION,
     locale: "ko-KR",
-    josaHedgePolicy: "flag",
+    josaHedgePolicy: DEFAULT_JOSA_HEDGE_POLICY,
     surfaceRegisters: {
       button: "noun-form",
       error: "haeyoche",
       marketing: "haeyoche",
       body: "haeyoche"
     },
-    surfaceMapping: {
-      button: {
-        selectors: ["button", "[role=\"button\"]", "a.btn"],
-        roles: ["button"],
-        tags: ["button"]
+    surfaceMapping: [
+      {
+        surface: "button",
+        matchers: [
+          { kind: "role", value: "button" },
+          { kind: "tag", value: "button" },
+          { kind: "adapter", adapter: "web-dom", value: "a.btn" }
+        ]
       },
-      error: {
-        selectors: ["[role=\"alert\"]", "[aria-live]", ".error"],
-        roles: ["alert"],
-        ariaLive: true
+      {
+        surface: "error",
+        matchers: [
+          { kind: "role", value: "alert" },
+          { kind: "adapter", adapter: "web-dom", value: "[aria-live]" },
+          { kind: "adapter", adapter: "web-dom", value: ".error" }
+        ]
       },
-      marketing: {
-        selectors: ["h1", ".hero", "[data-copy-surface=\"marketing\"]"],
-        tags: ["h1", "h2"]
+      {
+        surface: "marketing",
+        matchers: [
+          { kind: "tag", value: "h1" },
+          { kind: "tag", value: "h2" },
+          { kind: "adapter", adapter: "web-dom", value: ".hero" },
+          { kind: "adapter", adapter: "web-dom", value: "[data-copy-surface=\"marketing\"]" }
+        ]
       },
-      body: {
-        selectors: ["main p", "article p"],
-        tags: ["p"]
+      {
+        surface: "body",
+        matchers: [
+          { kind: "adapter", adapter: "web-dom", value: "main p" },
+          { kind: "adapter", adapter: "web-dom", value: "article p" }
+        ]
       }
-    },
+    ],
     glossary: [
       {
         term: "잔액",
