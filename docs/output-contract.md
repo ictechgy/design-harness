@@ -59,7 +59,7 @@ Common evidence assets:
 
 - `screenshot`: captured viewport image path.
 - `measurement`: browser measurement data for checks.
-- `text-inventory`: page-wide rendered text inventory, capped per text-like field with `truncated: true` when shortened.
+- `text-inventory`: page-wide rendered text inventory, capped per text-like field with `truncated: true` when shortened. A configured capture adapter may add `copySurface: { surface, ruleIndex, matcher }`; this resolved provenance is capture-neutral and optional.
 - `aria-snapshot`: Playwright role/name snapshot, capped with `truncated: true` when shortened.
 
 Missing optional semantic-tree evidence is skipped. It does not make an audit partial. A failed attempted evidence capture can still produce partial artifacts with a failure evidence record.

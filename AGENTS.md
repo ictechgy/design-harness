@@ -48,7 +48,7 @@ Criterion in `packages/core/src/criteria.ts` (with `CRITERION_SOURCES` entry) �
 
 ## Roadmap
 
-**Current milestone: v0.4a** — ADR-001 (`model-judged` runtime, `project-contract` source strength, policy matrix, `check:criteria-policy`, scoring weights), `content` category + schema/enum consolidation, page-wide text inventory + ariaSnapshot evidence, axe-core >= 4.12.1 pin. Full specs and acceptance criteria: **`docs/ROADMAP.md`** (committed, canonical). Do not start a future milestone without reading its spec there. (v0.3.2 completed 2026-07-08.)
+**Current milestone: v0.4b** — `@design-harness/copy-audit`, `copy-style.yaml`, Korean fixtures/provenance, and calibration runner. Full specs and acceptance criteria: **`docs/ROADMAP.md`** (committed, canonical). Do not start a future milestone without reading its spec there. (v0.4.1 completed 2026-07-10.)
 
 **Cut list (do NOT build now)**: MCP server (file contract `audit.json`/`report.md` is canonical; capture is commoditized) · best-of-N picker · community fixture pipeline · interaction-simulation / below-fold sweep / pixel contrast · more than two agent surfaces (Claude Code + Codex) · `guide from-references` CLI before the manual workflow proves value · Open Design integration · **evidence-against, do not build**: hue-template color harmony, symmetry/balance scoring for real UIs, scored Korean readability, MQM translation LQA, Figma-plugin surface, generic English style-guide enforcement (details: `docs/ROADMAP.md` cut list).
 
@@ -62,7 +62,7 @@ Criterion in `packages/core/src/criteria.ts` (with `CRITERION_SOURCES` entry) �
 | `josa-batchim-mismatch` | **heuristic** risk | Kiwi-parser-dependent segmentation → heuristic (rule 1 corollary below). Deterministic risk allowed ONLY for the parser-free subset: Hangul-final token + particle provable from raw text. SKIP digit/Latin/symbol-final tokens; require `J*` POS confirmation |
 | Korean line-break (`break-all` / missing `keep-all`) | deterministic **risk** | computed-style |
 | Glossary/terminology (typed term tiers: approved/banned/use-carefully) | deterministic **risk** | only when a project glossary is configured |
-| Register mixing (해요체/합쇼체/반말 via Kiwi EF tags) | heuristic | only against a configured per-surface register map; hard-exclude strings with no sentence-final ending (labels, fragments, buttons) |
+| Register mixing (해요체/합쇼체/반말 via Kiwi EF tags) | heuristic | only against a configured per-surface register map; `noun-form` is a valid target for labels/fragments, which the EF-based mixing detector excludes |
 | Object honorifics (사물존칭) | **LLM judge only** (v0.6, needs-review, score-exempt) | re-tiered 2026-07-07: no dataset or detector exists; NIKL calls the 간접존대 boundary undefined; no rule check in copy-audit v1 |
 | Translationese (번역투) lexicon | heuristic, needs-review | versioned data seeded from NIKL materials; always-wrong subset = 이중피동; no calibration corpus exists — log match rates in audit.json, per-pattern suppression |
 | Korean spelling (spellcheck-ko) | heuristic, **never failure** | unknown-word hits = risk with per-project dictionary (brand names/neologisms dominate) |

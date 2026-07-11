@@ -1,4 +1,12 @@
-import { findingMetadataForCheck, type Confidence, type Finding, type FindingObservation, type RubricCategory, type Severity } from "@design-harness/core";
+import {
+  findingMetadataForCheck,
+  type Confidence,
+  type CopySurfaceResolution,
+  type Finding,
+  type FindingObservation,
+  type RubricCategory,
+  type Severity
+} from "@design-harness/core";
 
 export interface ElementSample {
   selector: string;
@@ -71,6 +79,7 @@ export interface TextInventoryItem {
   tag: string;
   role: string;
   accessibleName: string;
+  copySurface?: CopySurfaceResolution;
 }
 
 export interface ViewportMeasurements {

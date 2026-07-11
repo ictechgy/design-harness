@@ -34,6 +34,40 @@ Source strengths:
 
 The exhaustive sourceStrength x determinism x resultKind matrix (ceiling semantics — downgrading is always allowed) is defined in [ADR-001](adr/ADR-001-copy-audit-foundations.md) and enforced at the criterion level by `pnpm check:criteria-policy` (`packages/core/src/criteria-policy.ts`).
 
+### Copy Style Contract
+
+`copy-style.yaml` is the project-declared contract for rendered-copy checks. The core schema is `packages/core/schemas/copy-style.schema.json`; until CLI YAML parsing is implemented with an approved dependency, JSON-equivalent fixtures validate the same structure.
+
+The v1 contract includes:
+
+- `locale`: a primary language subtag plus an optional uppercase two-letter region, such as `ko` or `ko-KR`.
+- `josaHedgePolicy`: `flag` or `allow` for rendered josa hedge forms such as `을(를)`; omission means `flag`.
+- `surfaceRegisters`: optional per-surface register targets using canonical slugs:
+  - `haeyoche` = 해요체
+  - `hapsyoche` = 합쇼체
+  - `noun-form` = 명사형
+  - `banmal` = 반말
+- `glossary`: typed term tiers `approved`, `banned`, and `use-carefully`, with optional `literal` or `lemma` matching.
+- `bannedPhrases`: configured phrases that are contract risks only when the project declares them.
+- `surfaceMapping`: an ordered list of surface rules. Each rule has one or more OR-ed `role` or namespaced `adapter` matchers.
+
+Supported surfaces are `button`, `error`, `marketing`, and `body`. One capture-side materializer evaluates the entire rule list in array order. Matchers inside a rule run in order: `role` matches the node's resolved lowercase role token, while an `adapter` matcher is evaluated only by the adapter that owns its lowercase namespace. The first matching matcher is recorded as `copySurface: { surface, ruleIndex, matcher }`, then resolution stops. The pure copy analyzer consumes that resolution and never replays matchers against serialized evidence.
+
+No rule match means unconfigured; `body` is not an automatic fallback. Register checks run only when both a node surface and `surfaceRegisters[surface]` are configured. For glossary terms and banned phrases, omitted `surfaces` means all rendered copy, including unresolved nodes; a present non-empty list limits the rule to nodes resolved to those surfaces.
+
+A supported adapter with a valid query that finds nothing is a normal non-match. An unsupported adapter namespace or malformed adapter query emits an explicit non-failing configuration notice and never matches; it must not silently look like a valid query that found nothing.
+
+Recommended authoring rules, not built-in defaults:
+
+| Surface | High-confidence matcher examples |
+|---|---|
+| `button` | role `button`, or `web-dom` query `button` / `a.btn` |
+| `error` | role `alert`, or `web-dom` query `[aria-live]` / `.error` |
+| `marketing` | `web-dom` query `h1` / `h2` / `.hero` |
+| `body` | explicit `web-dom` queries such as `main p` / `article p` |
+
+Copy-style-backed criteria use `sourceStrength: "project-contract"` and can emit deterministic `risk` at most. They assert "this captured copy conflicts with your declared contract", not universal language quality.
+
 ### Computation Determinism Never Upgrades Criterion Strength
 
 A check can be deterministically computable while its criterion is research-grade. Color counts, font-variant counts, and density budgets are exact measurements, but the claim "this hurts design quality" rests on research whose best validated metric sets explain only ~30-50% of variance in human aesthetic ratings (Reinecke et al. CHI 2013, adj R² = .48; Miniukovich & De Angeli CHI 2015, 49% web / 32% app). Such checks land as `research-emerging` or `industry-heuristic` source strength, `heuristic` determinism, and `risk` or `needs-review` result kind — and the advisory score must never be presented as an objective design-quality grade. Evidence table: [Visual Metrics Evidence](research/visual-metrics-evidence.md).

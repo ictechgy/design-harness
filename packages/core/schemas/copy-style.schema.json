@@ -1,0 +1,252 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://design-harness.dev/schemas/copy-style.schema.json",
+  "title": "CopyStyle",
+  "description": "Project-declared copy rules and ordered surface-resolution bindings.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "locale"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "type": "string",
+      "const": "0.2"
+    },
+    "locale": {
+      "type": "string",
+      "minLength": 2,
+      "pattern": "^[a-z]{2,3}(-[A-Z]{2})?$",
+      "description": "Primary language subtag with an optional uppercase two-letter region, such as ko or ko-KR."
+    },
+    "josaHedgePolicy": {
+      "$ref": "#/$defs/josaHedgePolicy"
+    },
+    "surfaceRegisters": {
+      "$ref": "#/$defs/surfaceRegisters"
+    },
+    "surfaceMapping": {
+      "$ref": "#/$defs/surfaceMapping"
+    },
+    "glossary": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/glossaryTerm"
+      }
+    },
+    "bannedPhrases": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/bannedPhrase"
+      }
+    }
+  },
+  "$defs": {
+    "nonBlankString": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^\\S(?:[\\s\\S]*\\S)?$",
+      "description": "A non-empty string with no leading or trailing whitespace."
+    },
+    "lowercaseToken": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*$"
+    },
+    "copySurface": {
+      "type": "string",
+      "enum": [
+        "button",
+        "error",
+        "marketing",
+        "body"
+      ]
+    },
+    "copyRegister": {
+      "type": "string",
+      "enum": [
+        "haeyoche",
+        "hapsyoche",
+        "noun-form",
+        "banmal"
+      ]
+    },
+    "glossaryTier": {
+      "type": "string",
+      "enum": [
+        "approved",
+        "banned",
+        "use-carefully"
+      ]
+    },
+    "glossaryMatchMode": {
+      "type": "string",
+      "enum": [
+        "literal",
+        "lemma"
+      ]
+    },
+    "josaHedgePolicy": {
+      "type": "string",
+      "enum": [
+        "flag",
+        "allow"
+      ],
+      "default": "flag",
+      "description": "When omitted, consumers must behave as if flag was configured."
+    },
+    "surfaceRegisters": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "button": {
+          "$ref": "#/$defs/copyRegister"
+        },
+        "error": {
+          "$ref": "#/$defs/copyRegister"
+        },
+        "marketing": {
+          "$ref": "#/$defs/copyRegister"
+        },
+        "body": {
+          "$ref": "#/$defs/copyRegister"
+        }
+      }
+    },
+    "surfaceMapping": {
+      "type": "array",
+      "minItems": 1,
+      "description": "Ordered rules evaluated by one capture-side materializer. The first matching rule wins; unmatched nodes remain unconfigured.",
+      "items": {
+        "$ref": "#/$defs/surfaceRule"
+      }
+    },
+    "surfaceRule": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "surface",
+        "matchers"
+      ],
+      "properties": {
+        "surface": {
+          "$ref": "#/$defs/copySurface"
+        },
+        "matchers": {
+          "type": "array",
+          "minItems": 1,
+          "description": "Matchers inside a rule are ORed.",
+          "items": {
+            "$ref": "#/$defs/surfaceMatcher"
+          }
+        }
+      }
+    },
+    "surfaceMatcher": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/roleMatcher"
+        },
+        {
+          "$ref": "#/$defs/adapterMatcher"
+        }
+      ]
+    },
+    "roleMatcher": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "value"
+      ],
+      "properties": {
+        "kind": {
+          "const": "role"
+        },
+        "value": {
+          "$ref": "#/$defs/lowercaseToken"
+        }
+      }
+    },
+    "adapterMatcher": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "The named capture adapter owns validation and evaluation of value.",
+      "required": [
+        "kind",
+        "adapter",
+        "value"
+      ],
+      "properties": {
+        "kind": {
+          "const": "adapter"
+        },
+        "adapter": {
+          "$ref": "#/$defs/lowercaseToken"
+        },
+        "value": {
+          "$ref": "#/$defs/nonBlankString"
+        }
+      }
+    },
+    "glossaryTerm": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "term",
+        "tier"
+      ],
+      "properties": {
+        "term": {
+          "$ref": "#/$defs/nonBlankString"
+        },
+        "tier": {
+          "$ref": "#/$defs/glossaryTier"
+        },
+        "preferredTerm": {
+          "$ref": "#/$defs/nonBlankString"
+        },
+        "match": {
+          "$ref": "#/$defs/glossaryMatchMode"
+        },
+        "surfaces": {
+          "type": "array",
+          "minItems": 1,
+          "description": "When omitted, the term applies to all rendered copy. When present, it applies only to nodes resolved to one of these surfaces.",
+          "items": {
+            "$ref": "#/$defs/copySurface"
+          }
+        },
+        "note": {
+          "$ref": "#/$defs/nonBlankString"
+        }
+      }
+    },
+    "bannedPhrase": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "phrase"
+      ],
+      "properties": {
+        "phrase": {
+          "$ref": "#/$defs/nonBlankString"
+        },
+        "suggestedReplacement": {
+          "$ref": "#/$defs/nonBlankString"
+        },
+        "surfaces": {
+          "type": "array",
+          "minItems": 1,
+          "description": "When omitted, the phrase applies to all rendered copy. When present, it applies only to nodes resolved to one of these surfaces.",
+          "items": {
+            "$ref": "#/$defs/copySurface"
+          }
+        },
+        "reason": {
+          "$ref": "#/$defs/nonBlankString"
+        }
+      }
+    }
+  }
+}

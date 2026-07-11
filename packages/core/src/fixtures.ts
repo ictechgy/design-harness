@@ -1,6 +1,15 @@
 import { HARNESS_VERSION, SCHEMA_VERSION } from "./version.js";
 import { CRITERIA } from "./criteria.js";
-import type { AuditResult, Criterion, DesignBrief, Finding, ReportManifest, RunMetadata } from "./types.js";
+import {
+  DEFAULT_JOSA_HEDGE_POLICY,
+  type AuditResult,
+  type CopyStyle,
+  type Criterion,
+  type DesignBrief,
+  type Finding,
+  type ReportManifest,
+  type RunMetadata
+} from "./types.js";
 import { DEFAULT_VIEWPORT_PRESETS } from "./viewport-presets.js";
 import { scoreFindings } from "./scoring.js";
 
@@ -13,6 +22,89 @@ export function createExampleBrief(): DesignBrief {
     targetUsers: ["Local shop owner"],
     constraints: ["Must work on mobile and desktop"],
     successCriteria: ["Primary metrics are visible without horizontal scrolling"]
+  };
+}
+
+export function createExampleCopyStyle(): CopyStyle {
+  return {
+    schemaVersion: SCHEMA_VERSION,
+    locale: "ko-KR",
+    josaHedgePolicy: DEFAULT_JOSA_HEDGE_POLICY,
+    surfaceRegisters: {
+      button: "noun-form",
+      error: "haeyoche",
+      marketing: "haeyoche",
+      body: "haeyoche"
+    },
+    surfaceMapping: [
+      {
+        surface: "button",
+        matchers: [
+          { kind: "role", value: "button" },
+          { kind: "adapter", adapter: "web-dom", value: "a.btn" }
+        ]
+      },
+      {
+        surface: "error",
+        matchers: [
+          { kind: "role", value: "alert" },
+          { kind: "adapter", adapter: "web-dom", value: "[aria-live]" },
+          { kind: "adapter", adapter: "web-dom", value: ".error" }
+        ]
+      },
+      {
+        surface: "marketing",
+        matchers: [
+          { kind: "adapter", adapter: "web-dom", value: "h1" },
+          { kind: "adapter", adapter: "web-dom", value: "h2" },
+          { kind: "adapter", adapter: "web-dom", value: ".hero" },
+          { kind: "adapter", adapter: "web-dom", value: "[data-copy-surface=\"marketing\"]" }
+        ]
+      },
+      {
+        surface: "body",
+        matchers: [
+          { kind: "adapter", adapter: "web-dom", value: "main p" },
+          { kind: "adapter", adapter: "web-dom", value: "article p" }
+        ]
+      }
+    ],
+    glossary: [
+      {
+        term: "잔액",
+        tier: "approved",
+        match: "lemma",
+        surfaces: ["body", "error"]
+      },
+      {
+        term: "잔고",
+        tier: "use-carefully",
+        preferredTerm: "잔액",
+        match: "lemma",
+        note: "Prefer the product's configured financial term."
+      },
+      {
+        term: "충전하기",
+        tier: "banned",
+        preferredTerm: "입금하기",
+        surfaces: ["button"]
+      }
+    ],
+    bannedPhrases: [
+      {
+        phrase: "빠르고 쉽습니다",
+        suggestedReplacement: "소요 시간과 다음 단계를 구체적으로 안내하세요.",
+        surfaces: ["marketing"],
+        reason: "Generic marketing copy is not actionable in this product surface."
+      }
+    ]
+  };
+}
+
+export function createMinimalCopyStyle(): CopyStyle {
+  return {
+    schemaVersion: SCHEMA_VERSION,
+    locale: "ko-KR"
   };
 }
 

@@ -116,7 +116,12 @@ describe("auditUrl failure behavior", () => {
               nearestLang: "en",
               tag: "p",
               role: "",
-              accessibleName: "Rendered copy"
+              accessibleName: "Rendered copy",
+              copySurface: {
+                surface: "body",
+                ruleIndex: 3,
+                matcher: { kind: "adapter", adapter: "web-dom", value: "main p" }
+              }
             }]
           },
           ariaSnapshot: "- paragraph: Rendered copy"
@@ -138,6 +143,17 @@ describe("auditUrl failure behavior", () => {
         count: 1,
         truncatedCount: 0
       }
+    });
+    expect(textEvidence?.data).toMatchObject({
+      items: [
+        {
+          copySurface: {
+            surface: "body",
+            ruleIndex: 3,
+            matcher: { kind: "adapter", adapter: "web-dom", value: "main p" }
+          }
+        }
+      ]
     });
     expect(ariaEvidence).toMatchObject({
       type: "aria-snapshot",

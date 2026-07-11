@@ -6,12 +6,21 @@ import {
   assertLocalHttpUrl,
   createExampleAuditResult,
   createExampleBrief,
+  createExampleCopyStyle,
   createExampleCriterion,
   createExampleFinding,
   createExampleMetadata,
   createExampleReportManifest,
+  createMinimalCopyStyle,
+  COPY_REGISTERS,
+  COPY_SURFACES,
   CRITERIA,
+  DEFAULT_JOSA_HEDGE_POLICY,
   findingMetadataForCheck,
+  GLOSSARY_MATCH_MODES,
+  GLOSSARY_TIERS,
+  JOSA_HEDGE_POLICIES,
+  loadSchema,
   renderMarkdownReport,
   resolveWorkspacePath,
   scoreFindings,
@@ -46,6 +55,111 @@ describe("core schemas", () => {
     expect(result.valid).toBe(false);
     expect(result.issues.map((issue) => issue.path)).toContain("$.goals");
     expect(result.issues.map((issue) => issue.path)).toContain("$.targetUsers");
+  });
+
+  it("accepts valid minimal and full copy style contracts", () => {
+    expect(validateSchema("copy-style", createMinimalCopyStyle()).valid).toBe(true);
+    expect(validateSchema("copy-style", createExampleCopyStyle()).valid).toBe(true);
+  });
+
+  it("rejects invalid copy style contract values", () => {
+    const invalidCopyStyle = {
+      ...createExampleCopyStyle(),
+      surfaceRegisters: {
+        button: "casual"
+      },
+      glossary: [
+        {
+          term: "잔액",
+          tier: "preferred",
+          surfaces: []
+        }
+      ],
+      bannedPhrases: [
+        {
+          phrase: ""
+        }
+      ],
+      josaHedgePolicy: "warn",
+      surfaceMapping: [
+        {
+          surface: "dialog",
+          matchers: [{ kind: "adapter", adapter: "web-dom", value: ".modal" }]
+        },
+        {
+          surface: "button",
+          matchers: [{ kind: "role", value: 42 }]
+        }
+      ]
+    };
+
+    const result = validateSchema("copy-style", invalidCopyStyle);
+    expect(result.valid).toBe(false);
+    expect(result.issues.map((issue) => issue.path)).toEqual(expect.arrayContaining([
+      "$.josaHedgePolicy",
+      "$.surfaceRegisters.button",
+      "$.surfaceMapping[0].surface",
+      "$.surfaceMapping[1].matchers[0]",
+      "$.glossary[0].tier",
+      "$.glossary[0].surfaces",
+      "$.bannedPhrases[0].phrase"
+    ]));
+  });
+
+  it("rejects blank copy match values and empty surface rules", () => {
+    const result = validateSchema("copy-style", {
+      ...createMinimalCopyStyle(),
+      surfaceMapping: [
+        {
+          surface: "button",
+          matchers: [{ kind: "adapter", adapter: " ", value: " " }]
+        },
+        {
+          surface: "body",
+          matchers: []
+        },
+        {
+          surface: "error",
+          matchers: [{ kind: "role", value: "Alert" }]
+        },
+        {
+          surface: "marketing",
+          matchers: [{ kind: "adapter", adapter: "web dom", value: " .hero" }]
+        }
+      ],
+      glossary: [{ term: " ", tier: "approved", note: " " }],
+      bannedPhrases: [{ phrase: " ", reason: " " }]
+    });
+
+    expect(result.valid).toBe(false);
+    expect(result.issues.map((issue) => issue.path)).toEqual(expect.arrayContaining([
+      "$.surfaceMapping[0].matchers[0]",
+      "$.surfaceMapping[1].matchers",
+      "$.surfaceMapping[2].matchers[0]",
+      "$.surfaceMapping[3].matchers[0]",
+      "$.glossary[0].term",
+      "$.glossary[0].note",
+      "$.bannedPhrases[0].phrase",
+      "$.bannedPhrases[0].reason"
+    ]));
+  });
+
+  it("keeps copy style runtime enums in schema lockstep", () => {
+    const schema = loadSchema("copy-style") as {
+      $defs: Record<string, {
+        enum?: unknown[];
+        default?: unknown;
+        properties?: Record<string, unknown>;
+      }>;
+    };
+
+    expect(schema.$defs.copySurface?.enum).toEqual([...COPY_SURFACES]);
+    expect(Object.keys(schema.$defs.surfaceRegisters?.properties ?? {})).toEqual([...COPY_SURFACES]);
+    expect(schema.$defs.copyRegister?.enum).toEqual([...COPY_REGISTERS]);
+    expect(schema.$defs.glossaryTier?.enum).toEqual([...GLOSSARY_TIERS]);
+    expect(schema.$defs.glossaryMatchMode?.enum).toEqual([...GLOSSARY_MATCH_MODES]);
+    expect(schema.$defs.josaHedgePolicy?.enum).toEqual([...JOSA_HEDGE_POLICIES]);
+    expect(schema.$defs.josaHedgePolicy?.default).toBe(DEFAULT_JOSA_HEDGE_POLICY);
   });
 
   it("requires evidence-backed findings", () => {
