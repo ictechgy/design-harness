@@ -1,6 +1,6 @@
 {
   "schemaVersion": "0.2",
-  "harnessVersion": "0.4.2",
+  "harnessVersion": "0.4.0",
   "runId": "2026-07-09-141826875Z",
   "format": "markdown",
   "reportPath": "report.md",
