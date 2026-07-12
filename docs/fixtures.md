@@ -59,4 +59,6 @@ Internal calibration only — NEVER commit fixtures derived from these:
 
 When in doubt, generate synthetic Korean data instead. Every copy criterion should carry at least one bad → improved example pair with a reason.
 
-Every committed Korean fixture is listed in `examples/calibration-datasets/korean-copy/manifest.jsonl`. `pnpm validate:korean-copy` verifies required provenance fields, redistribution status, file existence, uniqueness, and complete coverage of the committed Korean fixture set.
+Every committed Korean fixture is listed in `examples/calibration-datasets/korean-copy/manifest.jsonl`. Each v2 record partitions the five parser-free copy checks between counted `expectedFindings` and registry-backed `shouldNotFlag.registeredCheckNames`; not-yet-implemented controls live separately under declared `futureCriteria`, and `josaHedgePolicy` records the fixture's explicit contract. `pnpm validate:korean-copy` verifies those expectations together with provenance, redistribution status, file existence, uniqueness, and complete fixture coverage.
+
+After a workspace build and Chromium install, `pnpm calibrate:fixtures` serves and audits all six records at one desktop viewport. It scores only the five parser-free copy checks, records other audit findings as out of scope, writes stable per-check TP/FP/FN data to `runs/calibration/calibration-summary.json`, and exits non-zero on any copy-check drift.

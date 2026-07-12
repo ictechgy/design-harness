@@ -103,6 +103,8 @@ Findings without determinism/resultKind metadata are treated as unclassified and
 
 A false positive costs more than a miss: repeated false flags cause reviewers to ignore the whole report. When a heuristic check's precision is unproven, ship it informational or logged-only and promote it after calibration data exists.
 
+The parser-free Korean copy checks use `pnpm calibrate:fixtures` as a live drift gate. All six licensed manifest fixtures are served and audited, the five in-scope copy `checkName` values are summarized as TP/FP/FN in `runs/calibration/calibration-summary.json`, and any FP, FN, or incomplete audit fails the command. Findings from other check families are retained in the summary as out of scope rather than silently discarded or misclassified as copy false positives.
+
 ### Do Not Build (Peer-Reviewed Evidence Against)
 
 - Hue-template color-harmony scoring: no predictive power for theme ratings; inter-rater agreement on color-theme quality is only 52% (O'Donovan et al. SIGGRAPH 2011). The evidence-backed palette signal is lightness-contrast structure with a restrained hue spread.

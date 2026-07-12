@@ -11,12 +11,15 @@ import {
 
 import type { CopyInventory, CopyTextNode } from "./types.js";
 
-type CopyCheckName =
-  | "placeholder-leak"
-  | "josa-hedge"
-  | "glossary-banned-term"
-  | "glossary-use-carefully-term"
-  | "banned-phrase";
+export const PARSER_FREE_COPY_CHECK_NAMES = [
+  "placeholder-leak",
+  "josa-hedge",
+  "glossary-banned-term",
+  "glossary-use-carefully-term",
+  "banned-phrase"
+] as const;
+
+type CopyCheckName = (typeof PARSER_FREE_COPY_CHECK_NAMES)[number];
 
 type PlaceholderFamily = "mustache" | "icu" | "output-contract";
 

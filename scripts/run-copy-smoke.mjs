@@ -1,133 +1,28 @@
-import { createReadStream, existsSync, rmSync, statSync, writeFileSync } from "node:fs";
-import { createServer } from "node:http";
-import { extname, join, normalize, resolve, sep } from "node:path";
-import {
-  SCHEMA_VERSION,
-  renderMarkdownReport
-} from "../packages/core/dist/index.js";
+import { rmSync, writeFileSync } from "node:fs";
+import { join, resolve } from "node:path";
+import { renderMarkdownReport } from "../packages/core/dist/index.js";
 import { auditUrl } from "../packages/visual-audit/dist/index.js";
+import {
+  copyStyleForSmoke,
+  desktopViewport,
+  directNodeSelector,
+  explicitRoleEvidence,
+  nearestAncestorSelector,
+  nonMatchingWebDomSelector
+} from "./copy-calibration-config.mjs";
+import { startLocalFixtureServer } from "./local-fixture-server.mjs";
 
 const fixtureRoot = resolve("examples/ui-quality-fixtures/korean");
 const outRoot = resolve("runs/copy-smoke");
-const desktop = {
-  name: "desktop",
-  width: 1440,
-  height: 900,
-  deviceScaleFactor: 1,
-  isMobile: false
-};
-const explicitRoleEvidence = "unknown-token SWITCH checkbox";
-const nonMatchingWebDomSelector = "[data-design-harness-never-match='role-smoke']";
-const directNodeSelector = "#direct-surface-copy";
-const nearestAncestorSelector = "#nearest-surface-wrapper";
-const copyStyle = {
-  schemaVersion: SCHEMA_VERSION,
-  locale: "ko-KR",
-  surfaceMapping: [
-    {
-      surface: "button",
-      matchers: [
-        { kind: "role", value: "switch" },
-        { kind: "role", value: "button" },
-        { kind: "adapter", adapter: "web-dom", value: "button" }
-      ]
-    },
-    {
-      surface: "error",
-      matchers: [{ kind: "adapter", adapter: "native-ui", value: "status" }]
-    },
-    {
-      surface: "marketing",
-      matchers: [{ kind: "adapter", adapter: "web-dom", value: "[" }]
-    },
-    {
-      surface: "body",
-      matchers: [
-        { kind: "adapter", adapter: "web-dom", value: "main p" },
-        { kind: "adapter", adapter: "web-dom", value: "p" }
-      ]
-    },
-    {
-      surface: "marketing",
-      matchers: [{ kind: "adapter", adapter: "web-dom", value: "p" }]
-    },
-    {
-      surface: "marketing",
-      matchers: [{ kind: "adapter", adapter: "web-dom", value: "h1" }]
-    },
-    {
-      surface: "marketing",
-      matchers: [{ kind: "adapter", adapter: "web-dom", value: nonMatchingWebDomSelector }]
-    },
-    {
-      surface: "marketing",
-      matchers: [{ kind: "adapter", adapter: "web-dom", value: directNodeSelector }]
-    },
-    {
-      surface: "body",
-      matchers: [{ kind: "adapter", adapter: "web-dom", value: nearestAncestorSelector }]
-    }
-  ],
-  glossary: [
-    {
-      term: "해지",
-      tier: "banned",
-      preferredTerm: "탈퇴",
-      match: "literal",
-      surfaces: ["body"]
-    },
-    {
-      term: "혁신적인",
-      tier: "use-carefully",
-      preferredTerm: "새",
-      match: "literal",
-      surfaces: ["body"]
-    }
-  ],
-  bannedPhrases: [
-    {
-      phrase: "무조건 성공",
-      suggestedReplacement: "예상 결과를 확인할 수 있습니다",
-      surfaces: ["body"]
-    }
-  ]
-};
 
 rmSync(outRoot, { recursive: true, force: true });
 
-const server = createServer((request, response) => {
-  const requestUrl = new URL(request.url ?? "/", `http://${request.headers.host ?? "localhost"}`);
-  const pathname = decodePathname(requestUrl.pathname, response);
-  if (!pathname) {
-    return;
-  }
-  const candidate = safeJoin(fixtureRoot, pathname);
-  if (!candidate || !existsSync(candidate) || !statSync(candidate).isFile()) {
-    response.writeHead(404, { "content-type": "text/plain; charset=utf-8" });
-    response.end("Not found");
-    return;
-  }
-  response.writeHead(200, { "content-type": mimeType(candidate) });
-  createReadStream(candidate).pipe(response);
-});
-
-await new Promise((resolveListen, rejectListen) => {
-  server.once("error", rejectListen);
-  server.listen(0, "127.0.0.1", resolveListen);
-});
+const fixtureServer = await startLocalFixtureServer(fixtureRoot);
 
 try {
-  const address = server.address();
-  if (!address || typeof address === "string") {
-    throw new Error("Copy smoke server did not expose a TCP port.");
-  }
-
-  const baseUrl = `http://127.0.0.1:${address.port}`;
-  const bad = await auditFixture("bad", `${baseUrl}/copy-bad.html`, copyStyle);
-  const good = await auditFixture("good", `${baseUrl}/copy-good.html`, {
-    ...copyStyle,
-    josaHedgePolicy: "allow"
-  });
+  const { baseUrl } = fixtureServer;
+  const bad = await auditFixture("bad", `${baseUrl}/copy-bad.html`, copyStyleForSmoke("flag"));
+  const good = await auditFixture("good", `${baseUrl}/copy-good.html`, copyStyleForSmoke("allow"));
   const noCopy = await auditFixture("no-copy", `${baseUrl}/copy-good.html`);
 
   assertBadResult(bad.auditResult);
@@ -135,7 +30,7 @@ try {
   assertNoCopyResult(noCopy.auditResult);
   console.log("Copy smoke passed: bad=5 findings/63.2, good=0 findings/100, role evidence, nested inheritance, precedence, and provenance verified.");
 } finally {
-  await new Promise((resolveClose) => server.close(resolveClose));
+  await fixtureServer.close();
 }
 
 async function auditFixture(name, url, style) {
@@ -143,7 +38,7 @@ async function auditFixture(name, url, style) {
   const result = await auditUrl({
     url,
     outDir,
-    viewportPresets: [desktop],
+    viewportPresets: [desktopViewport],
     copyStyle: style
   });
   writeFileSync(join(outDir, "audit.json"), `${JSON.stringify(result.auditResult, null, 2)}\n`);
@@ -281,23 +176,4 @@ function assert(condition, message) {
 
 function sum(values) {
   return Math.round(values.reduce((total, value) => total + value, 0) * 10) / 10;
-}
-
-function decodePathname(pathname, response) {
-  try {
-    return decodeURIComponent(pathname);
-  } catch {
-    response.writeHead(400, { "content-type": "text/plain; charset=utf-8" });
-    response.end("Bad request");
-    return null;
-  }
-}
-
-function safeJoin(rootDir, pathname) {
-  const fullPath = normalize(join(rootDir, pathname));
-  return fullPath === rootDir || fullPath.startsWith(`${rootDir}${sep}`) ? fullPath : null;
-}
-
-function mimeType(filePath) {
-  return extname(filePath) === ".html" ? "text/html; charset=utf-8" : "application/octet-stream";
 }
