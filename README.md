@@ -171,6 +171,7 @@ The fixture gives new contributors a stable target for checking the full local l
 | --- | --- |
 | [`@design-harness/cli`](https://www.npmjs.com/package/@design-harness/cli) | Command-line entry point for the local audit workflow. |
 | [`@design-harness/core`](https://www.npmjs.com/package/@design-harness/core) | Schemas, validation, scoring, report rendering, shared types. |
+| [`@design-harness/copy-audit`](https://www.npmjs.com/package/@design-harness/copy-audit) | Pure programmatic checks for rendered placeholders, josa hedges, configured glossary terms, and banned phrases. |
 | [`@design-harness/visual-audit`](https://www.npmjs.com/package/@design-harness/visual-audit) | Playwright screenshot capture and source-backed DOM, layout, accessibility, and interaction checks. |
 
 ## Status
@@ -182,6 +183,7 @@ Implemented:
 - schema-valid audit artifacts,
 - Markdown report generation,
 - source-backed criteria registry,
+- parser-free rendered-copy analysis through the programmatic `copyStyle` API,
 - example fixtures,
 - Midjourney Reference Lab manifest and policy validators.
 

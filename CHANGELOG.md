@@ -4,6 +4,13 @@
 
 No changes yet.
 
+## 0.4.2 - 2026-07-12
+
+- Added `@design-harness/copy-audit` with five parser-free rendered-copy checks and programmatic `auditUrl({ copyStyle })` integration.
+- Added the schema-backed copy-style contract and capture-neutral surface mapping with exact matcher provenance.
+- Added synthetic Korean copy fixtures, fail-closed license/provenance validation, and a dedicated Chromium copy smoke.
+- Added a six-fixture calibration gate with stable per-check TP/FP/FN output and CI artifact preservation.
+
 ## 0.4.1 - 2026-07-10
 
 - Removed stale `v0.3` wording from the CLI help output while preserving the local HTTP(S) target policy.
