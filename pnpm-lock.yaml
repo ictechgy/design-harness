@@ -27,10 +27,19 @@ importers:
         specifier: workspace:^
         version: link:../visual-audit
 
+  packages/copy-audit:
+    dependencies:
+      '@design-harness/core':
+        specifier: workspace:^
+        version: link:../core
+
   packages/core: {}
 
   packages/visual-audit:
     dependencies:
+      '@design-harness/copy-audit':
+        specifier: workspace:^
+        version: link:../copy-audit
       '@design-harness/core':
         specifier: workspace:^
         version: link:../core

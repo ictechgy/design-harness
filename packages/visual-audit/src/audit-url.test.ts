@@ -2,7 +2,13 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { afterEach, describe, expect, it } from "vitest";
-import { assertAuditResultIntegrity, type ViewportPreset } from "@design-harness/core";
+import {
+  SCHEMA_VERSION,
+  assertAuditResultIntegrity,
+  type AuditNotice,
+  type CopyStyle,
+  type ViewportPreset
+} from "@design-harness/core";
 import { auditUrl, BrowserUnavailableError, type BrowserHandle, type PageHandle } from "./index.js";
 import type { ViewportMeasurements } from "./checks.js";
 
@@ -26,6 +32,11 @@ interface FakeBrowserOptions {
   observedPasswordInputValues?: string[];
   observedPasswordAttributes?: Array<Record<string, string>>;
   measurement: ViewportMeasurements;
+  notices?: AuditNotice[];
+  collectionResults?: Array<{
+    measurements: ViewportMeasurements;
+    notices: AuditNotice[];
+  }>;
 }
 
 interface FakePasswordInput {
@@ -133,6 +144,8 @@ describe("auditUrl failure behavior", () => {
     const ariaEvidence = result.auditResult.evidenceAssets.find((asset) => asset.id === "aria-snapshot-desktop");
 
     expect(result.auditResult.status).toBe("success");
+    expect(result.auditResult).not.toHaveProperty("notices");
+    expect(result.metadata.toolVersions).not.toHaveProperty("@design-harness/copy-audit");
     expect(measurementEvidence?.type).toBe("measurement");
     expect(measurementEvidence?.data).not.toHaveProperty("textInventory");
     expect(textEvidence).toMatchObject({
@@ -301,6 +314,99 @@ describe("auditUrl failure behavior", () => {
   });
 });
 
+describe("auditUrl copy analysis", () => {
+  it("analyzes pre-materialized text inventory against its exact evidence asset", async () => {
+    const result = await auditUrl({
+      url: "http://localhost:3000",
+      outDir: await tempDir(),
+      viewportPresets: [viewport],
+      copyStyle: copyStyle(),
+      launchBrowser: async () => fakeBrowser({
+        measurement: copyMeasurementFor("desktop")
+      })
+    });
+
+    expect(result.auditResult.findings).toHaveLength(5);
+    expect(result.auditResult.findings.map((finding) => finding.checkName)).toEqual(expect.arrayContaining([
+      "placeholder-leak",
+      "josa-hedge",
+      "glossary-banned-term",
+      "glossary-use-carefully-term",
+      "banned-phrase"
+    ]));
+    expect(result.auditResult.findings.every((finding) => (
+      finding.evidenceRefs.length === 1 && finding.evidenceRefs[0] === "text-inventory-desktop"
+    ))).toBe(true);
+    expect(result.auditResult.advisoryScore.value).toBe(63.2);
+    expect(result.auditResult.advisoryScore.deductions).toHaveLength(5);
+    expect(result.auditResult.status).toBe("success");
+    expect(result.auditResult).not.toHaveProperty("notices");
+    expect(result.metadata.toolVersions["@design-harness/copy-audit"]).toBe(result.auditResult.harnessVersion);
+    expect(() => assertAuditResultIntegrity(result.auditResult)).not.toThrow();
+  });
+
+  it("deduplicates configuration notices across viewports without affecting status or score", async () => {
+    const mobile: ViewportPreset = {
+      name: "mobile",
+      width: 390,
+      height: 844,
+      deviceScaleFactor: 2,
+      isMobile: true
+    };
+    const desktopNotice: AuditNotice = {
+      code: "copy-surface-unsupported-adapter",
+      message: "Unsupported adapter was skipped.",
+      viewport: "desktop",
+      details: {
+        adapter: "figma",
+        value: "node-1",
+        ruleIndex: 0,
+        matcherIndex: 0
+      }
+    };
+    const mobileNotice: AuditNotice = {
+      code: desktopNotice.code,
+      message: desktopNotice.message,
+      viewport: "mobile",
+      details: {
+        matcherIndex: 0,
+        ruleIndex: 0,
+        value: "node-1",
+        adapter: "figma"
+      }
+    };
+    const style = copyStyle();
+    style.glossary?.push({ term: "형태소", tier: "approved", match: "lemma" });
+
+    const result = await auditUrl({
+      url: "http://localhost:3000",
+      outDir: await tempDir(),
+      viewportPresets: [viewport, mobile],
+      copyStyle: style,
+      launchBrowser: async () => fakeBrowser({
+        measurement: copyMeasurementFor("desktop"),
+        collectionResults: [
+          { measurements: copyMeasurementFor("desktop"), notices: [desktopNotice] },
+          { measurements: copyMeasurementFor("mobile"), notices: [mobileNotice] }
+        ]
+      })
+    });
+
+    expect(result.auditResult.findings).toHaveLength(10);
+    expect(result.auditResult.advisoryScore.value).toBe(26.4);
+    expect(result.auditResult.advisoryScore.deductions).toHaveLength(10);
+    expect(result.auditResult.status).toBe("success");
+    expect(result.auditResult.failedChecks).toEqual([]);
+    expect(result.auditResult.notices).toHaveLength(2);
+    expect(result.auditResult.notices?.filter((notice) => notice.code === desktopNotice.code)).toHaveLength(1);
+    expect(result.auditResult.notices?.every((notice) => notice.viewport === undefined)).toBe(true);
+    for (const finding of result.auditResult.findings) {
+      expect(finding.evidenceRefs).toEqual([`text-inventory-${finding.viewport}`]);
+    }
+    expect(() => assertAuditResultIntegrity(result.auditResult)).not.toThrow();
+  });
+});
+
 async function tempDir(): Promise<string> {
   const dir = await mkdtemp(join(tmpdir(), "design-harness-audit-"));
   tempDirs.push(dir);
@@ -308,15 +414,20 @@ async function tempDir(): Promise<string> {
 }
 
 function fakeBrowser(options: FakeBrowserOptions): BrowserHandle {
+  let pageIndex = 0;
   return {
     version: () => "fake-browser",
-    newPage: async () => fakePage(options),
+    newPage: async () => fakePage(options, pageIndex++),
     close: async () => undefined
   };
 }
 
-function fakePage(options: FakeBrowserOptions): PageHandle {
+function fakePage(options: FakeBrowserOptions, pageIndex: number): PageHandle {
   const passwordInputs = (options.passwordInputValues ?? []).map(fakePasswordInput);
+  const collectionResult = options.collectionResults?.[pageIndex] ?? {
+    measurements: options.measurement,
+    notices: options.notices ?? []
+  };
   const page: PageHandle = {
     setDefaultTimeout: () => undefined,
     setDefaultNavigationTimeout: () => undefined,
@@ -334,10 +445,13 @@ function fakePage(options: FakeBrowserOptions): PageHandle {
       if (source.includes("data-design-harness-mask-id")) {
         return runWithFakeDocument(passwordInputs, () => pageFunction(arg)) as never;
       }
+      if (source.includes("MAX_TEXT_INVENTORY_TEXT_LENGTH")) {
+        return collectionResult as never;
+      }
       if (arg !== undefined) {
         return undefined as never;
       }
-      return options.measurement as never;
+      return collectionResult as never;
     },
     locator: options.ariaSnapshotUnavailable
       ? undefined
@@ -451,5 +565,52 @@ function measurementFor(name: string): ViewportMeasurements {
     customControlSemanticsRisks: [],
     movingContentControlRisks: [],
     textInventory: []
+  };
+}
+
+function copyMeasurementFor(name: string): ViewportMeasurements {
+  return {
+    ...measurementFor(name),
+    textInventory: [{
+      selector: "main > p",
+      text: "TODO 충전하기 주의어 빠르고 쉽습니다 을(를)",
+      region: { x: 12, y: 24, width: 420, height: 32 },
+      fontSize: 16,
+      fontWeight: "400",
+      nearestLang: "ko-KR",
+      tag: "p",
+      role: "",
+      accessibleName: "TODO 충전하기 주의어 빠르고 쉽습니다 을(를)",
+      copySurface: {
+        surface: "body",
+        ruleIndex: 0,
+        matcher: { kind: "adapter", adapter: "web-dom", value: "main p" }
+      }
+    }]
+  };
+}
+
+function copyStyle(): CopyStyle {
+  return {
+    schemaVersion: SCHEMA_VERSION,
+    locale: "ko-KR",
+    glossary: [
+      {
+        term: "충전하기",
+        tier: "banned",
+        preferredTerm: "입금하기",
+        surfaces: ["body"]
+      },
+      {
+        term: "주의어",
+        tier: "use-carefully",
+        surfaces: ["body"]
+      }
+    ],
+    bannedPhrases: [{
+      phrase: "빠르고 쉽습니다",
+      suggestedReplacement: "소요 시간과 다음 단계를 구체적으로 안내하세요.",
+      surfaces: ["body"]
+    }]
   };
 }

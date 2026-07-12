@@ -21,6 +21,8 @@ They are intentionally small, framework-free HTML pages used to calibrate determ
 - `korean-line-length-bad.html`: unconstrained full-width Korean paragraph; expects exactly one desktop `excessive-line-length` finding.
 - `korean-status-good.html`: Korean "저장 중..." status with `role="status"`; must stay silent.
 - `korean-status-bad.html`: Korean status text without live-region semantics; expects `status-live-region-risk` per viewport.
+- `korean/copy-good.html`: synthetic improved Korean copy; expects zero parser-free copy findings.
+- `korean/copy-bad.html`: one synthetic defect for each parser-free copy criterion; the single-desktop copy smoke expects five findings and score 63.2.
 - `page-lang-good.html`: html element declares `lang`; must stay silent.
 - `page-lang-bad.html`: html element without a `lang` attribute; expects one `page-lang-missing` deterministic failure per viewport.
 
@@ -56,3 +58,5 @@ Internal calibration only — NEVER commit fixtures derived from these:
 - K-NCT (repository has no license — ask the authors before any use beyond reading).
 
 When in doubt, generate synthetic Korean data instead. Every copy criterion should carry at least one bad → improved example pair with a reason.
+
+Every committed Korean fixture is listed in `examples/calibration-datasets/korean-copy/manifest.jsonl`. `pnpm validate:korean-copy` verifies required provenance fields, redistribution status, file existence, uniqueness, and complete coverage of the committed Korean fixture set.

@@ -22,6 +22,7 @@ function expectMatch(label, actual, expected) {
 const rootPackage = readJson("package.json");
 const packagePaths = [
   "packages/core/package.json",
+  "packages/copy-audit/package.json",
   "packages/visual-audit/package.json",
   "packages/cli/package.json"
 ];

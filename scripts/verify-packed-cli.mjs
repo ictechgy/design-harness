@@ -15,10 +15,12 @@ try {
   await mkdir(consumerDir, { recursive: true });
 
   const coreTarball = await packPackage("@design-harness/core", packDir);
+  const copyAuditTarball = await packPackage("@design-harness/copy-audit", packDir);
   const visualAuditTarball = await packPackage("@design-harness/visual-audit", packDir);
   const cliTarball = await packPackage("@design-harness/cli", packDir);
 
   const coreDependency = fileDependency(consumerDir, coreTarball);
+  const copyAuditDependency = fileDependency(consumerDir, copyAuditTarball);
   const visualAuditDependency = fileDependency(consumerDir, visualAuditTarball);
   const cliDependency = fileDependency(consumerDir, cliTarball);
 
@@ -34,6 +36,7 @@ try {
     "packages: []",
     "overrides:",
     `  "@design-harness/core": "${coreDependency}"`,
+    `  "@design-harness/copy-audit": "${copyAuditDependency}"`,
     `  "@design-harness/visual-audit": "${visualAuditDependency}"`,
     ""
   ].join("\n"));

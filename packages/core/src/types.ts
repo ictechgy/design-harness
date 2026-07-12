@@ -210,6 +210,13 @@ export interface AuditTimings {
   durationMs: number;
 }
 
+export interface AuditNotice {
+  code: string;
+  message: string;
+  viewport?: string;
+  details?: Record<string, unknown>;
+}
+
 export interface AuditResult {
   schemaVersion: string;
   harnessVersion: string;
@@ -222,6 +229,7 @@ export interface AuditResult {
   timings: AuditTimings;
   status: RunStatus;
   failedChecks: string[];
+  notices?: AuditNotice[];
 }
 
 export interface Critique {

@@ -430,6 +430,41 @@
         "type": "string",
         "minLength": 1
       }
+    },
+    "notices": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/auditNotice"
+      }
+    }
+  },
+  "$defs": {
+    "nonBlankString": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "\\S"
+    },
+    "auditNotice": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "code",
+        "message"
+      ],
+      "properties": {
+        "code": {
+          "$ref": "#/$defs/nonBlankString"
+        },
+        "message": {
+          "$ref": "#/$defs/nonBlankString"
+        },
+        "viewport": {
+          "$ref": "#/$defs/nonBlankString"
+        },
+        "details": {
+          "type": "object"
+        }
+      }
     }
   }
 }

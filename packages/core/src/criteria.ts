@@ -79,6 +79,27 @@ export const CRITERION_SOURCES: CriterionSource[] = [
     note: "Project-local contract for operational audit behavior."
   },
   {
+    id: "unicode-icu-messageformat",
+    title: "Unicode ICU MessageFormat",
+    url: "https://unicode-org.github.io/icu/userguide/format_parse/messages/",
+    strength: "official-testable",
+    note: "Used for the narrowly detected ICU complex-argument syntax family."
+  },
+  {
+    id: "mustache-spec",
+    title: "Mustache specification",
+    url: "https://github.com/mustache/spec",
+    strength: "official-testable",
+    note: "Used for language-agnostic double-brace variable syntax."
+  },
+  {
+    id: "copy-style-contract",
+    title: "Design Harness copy style contract",
+    url: "packages/core/schemas/copy-style.schema.json",
+    strength: "project-contract",
+    note: "Project-declared copy rules are deterministic only against this configured contract."
+  },
+  {
     id: "dyson-haselgrove-2001",
     title: "Dyson & Haselgrove: The influence of reading speed and line length on the effectiveness of reading from screen",
     url: "https://doi.org/10.1006/ijhc.2001.0458",
@@ -425,6 +446,78 @@ export const CRITERIA: Criterion[] = [
     runtime: "computed-style",
     checkNames: ["moving-content-control-risk"],
     remediationHint: "Provide pause/stop/hide controls for moving or autoplaying content, or avoid non-essential motion."
+  },
+  {
+    id: "content.placeholder.unrendered",
+    category: "content",
+    title: "Rendered copy does not expose supported placeholder markers",
+    description:
+      "Rendered UI copy should not expose supported Mustache variables, ICU complex arguments, or project-defined TODO and Lorem ipsum markers.",
+    sourceRefs: ["unicode-icu-messageformat", "mustache-spec", "design-harness-output-contract"],
+    sourceStrength: "official-testable",
+    determinism: "deterministic",
+    resultKind: "failure",
+    confidenceDefault: "high",
+    runtime: "static-dom",
+    checkNames: ["placeholder-leak"],
+    remediationHint: "Render the intended value or replace the operational marker before presenting the copy."
+  },
+  {
+    id: "content.josa-hedge.policy",
+    category: "content",
+    title: "Rendered josa hedges follow the configured policy",
+    description: "Rendered copy should not contain the configured 을(를) or 이(가) hedge forms when the project policy is flag.",
+    sourceRefs: ["copy-style-contract"],
+    sourceStrength: "project-contract",
+    determinism: "deterministic",
+    resultKind: "risk",
+    confidenceDefault: "high",
+    runtime: "static-dom",
+    checkNames: ["josa-hedge"],
+    remediationHint: "Resolve the rendered particle for the final noun, or set the project policy to allow deliberate hedge forms."
+  },
+  {
+    id: "content.glossary.banned-term",
+    category: "content",
+    title: "Rendered copy avoids configured banned glossary terms",
+    description: "Rendered copy should not contain a literal glossary term configured with the banned tier on an applicable surface.",
+    sourceRefs: ["copy-style-contract"],
+    sourceStrength: "project-contract",
+    determinism: "deterministic",
+    resultKind: "risk",
+    confidenceDefault: "high",
+    runtime: "static-dom",
+    checkNames: ["glossary-banned-term"],
+    remediationHint: "Replace the banned term with the configured preferred term or project-approved wording."
+  },
+  {
+    id: "content.glossary.use-carefully-term",
+    category: "content",
+    title: "Rendered copy reviews configured use-carefully terms",
+    description:
+      "Rendered copy containing a literal glossary term configured with the use-carefully tier should be reviewed on an applicable surface.",
+    sourceRefs: ["copy-style-contract"],
+    sourceStrength: "project-contract",
+    determinism: "deterministic",
+    resultKind: "risk",
+    confidenceDefault: "high",
+    runtime: "static-dom",
+    checkNames: ["glossary-use-carefully-term"],
+    remediationHint: "Confirm the term fits this context or use the configured preferred term."
+  },
+  {
+    id: "content.banned-phrase.policy",
+    category: "content",
+    title: "Rendered copy avoids configured banned phrases",
+    description: "Rendered copy should not contain a literal phrase banned by the project on an applicable surface.",
+    sourceRefs: ["copy-style-contract"],
+    sourceStrength: "project-contract",
+    determinism: "deterministic",
+    resultKind: "risk",
+    confidenceDefault: "high",
+    runtime: "static-dom",
+    checkNames: ["banned-phrase"],
+    remediationHint: "Use the configured replacement or revise the phrase according to the recorded project rationale."
   }
 ];
 

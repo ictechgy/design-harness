@@ -51,7 +51,9 @@ The v1 contract includes:
 - `bannedPhrases`: configured phrases that are contract risks only when the project declares them.
 - `surfaceMapping`: an ordered list of surface rules. Each rule has one or more OR-ed `role` or namespaced `adapter` matchers.
 
-Supported surfaces are `button`, `error`, `marketing`, and `body`. One capture-side materializer evaluates the entire rule list in array order. Matchers inside a rule run in order: `role` matches the node's resolved lowercase role token, while an `adapter` matcher is evaluated only by the adapter that owns its lowercase namespace. The first matching matcher is recorded as `copySurface: { surface, ruleIndex, matcher }`, then resolution stops. The pure copy analyzer consumes that resolution and never replays matchers against serialized evidence.
+Supported surfaces are `button`, `error`, `marketing`, and `body`. One capture-side materializer evaluates the entire rule list in array order. Matchers inside a rule run in order: `role` matches a separate surface-role token, while an `adapter` matcher is evaluated only by the adapter that owns its lowercase namespace. The first matching matcher is recorded as `copySurface: { surface, ruleIndex, matcher }`, then resolution stops. The pure copy analyzer consumes that resolution and never replays matchers against serialized evidence.
+
+The serialized evidence `role` and the surface-role token have intentionally different contracts. Evidence preserves a trimmed explicit `role` attribute exactly, including case and fallback-token lists; nodes without an explicit role retain the text-inventory's legacy implicit-role mapping. For surface matching only, the web capture adapter lowercases and tokenizes an explicit fallback list, selects its first recognized concrete WAI-ARIA role while skipping unknown and abstract roles, and falls back to its native-HTML role resolver when no concrete token remains. Native resolution includes control-specific semantics such as `summary` as `button`, `input[type=range]` as `slider`, and multi-select as `listbox`. This deterministic adapter resolver is not a claim that the serialized value came from the browser accessibility tree or a browser AOM API.
 
 No rule match means unconfigured; `body` is not an automatic fallback. Register checks run only when both a node surface and `surfaceRegisters[surface]` are configured. For glossary terms and banned phrases, omitted `surfaces` means all rendered copy, including unresolved nodes; a present non-empty list limits the rule to nodes resolved to those surfaces.
 
@@ -67,6 +69,20 @@ Recommended authoring rules, not built-in defaults:
 | `body` | explicit `web-dom` queries such as `main p` / `article p` |
 
 Copy-style-backed criteria use `sourceStrength: "project-contract"` and can emit deterministic `risk` at most. They assert "this captured copy conflicts with your declared contract", not universal language quality.
+
+#### Parser-Free Copy Audit
+
+Library callers can pass a validated `CopyStyle` through `auditUrl({ copyStyle })`. The capture adapter resolves surfaces on live nodes, then `@design-harness/copy-audit` analyzes the serialized text inventory without importing Playwright. CLI YAML loading remains a later slice.
+
+| Check | Contract | Result |
+|---|---|---|
+| `placeholder-leak` | Narrow Mustache variables, ICU complex arguments, and the operational TODO/Lorem markers in `docs/output-contract.md` | deterministic failure; finding cites only the matched syntax family source |
+| `josa-hedge` | Exact `을(를)` / `이(가)` when `josaHedgePolicy` is `flag` or omitted | deterministic project-contract risk |
+| `glossary-banned-term` | Case-sensitive NFC/whitespace-normalized literal substring on applicable surfaces | deterministic project-contract risk |
+| `glossary-use-carefully-term` | Same literal semantics for configured use-carefully terms | deterministic project-contract risk |
+| `banned-phrase` | Same literal semantics for configured banned phrases | deterministic project-contract risk |
+
+Approved glossary entries do not emit findings. Lemma entries never fall back to literal matching; until morphology is enabled they emit a score-exempt capability notice. Unsupported surface adapter namespaces and malformed `web-dom` selectors likewise emit notices, never findings or partial-audit failures. `pnpm smoke:copy` verifies the live materializer, source-backed findings, notices, evidence references, and single-desktop score lock.
 
 ### Computation Determinism Never Upgrades Criterion Strength
 

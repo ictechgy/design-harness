@@ -13,7 +13,7 @@ pnpm release:check
 - typecheck,
 - tests,
 - schema and calibration validation,
-- dry-run package packing for `@design-harness/core`, `@design-harness/visual-audit`, and `@design-harness/cli`,
+- dry-run package packing for `@design-harness/core`, `@design-harness/copy-audit`, `@design-harness/visual-audit`, and `@design-harness/cli`,
 - a local packed-CLI install smoke test that installs the generated tarballs into a temporary consumer project and runs `design-harness --help`.
 
 ## npm Publish
@@ -22,6 +22,7 @@ After an approved version bump and tag plan, publish the audit CLI surface and i
 
 ```bash
 pnpm --filter @design-harness/core publish --access public
+pnpm --filter @design-harness/copy-audit publish --access public
 pnpm --filter @design-harness/visual-audit publish --access public
 pnpm --filter @design-harness/cli publish --access public
 ```

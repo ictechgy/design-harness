@@ -53,6 +53,19 @@ Source-backed findings can also include:
 
 Reports group findings by determinism/result kind and include source-backed criteria when attached.
 
+## Operational Placeholder Markers
+
+The `placeholder-leak` check treats the following project-defined markers as failed rendered output. Findings for these markers cite `design-harness-output-contract`, not the ICU or Mustache syntax sources.
+
+- `TODO`: exact uppercase text that is not immediately adjacent to a Unicode letter, number, or underscore. `TODO:` matches; lowercase `todo`, `TODOLIST`, and Unicode-letter-adjacent text do not.
+- `Lorem ipsum`: case-insensitive `lorem`, followed by one or more Unicode whitespace characters, followed by `ipsum`, with no adjacent Unicode letter, number, or underscore. `lorem` alone does not match.
+
+These are deliberately narrow operational markers. Neighboring placeholder-like prose is outside this contract.
+
+## Notices
+
+`audit.json` may include an optional `notices` array. Each notice has a non-blank `code` and `message`, with optional `viewport` and structured `details`. Notices describe configuration or capability limits; they are not findings, do not affect the advisory score or `failedChecks`, and do not change run status. An empty notice list is normally omitted.
+
 ## Evidence Assets
 
 Common evidence assets:

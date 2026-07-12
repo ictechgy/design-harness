@@ -7,22 +7,68 @@ export interface RenderReportInput {
   critique?: Critique;
 }
 
-export function renderMarkdownReport(input: RenderReportInput): string {
+export interface MarkdownReport {
+  markdown: string;
+  sections: string[];
+}
+
+interface MarkdownReportSection {
+  title: string;
+  body: string;
+}
+
+export function buildMarkdownReport(input: RenderReportInput): MarkdownReport {
   const { auditResult, critique } = input;
   const sections = [
-    "# Design Harness Audit Report",
-    renderRunSummary(auditResult),
-    renderFailedChecks(auditResult),
-    renderScore(auditResult),
-    renderFindings(auditResult.findings),
-    renderSourceBackedCriteria(auditResult.findings),
-    renderEvidence(auditResult),
-    renderRecommendations(auditResult.findings),
-    renderIterationPrompt(auditResult),
-    renderOptionalCritique(critique)
-  ];
+    reportSection("Run Summary", renderRunSummary(auditResult)),
+    reportSection("Failed Checks", renderFailedChecks(auditResult)),
+    reportSection("Notices", renderNotices(auditResult)),
+    reportSection("Advisory Score", renderScore(auditResult)),
+    reportSection("Findings", renderFindings(auditResult.findings)),
+    reportSection("Source-Backed Criteria", renderSourceBackedCriteria(auditResult.findings)),
+    reportSection("Evidence Links", renderEvidence(auditResult)),
+    reportSection("Recommendations", renderRecommendations(auditResult.findings)),
+    reportSection("Iteration Prompt Scaffold", renderIterationPrompt(auditResult)),
+    reportSection("Optional Subjective Critique", renderOptionalCritique(critique))
+  ].filter(isReportSection);
 
-  return `${sections.filter(Boolean).join("\n\n")}\n`;
+  return {
+    markdown: `${[
+      "# Design Harness Audit Report",
+      ...sections.map((section) => `## ${section.title}\n\n${section.body}`)
+    ].join("\n\n")}\n`,
+    sections: sections.map((section) => section.title)
+  };
+}
+
+export function renderMarkdownReport(input: RenderReportInput): string {
+  return buildMarkdownReport(input).markdown;
+}
+
+function reportSection(title: string, body: string): MarkdownReportSection | undefined {
+  return body ? { title, body } : undefined;
+}
+
+function isReportSection(section: MarkdownReportSection | undefined): section is MarkdownReportSection {
+  return section !== undefined;
+}
+
+function renderNotices(auditResult: AuditResult): string {
+  if (!auditResult.notices?.length) {
+    return "";
+  }
+
+  const lines = auditResult.notices.map((notice) => {
+    const viewport = notice.viewport ? ` (viewport: \`${escapeInline(notice.viewport)}\`)` : "";
+    const details = notice.details ? ` Details: \`${escapeInline(JSON.stringify(notice.details))}\`.` : "";
+    return `- \`${escapeInline(notice.code)}\`${viewport}: ${notice.message}${details}`;
+  });
+
+  return [
+    "These configuration and capability notices are informational and do not affect the audit score or status.",
+    "",
+    ...lines
+  ].join("\n");
 }
 
 function renderFailedChecks(auditResult: AuditResult): string {
@@ -30,11 +76,7 @@ function renderFailedChecks(auditResult: AuditResult): string {
     return "";
   }
 
-  return [
-    "## Failed Checks",
-    "",
-    ...auditResult.failedChecks.map((failedCheck) => `- ${failedCheck}`)
-  ].join("\n");
+  return auditResult.failedChecks.map((failedCheck) => `- ${failedCheck}`).join("\n");
 }
 
 export function buildIterationPrompt(auditResult: AuditResult): string {
@@ -59,8 +101,6 @@ export function buildIterationPrompt(auditResult: AuditResult): string {
 
 function renderRunSummary(auditResult: AuditResult): string {
   return [
-    "## Run Summary",
-    "",
     `- Run ID: \`${auditResult.runId}\``,
     `- Target: ${auditResult.target.url}`,
     `- Status: \`${auditResult.status}\``,
@@ -72,8 +112,6 @@ function renderRunSummary(auditResult: AuditResult): string {
 
 function renderScore(auditResult: AuditResult): string {
   return [
-    "## Advisory Score",
-    "",
     `**${auditResult.advisoryScore.value}/${auditResult.advisoryScore.max}** (${auditResult.advisoryScore.band})`,
     "",
     `Verdict: ${verdictForScore(auditResult.advisoryScore)}`,
@@ -84,17 +122,11 @@ function renderScore(auditResult: AuditResult): string {
 
 function renderFindings(findings: Finding[]): string {
   if (findings.length === 0) {
-    return [
-      "## Findings",
-      "",
-      "No blocking deterministic findings were detected."
-    ].join("\n");
+    return "No blocking deterministic findings were detected.";
   }
 
   const groupedFindings = groupFindings(findings);
   const sections = [
-    "## Findings",
-    "",
     renderFindingGroup("Deterministic Findings: Failures", groupedFindings.deterministicFailures),
     renderFindingGroup("Deterministic Findings: Risks", groupedFindings.deterministicRisks),
     renderFindingGroup("Heuristic Review Prompts", groupedFindings.heuristicFindings),
@@ -137,11 +169,7 @@ function renderFindingGroup(title: string, findings: Finding[]): string {
 function renderSourceBackedCriteria(findings: Finding[]): string {
   const criterionIds = unique(findings.map((finding) => finding.criterionId).filter(isString));
   if (criterionIds.length === 0) {
-    return [
-      "## Source-Backed Criteria",
-      "",
-      "No source-backed criteria were attached to this audit."
-    ].join("\n");
+    return "No source-backed criteria were attached to this audit.";
   }
 
   const lines = criterionIds.map((criterionId) => {
@@ -150,19 +178,22 @@ function renderSourceBackedCriteria(findings: Finding[]): string {
       return `- \`${criterionId}\`: criterion metadata was not found.`;
     }
 
-    const sources = criterion.sourceRefs
+    const usedSourceRefs = unique(
+      findings
+        .filter((finding) => finding.criterionId === criterionId)
+        .flatMap((finding) => finding.sourceRefs ?? [])
+    );
+    const sources = usedSourceRefs
       .map((sourceRef) => {
         const source = getSource(sourceRef);
         return source ? `[${escapeInline(source.title)}](${source.url}) (${source.strength})` : sourceRef;
       })
-      .join("; ");
+      .join("; ") || "none recorded";
 
-    return `- \`${criterion.id}\` (${criterion.determinism}/${criterion.resultKind}, ${criterion.runtime}): ${criterion.title}. Sources: ${sources}.`;
+    return `- \`${criterion.id}\` (${criterion.determinism}/${criterion.resultKind}, ${criterion.runtime}): ${criterion.title}. Sources used by emitted findings: ${sources}.`;
   });
 
   return [
-    "## Source-Backed Criteria",
-    "",
     ...lines
   ].join("\n");
 }
@@ -174,8 +205,6 @@ function renderEvidence(auditResult: AuditResult): string {
   });
 
   return [
-    "## Evidence Links",
-    "",
     ...(lines.length ? lines : ["- No evidence assets were recorded."])
   ].join("\n");
 }
@@ -187,16 +216,12 @@ function renderRecommendations(findings: Finding[]): string {
     return `- \`${finding.id}\`: ${finding.recommendation}${criterion}${evidence}`;
   });
   return [
-    "## Recommendations",
-    "",
     ...(recommendations.length ? recommendations : ["- Keep the current structure and continue with human visual review."])
   ].join("\n");
 }
 
 function renderIterationPrompt(auditResult: AuditResult): string {
   return [
-    "## Iteration Prompt Scaffold",
-    "",
     "```text",
     buildIterationPrompt(auditResult),
     "```"
@@ -205,16 +230,10 @@ function renderIterationPrompt(auditResult: AuditResult): string {
 
 function renderOptionalCritique(critique?: Critique): string {
   if (!critique) {
-    return [
-      "## Optional Subjective Critique",
-      "",
-      "No subjective critique was supplied. This report only contains deterministic audit findings."
-    ].join("\n");
+    return "No subjective critique was supplied. This report only contains deterministic audit findings.";
   }
 
   return [
-    "## Optional Subjective Critique",
-    "",
     critique.summary,
     "",
     ...critique.recommendations.map((recommendation) => `- ${recommendation}`)

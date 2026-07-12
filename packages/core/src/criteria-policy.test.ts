@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  getCriterion,
   validateCriteriaPolicy,
   validateRegistryCriteriaPolicy,
   type Criterion,
@@ -86,6 +87,30 @@ describe("criteria policy matrix", () => {
       resultKind: "failure"
     });
     expect(validateCriteriaPolicy([failure], SOURCES).valid).toBe(false);
+  });
+
+  it("keeps shipped copy-style criteria at the project-contract risk ceiling", () => {
+    for (const criterionId of [
+      "content.josa-hedge.policy",
+      "content.glossary.banned-term",
+      "content.glossary.use-carefully-term",
+      "content.banned-phrase.policy"
+    ]) {
+      expect(getCriterion(criterionId)).toMatchObject({
+        sourceRefs: ["copy-style-contract"],
+        sourceStrength: "project-contract",
+        determinism: "deterministic",
+        resultKind: "risk",
+        runtime: "static-dom"
+      });
+    }
+
+    expect(getCriterion("content.placeholder.unrendered")).toMatchObject({
+      sourceStrength: "official-testable",
+      determinism: "deterministic",
+      resultKind: "failure",
+      runtime: "static-dom"
+    });
   });
 
   it("rejects heuristic and subjective failures at the criterion level", () => {

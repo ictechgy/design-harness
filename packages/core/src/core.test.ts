@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import {
+  buildMarkdownReport,
   buildIterationPrompt,
   assertAuditResultIntegrity,
   assertLocalHttpUrl,
@@ -17,6 +18,7 @@ import {
   CRITERIA,
   DEFAULT_JOSA_HEDGE_POLICY,
   findingMetadataForCheck,
+  getCriterion,
   GLOSSARY_MATCH_MODES,
   GLOSSARY_TIERS,
   JOSA_HEDGE_POLICIES,
@@ -43,6 +45,27 @@ function createContentFinding(overrides: Partial<ReturnType<typeof createExample
   delete finding.resultKind;
   delete finding.runtime;
   return finding;
+}
+
+function createCopyFinding(
+  checkName: string,
+  sourceRefs: string[],
+  overrides: Partial<ReturnType<typeof createExampleFinding>> = {}
+) {
+  const metadata = findingMetadataForCheck(checkName);
+  if (!metadata) {
+    throw new Error(`Missing criterion metadata for ${checkName}`);
+  }
+
+  return {
+    ...createExampleFinding(),
+    id: `finding-${checkName}`,
+    category: "content" as const,
+    checkName,
+    ...metadata,
+    sourceRefs,
+    ...overrides
+  };
 }
 
 describe("core schemas", () => {
@@ -178,6 +201,49 @@ describe("core schemas", () => {
     expect(result.valid).toBe(true);
   });
 
+  it("accepts optional structured notices while keeping legacy artifacts valid", () => {
+    const legacyAudit = createExampleAuditResult();
+    expect("notices" in legacyAudit).toBe(false);
+    expect(validateSchema("audit-result", legacyAudit).valid).toBe(true);
+
+    const auditWithNotices = {
+      ...legacyAudit,
+      notices: [
+        {
+          code: "copy-analysis-capability-unavailable",
+          message: "Lemma matching was skipped for one configured term.",
+          viewport: "desktop",
+          details: { capability: "lemma", term: "example", glossaryIndex: 0 }
+        }
+      ]
+    };
+    expect(validateSchema("audit-result", auditWithNotices).valid).toBe(true);
+    expect(auditWithNotices.advisoryScore).toEqual(legacyAudit.advisoryScore);
+    expect(auditWithNotices.failedChecks).toEqual(legacyAudit.failedChecks);
+  });
+
+  it("rejects malformed audit notices", () => {
+    const auditResult = createExampleAuditResult();
+    const malformed = {
+      ...auditResult,
+      notices: [
+        { code: "", message: "Missing code." },
+        { code: "copy-test", message: " " },
+        { code: "copy-test" },
+        { code: "copy-test", message: "Invalid details.", details: [] }
+      ]
+    };
+
+    const result = validateSchema("audit-result", malformed);
+    expect(result.valid).toBe(false);
+    expect(result.issues.map((issue) => issue.path)).toEqual(expect.arrayContaining([
+      "$.notices[0].code",
+      "$.notices[1].message",
+      "$.notices[2].message",
+      "$.notices[3].details"
+    ]));
+  });
+
   it("validates the committed example report audit artifact", () => {
     const auditPath = new URL("../../../examples/reports/semantic-a11y-bad/audit.json", import.meta.url);
     const auditResult = JSON.parse(readFileSync(auditPath, "utf8"));
@@ -273,6 +339,34 @@ describe("criteria registry", () => {
       humanReviewRecommended: true
     });
   });
+
+  it("locks the parser-free copy criteria metadata", () => {
+    const expected = [
+      ["placeholder-leak", "content.placeholder.unrendered", "official-testable", "failure"],
+      ["josa-hedge", "content.josa-hedge.policy", "project-contract", "risk"],
+      ["glossary-banned-term", "content.glossary.banned-term", "project-contract", "risk"],
+      ["glossary-use-carefully-term", "content.glossary.use-carefully-term", "project-contract", "risk"],
+      ["banned-phrase", "content.banned-phrase.policy", "project-contract", "risk"]
+    ] as const;
+
+    for (const [checkName, criterionId, sourceStrength, resultKind] of expected) {
+      expect(findingMetadataForCheck(checkName)).toMatchObject({
+        criterionId,
+        determinism: "deterministic",
+        resultKind,
+        runtime: "static-dom",
+        confidence: "high",
+        humanReviewRecommended: false
+      });
+      expect(getCriterion(criterionId)).toMatchObject({ sourceStrength });
+    }
+
+    expect(getCriterion("content.placeholder.unrendered")?.sourceRefs).toEqual([
+      "unicode-icu-messageformat",
+      "mustache-spec",
+      "design-harness-output-contract"
+    ]);
+  });
 });
 
 describe("artifact integrity", () => {
@@ -308,6 +402,27 @@ describe("artifact integrity", () => {
     expect(result.valid).toBe(false);
     expect(result.issues.map((issue) => issue.path)).toContain("$.findings[0].criterionId");
     expect(result.issues.map((issue) => issue.path)).toContain("$.findings[0].resultKind");
+  });
+
+  it("accepts exact placeholder source-family subsets and rejects registry outsiders", () => {
+    for (const sourceRef of ["unicode-icu-messageformat", "mustache-spec", "design-harness-output-contract"]) {
+      const auditResult = createExampleAuditResult();
+      const finding = createCopyFinding("placeholder-leak", [sourceRef]);
+      auditResult.findings = [finding];
+      auditResult.advisoryScore = scoreFindings([finding]);
+      expect(validateAuditResultIntegrity(auditResult)).toEqual({ valid: true, issues: [] });
+    }
+
+    const auditResult = createExampleAuditResult();
+    const finding = createCopyFinding("placeholder-leak", ["wcag-2-2"]);
+    auditResult.findings = [finding];
+    auditResult.advisoryScore = scoreFindings([finding]);
+    const result = validateAuditResultIntegrity(auditResult);
+    expect(result.valid).toBe(false);
+    expect(result.issues).toContainEqual(expect.objectContaining({
+      path: "$.findings[0].sourceRefs[0]",
+      message: "is not declared by criterion content.placeholder.unrendered"
+    }));
   });
 });
 
@@ -364,6 +479,21 @@ describe("scoring", () => {
     expect(score.value).toBe(79);
   });
 
+  it("locks deductions for the five parser-free copy checks", () => {
+    const findings = [
+      createCopyFinding("placeholder-leak", ["unicode-icu-messageformat"], { severity: "high" }),
+      createCopyFinding("josa-hedge", ["copy-style-contract"], { severity: "low" }),
+      createCopyFinding("glossary-banned-term", ["copy-style-contract"], { severity: "medium" }),
+      createCopyFinding("glossary-use-carefully-term", ["copy-style-contract"], { severity: "low" }),
+      createCopyFinding("banned-phrase", ["copy-style-contract"], { severity: "medium" })
+    ].map((finding, index) => ({ ...finding, id: `${finding.id}-${index}` }));
+
+    const score = scoreFindings(findings);
+    expect(score.deductions.map((deduction) => deduction.points)).toEqual([20, 2.4, 6, 2.4, 6]);
+    expect(score.value).toBe(63.2);
+    expect(score.band).toBe("needs-work");
+  });
+
   it("requires the advisory score formula version in the audit-result schema", () => {
     const auditResult = createExampleAuditResult();
     expect(auditResult.advisoryScore.formulaVersion).toBe("epistemic-weight-v1");
@@ -391,6 +521,63 @@ describe("scoring", () => {
 });
 
 describe("report rendering", () => {
+  it("returns section titles from the same conditional report assembly", () => {
+    const auditResult = createExampleAuditResult();
+    const baseReport = buildMarkdownReport({ auditResult });
+
+    expect(baseReport.sections).toEqual([
+      "Run Summary",
+      "Advisory Score",
+      "Findings",
+      "Source-Backed Criteria",
+      "Evidence Links",
+      "Recommendations",
+      "Iteration Prompt Scaffold",
+      "Optional Subjective Critique"
+    ]);
+    expect(baseReport.markdown).not.toContain("## Failed Checks");
+    expect(baseReport.markdown).not.toContain("## Notices");
+    expect(baseReport.markdown).toContain("## Optional Subjective Critique");
+    expect(baseReport.markdown).toContain("No subjective critique was supplied.");
+
+    const conditionalReport = buildMarkdownReport({
+      auditResult: {
+        ...auditResult,
+        failedChecks: ["desktop:screenshot"],
+        notices: [{
+          code: "copy-surface-unsupported-adapter",
+          message: "A configured surface adapter is unavailable."
+        }]
+      },
+      critique: {
+        schemaVersion: auditResult.schemaVersion,
+        harnessVersion: auditResult.harnessVersion,
+        id: "critique-example",
+        auditRunId: auditResult.runId,
+        summary: "Review the visual hierarchy.",
+        evidenceRefs: [],
+        recommendations: ["Clarify the primary action."],
+        createdAt: "2026-01-01T00:00:00.000Z"
+      }
+    });
+
+    expect(conditionalReport.sections).toEqual([
+      "Run Summary",
+      "Failed Checks",
+      "Notices",
+      "Advisory Score",
+      "Findings",
+      "Source-Backed Criteria",
+      "Evidence Links",
+      "Recommendations",
+      "Iteration Prompt Scaffold",
+      "Optional Subjective Critique"
+    ]);
+    for (const title of conditionalReport.sections) {
+      expect(conditionalReport.markdown).toContain(`## ${title}`);
+    }
+  });
+
   it("includes score, deterministic findings, evidence, and prompt scaffold", () => {
     const auditResult = createExampleAuditResult();
     const report = renderMarkdownReport({ auditResult });
@@ -398,12 +585,73 @@ describe("report rendering", () => {
     expect(report).toContain("Findings");
     expect(report).toContain("Deterministic Findings: Risks");
     expect(report).toContain("Source-Backed Criteria");
+    expect(report).toContain("Sources used by emitted findings");
     expect(report).toContain("[Web Content Accessibility Guidelines 2.2](https://www.w3.org/TR/WCAG22/)");
     expect(report).toContain("Criterion: `responsive.horizontal-overflow.none`");
     expect(report).toContain("Evidence: `screenshot-desktop`, `measurement-desktop`");
     expect(report).toContain("Evidence Links");
     expect(report).toContain("Iteration Prompt Scaffold");
     expect(validateReportCopyGuardrails(report)).toEqual([]);
+  });
+
+  it("renders notices only when they are non-empty", () => {
+    const auditResult = createExampleAuditResult();
+    expect(renderMarkdownReport({ auditResult })).not.toContain("## Notices");
+    expect(renderMarkdownReport({ auditResult: { ...auditResult, notices: [] } })).not.toContain("## Notices");
+
+    const report = renderMarkdownReport({
+      auditResult: {
+        ...auditResult,
+        notices: [
+          {
+            code: "copy-surface-unsupported-adapter",
+            message: "A configured surface adapter is unavailable.",
+            viewport: "desktop",
+            details: { adapter: "native-ui", value: "button", ruleIndex: 0, matcherIndex: 1 }
+          }
+        ]
+      }
+    });
+
+    expect(report).toContain("## Notices");
+    expect(report).toContain("`copy-surface-unsupported-adapter`");
+    expect(report).toContain("do not affect the audit score or status");
+    expect(validateReportCopyGuardrails(report)).toEqual([]);
+  });
+
+  it("reports only source families used by emitted placeholder findings", () => {
+    const families = [
+      ["design-harness-output-contract", "Design Harness output contract", ["Unicode ICU MessageFormat", "Mustache specification"]],
+      ["unicode-icu-messageformat", "Unicode ICU MessageFormat", ["Design Harness output contract", "Mustache specification"]],
+      ["mustache-spec", "Mustache specification", ["Design Harness output contract", "Unicode ICU MessageFormat"]]
+    ] as const;
+
+    for (const [sourceRef, expectedTitle, excludedTitles] of families) {
+      const auditResult = createExampleAuditResult();
+      const finding = createCopyFinding("placeholder-leak", [sourceRef]);
+      auditResult.findings = [finding];
+      auditResult.advisoryScore = scoreFindings([finding]);
+      const criterionLine = renderMarkdownReport({ auditResult })
+        .split("\n")
+        .find((line) => line.includes("`content.placeholder.unrendered`"));
+
+      expect(criterionLine).toContain(expectedTitle);
+      for (const excludedTitle of excludedTitles) {
+        expect(criterionLine).not.toContain(excludedTitle);
+      }
+    }
+
+    const auditResult = createExampleAuditResult();
+    const icuFinding = createCopyFinding("placeholder-leak", ["unicode-icu-messageformat"], { id: "placeholder-icu" });
+    const mustacheFinding = createCopyFinding("placeholder-leak", ["mustache-spec"], { id: "placeholder-mustache" });
+    auditResult.findings = [icuFinding, mustacheFinding];
+    auditResult.advisoryScore = scoreFindings(auditResult.findings);
+    const criterionLine = renderMarkdownReport({ auditResult })
+      .split("\n")
+      .find((line) => line.includes("`content.placeholder.unrendered`"));
+    expect(criterionLine).toContain("Unicode ICU MessageFormat");
+    expect(criterionLine).toContain("Mustache specification");
+    expect(criterionLine).not.toContain("Design Harness output contract");
   });
 
   it("builds a model-neutral iteration prompt", () => {
