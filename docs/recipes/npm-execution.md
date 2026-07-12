@@ -13,9 +13,9 @@ pnpm design-harness -- audit --url http://localhost:3000 --out runs/demo
 After publish, the intended one-off audit flow is:
 
 ```bash
-npx @design-harness/cli@0.4.1 --help
+npx @design-harness/cli@0.4.2 --help
 npx playwright install chromium
-npx @design-harness/cli@0.4.1 audit --url http://localhost:3000 --out runs/demo
+npx @design-harness/cli@0.4.2 audit --url http://localhost:3000 --out runs/demo
 ```
 
 ## Local Package Smoke Test
@@ -26,7 +26,7 @@ Maintainers can verify the packed CLI before publishing:
 pnpm smoke:packed-cli
 ```
 
-The smoke test packs the three workspace packages, installs the CLI tarball into a temporary consumer project, resolves the internal packages through local tarball overrides, and runs:
+The smoke test packs the four workspace packages, installs the CLI tarball into a temporary consumer project, resolves the internal packages through local tarball overrides, and runs:
 
 ```bash
 pnpm exec design-harness --help

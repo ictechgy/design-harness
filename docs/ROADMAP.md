@@ -3,7 +3,7 @@
 How to read this file:
 
 - Authority on conflict: owner's current-session instruction > `AGENTS.md` > this file and the other committed docs > git-ignored local notes > your judgment.
-- **Current milestone: v0.4b** (copy-audit package + copy-style schema + Korean fixtures/provenance + calibration runner). Work only inside the current milestone; out-of-scope ideas go to `.omx/ideas.md` as one line.
+- **Current milestone: v0.4b parser-free release — COMPLETE 2026-07-12** (copy-audit package + copy-style schema + Korean fixtures/provenance + calibration runner). No next milestone is scheduled; do not start the approval-gated morphology/CLI sub-slices or any future milestone without the owner scheduling it. Out-of-scope ideas go to `.omx/ideas.md` as one line.
 - Maintenance rule: any PR that changes scope, conventions, or architecture updates this file (and `AGENTS.md` if a rule changed) in the same PR.
 - Common definition of done for every milestone: `CI=true pnpm release:check` passes, new checks ship with good/bad fixtures, docs updated, handoff written (`docs/agent-protocol.md`), README claims match npm/code reality.
 

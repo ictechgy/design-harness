@@ -17,6 +17,7 @@ Design Harness is an open-source, model-agnostic UI/UX QA loop for AI coding age
 9. **Report copy guardrails**: never claim "WCAG compliant", "accessible", "good design" etc. unqualified (`validateReportCopyGuardrails` in `packages/core/src/report.ts`). Scoped phrasing only — in reports AND public docs.
 10. **Enum lockstep**: `RubricCategory` is duplicated across `types.ts`, 3 JSON schemas, `rubric.yaml`, and `implementationAreaFor`. *Enforced: `check:enum-lockstep` — if the script and this sentence disagree, the script wins.* New source-strength kinds or check runtimes need a short ADR in `docs/adr/` first (ADR-001 added runtime `model-judged` and source strength `project-contract`; its policy matrix is enforced by `check:criteria-policy`).
 11. **Do not build cut-list items** (see Roadmap section below) without the owner explicitly reopening them.
+12. **Historical example runs preserve producer provenance.** Never mechanically bump their `harnessVersion` or `toolVersions`; regenerate the complete artifact set or retain the version that actually produced it. *Prose-only; detailed procedure: `docs/recipes/release-checklist.md`.*
 
 ## Ask the owner first (never proceed alone)
 
@@ -51,7 +52,7 @@ Criterion in `packages/core/src/criteria.ts` (with `CRITERION_SOURCES` entry) �
 
 ## Roadmap
 
-**Current milestone: v0.4b** — `@design-harness/copy-audit`, `copy-style.yaml`, Korean fixtures/provenance, and calibration runner. Full specs and acceptance criteria: **`docs/ROADMAP.md`** (committed, canonical). Do not start a future milestone without reading its spec there. (v0.4.1 completed 2026-07-10.)
+**Current milestone: v0.4b parser-free release — COMPLETE 2026-07-12** — `@design-harness/copy-audit`, copy-style contract, Korean fixtures/provenance, and calibration runner. No next milestone is scheduled; do not start the approval-gated morphology/CLI sub-slices or a future milestone until the owner schedules one. Full specs and acceptance criteria: **`docs/ROADMAP.md`** (committed, canonical).
 
 **Cut list (do NOT build now)**: MCP server (file contract `audit.json`/`report.md` is canonical; capture is commoditized) · best-of-N picker · community fixture pipeline · interaction-simulation / below-fold sweep / pixel contrast · more than two agent surfaces (Claude Code + Codex) · `guide from-references` CLI before the manual workflow proves value · Open Design integration · **evidence-against, do not build**: hue-template color harmony, symmetry/balance scoring for real UIs, scored Korean readability, MQM translation LQA, Figma-plugin surface, generic English style-guide enforcement (details: `docs/ROADMAP.md` cut list).
 
