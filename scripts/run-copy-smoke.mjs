@@ -3,7 +3,7 @@ import { join, resolve } from "node:path";
 import { renderMarkdownReport } from "../packages/core/dist/index.js";
 import { auditUrl } from "../packages/visual-audit/dist/index.js";
 import {
-  copyStyleForCalibration,
+  copyStyleForSmoke,
   desktopViewport,
   directNodeSelector,
   explicitRoleEvidence,
@@ -21,8 +21,8 @@ const fixtureServer = await startLocalFixtureServer(fixtureRoot);
 
 try {
   const { baseUrl } = fixtureServer;
-  const bad = await auditFixture("bad", `${baseUrl}/copy-bad.html`, copyStyleForCalibration("flag"));
-  const good = await auditFixture("good", `${baseUrl}/copy-good.html`, copyStyleForCalibration("allow"));
+  const bad = await auditFixture("bad", `${baseUrl}/copy-bad.html`, copyStyleForSmoke("flag"));
+  const good = await auditFixture("good", `${baseUrl}/copy-good.html`, copyStyleForSmoke("allow"));
   const noCopy = await auditFixture("no-copy", `${baseUrl}/copy-good.html`);
 
   assertBadResult(bad.auditResult);

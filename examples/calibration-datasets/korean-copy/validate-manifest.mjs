@@ -2,13 +2,13 @@
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { dirname, posix, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { calibratedCopyCheckNames } from "../../../scripts/copy-calibration-contract.mjs";
 
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(scriptDir, "../../..");
 const schema = JSON.parse(readFileSync(resolve(scriptDir, "schema.json"), "utf8"));
 const manifestPath = resolve(repoRoot, process.argv[2] ?? "examples/calibration-datasets/korean-copy/manifest.jsonl");
 const errors = [];
+const calibratedCopyCheckNames = readParserFreeCopyCheckNames();
 const criterionRegistry = readCriterionRegistry();
 const records = readJsonLines(manifestPath);
 const fixturePaths = new Set();
@@ -247,6 +247,20 @@ function readCriterionRegistry() {
     errors.push("core criterion registry parsing returned no entries");
   }
   return { checkNames, criterionIds };
+}
+
+function readParserFreeCopyCheckNames() {
+  const source = readFileSync(resolve(repoRoot, "packages/copy-audit/src/analyze-copy.ts"), "utf8");
+  const match = source.match(/export const PARSER_FREE_COPY_CHECK_NAMES\s*=\s*\[([\s\S]*?)\]\s*as const;/);
+  if (!match) {
+    errors.push("could not locate the parser-free copy check-name tuple");
+    return [];
+  }
+  const checkNames = [...match[1].matchAll(/"([^"]+)"/g)].map((nameMatch) => nameMatch[1]);
+  if (checkNames.length === 0 || new Set(checkNames).size !== checkNames.length) {
+    errors.push("parser-free copy check-name tuple must contain unique entries");
+  }
+  return checkNames;
 }
 
 function readJsonLines(path) {

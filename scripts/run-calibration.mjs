@@ -4,6 +4,7 @@ import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { renderMarkdownReport } from "../packages/core/dist/index.js";
 import { auditUrl } from "../packages/visual-audit/dist/index.js";
+import { calibrationFixturePaths } from "./calibration-paths.mjs";
 import { buildCalibrationSummary } from "./calibration-summary.mjs";
 import { copyStyleForCalibration, desktopViewport } from "./copy-calibration-config.mjs";
 import { startLocalFixtureServer } from "./local-fixture-server.mjs";
@@ -13,7 +14,6 @@ const repoRoot = resolve(scriptDir, "..");
 const fixtureRoot = resolve(repoRoot, "examples/ui-quality-fixtures");
 const manifestPath = resolve(repoRoot, "examples/calibration-datasets/korean-copy/manifest.jsonl");
 const outRoot = resolve(repoRoot, "runs/calibration");
-const fixturePathPrefix = "examples/ui-quality-fixtures/";
 const records = readManifest(manifestPath);
 
 rmSync(outRoot, { recursive: true, force: true });
@@ -24,8 +24,10 @@ try {
   const { baseUrl } = fixtureServer;
   const runs = [];
   for (const record of records) {
-    const fixtureRelativePath = record.fixturePath.slice(fixturePathPrefix.length);
-    const fixtureOutDir = join(outRoot, "fixtures", fixtureRelativePath.replace(/\.html$/, "").replaceAll("/", "--"));
+    const { relativePath: fixtureRelativePath, outDir: fixtureOutDir } = calibrationFixturePaths(
+      outRoot,
+      record.fixturePath
+    );
     try {
       const result = await auditUrl({
         url: `${baseUrl}/${encodeURI(fixtureRelativePath)}`,

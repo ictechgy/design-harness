@@ -1,5 +1,11 @@
 import { SCHEMA_VERSION } from "../packages/core/dist/index.js";
 
+/** @typedef {import("../packages/core/dist/index.js").CopyStyle} CopyStyle */
+/** @typedef {import("../packages/core/dist/index.js").CopyStyleSurfaceRule} CopyStyleSurfaceRule */
+/** @typedef {import("../packages/core/dist/index.js").JosaHedgePolicy} JosaHedgePolicy */
+/** @typedef {import("../packages/core/dist/index.js").ViewportPreset} ViewportPreset */
+
+/** @type {ViewportPreset} */
 export const desktopViewport = {
   name: "desktop",
   width: 1440,
@@ -13,54 +19,29 @@ export const nonMatchingWebDomSelector = "[data-design-harness-never-match='role
 export const directNodeSelector = "#direct-surface-copy";
 export const nearestAncestorSelector = "#nearest-surface-wrapper";
 
-const copyCalibrationStyle = {
+/** @type {CopyStyleSurfaceRule} */
+const buttonSurfaceRule = {
+  surface: "button",
+  matchers: [
+    { kind: "role", value: "switch" },
+    { kind: "role", value: "button" },
+    { kind: "adapter", adapter: "web-dom", value: "button" }
+  ]
+};
+
+/** @type {CopyStyleSurfaceRule} */
+const bodySurfaceRule = {
+  surface: "body",
+  matchers: [
+    { kind: "adapter", adapter: "web-dom", value: "main p" },
+    { kind: "adapter", adapter: "web-dom", value: "p" }
+  ]
+};
+
+/** @type {Pick<CopyStyle, "schemaVersion" | "locale" | "glossary" | "bannedPhrases">} */
+const sharedCopyStyle = {
   schemaVersion: SCHEMA_VERSION,
   locale: "ko-KR",
-  surfaceMapping: [
-    {
-      surface: "button",
-      matchers: [
-        { kind: "role", value: "switch" },
-        { kind: "role", value: "button" },
-        { kind: "adapter", adapter: "web-dom", value: "button" }
-      ]
-    },
-    {
-      surface: "error",
-      matchers: [{ kind: "adapter", adapter: "native-ui", value: "status" }]
-    },
-    {
-      surface: "marketing",
-      matchers: [{ kind: "adapter", adapter: "web-dom", value: "[" }]
-    },
-    {
-      surface: "body",
-      matchers: [
-        { kind: "adapter", adapter: "web-dom", value: "main p" },
-        { kind: "adapter", adapter: "web-dom", value: "p" }
-      ]
-    },
-    {
-      surface: "marketing",
-      matchers: [{ kind: "adapter", adapter: "web-dom", value: "p" }]
-    },
-    {
-      surface: "marketing",
-      matchers: [{ kind: "adapter", adapter: "web-dom", value: "h1" }]
-    },
-    {
-      surface: "marketing",
-      matchers: [{ kind: "adapter", adapter: "web-dom", value: nonMatchingWebDomSelector }]
-    },
-    {
-      surface: "marketing",
-      matchers: [{ kind: "adapter", adapter: "web-dom", value: directNodeSelector }]
-    },
-    {
-      surface: "body",
-      matchers: [{ kind: "adapter", adapter: "web-dom", value: nearestAncestorSelector }]
-    }
-  ],
   glossary: [
     {
       term: "해지",
@@ -86,6 +67,58 @@ const copyCalibrationStyle = {
   ]
 };
 
+/**
+ * @param {JosaHedgePolicy} josaHedgePolicy
+ * @returns {CopyStyle}
+ */
 export function copyStyleForCalibration(josaHedgePolicy) {
-  return { ...copyCalibrationStyle, josaHedgePolicy };
+  return {
+    ...sharedCopyStyle,
+    josaHedgePolicy,
+    surfaceMapping: [buttonSurfaceRule, bodySurfaceRule]
+  };
+}
+
+/**
+ * Adds deliberate unsupported/invalid bindings used only by the surface-materializer smoke.
+ * @param {JosaHedgePolicy} josaHedgePolicy
+ * @returns {CopyStyle}
+ */
+export function copyStyleForSmoke(josaHedgePolicy) {
+  return {
+    ...sharedCopyStyle,
+    josaHedgePolicy,
+    surfaceMapping: [
+      buttonSurfaceRule,
+      {
+        surface: "error",
+        matchers: [{ kind: "adapter", adapter: "native-ui", value: "status" }]
+      },
+      {
+        surface: "marketing",
+        matchers: [{ kind: "adapter", adapter: "web-dom", value: "[" }]
+      },
+      bodySurfaceRule,
+      {
+        surface: "marketing",
+        matchers: [{ kind: "adapter", adapter: "web-dom", value: "p" }]
+      },
+      {
+        surface: "marketing",
+        matchers: [{ kind: "adapter", adapter: "web-dom", value: "h1" }]
+      },
+      {
+        surface: "marketing",
+        matchers: [{ kind: "adapter", adapter: "web-dom", value: nonMatchingWebDomSelector }]
+      },
+      {
+        surface: "marketing",
+        matchers: [{ kind: "adapter", adapter: "web-dom", value: directNodeSelector }]
+      },
+      {
+        surface: "body",
+        matchers: [{ kind: "adapter", adapter: "web-dom", value: nearestAncestorSelector }]
+      }
+    ]
+  };
 }

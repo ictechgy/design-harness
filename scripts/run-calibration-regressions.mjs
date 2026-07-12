@@ -1,5 +1,20 @@
 import assert from "node:assert/strict";
+import { calibrationFixturePaths } from "./calibration-paths.mjs";
 import { buildCalibrationSummary } from "./calibration-summary.mjs";
+
+const flatFixture = calibrationFixturePaths(
+  "/tmp/calibration",
+  "examples/ui-quality-fixtures/korean--sample.html"
+);
+const nestedFixture = calibrationFixturePaths(
+  "/tmp/calibration",
+  "examples/ui-quality-fixtures/korean/sample.html"
+);
+assert.notEqual(flatFixture.outDir, nestedFixture.outDir);
+assert.throws(
+  () => calibrationFixturePaths("/tmp/calibration", "examples/ui-quality-fixtures/../escaped.html"),
+  /escapes the output root/
+);
 
 const shouldNotFlag = {
   registeredCheckNames: ["quiet-check"],
