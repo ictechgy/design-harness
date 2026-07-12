@@ -269,7 +269,7 @@ export async function collectViewportMeasurements(page: {
           const textValue = truncateTextForInventory(text);
           const accessibleName = truncateTextForInventory(accessibleNameFor(element));
           const role = roleFor(element);
-          const copySurface = resolveCopySurface(element, surfaceRoleFor(element));
+          const copySurface = resolveCopySurface(element);
           return {
             selector: selectorFor(element),
             text: textValue.text,
@@ -325,36 +325,44 @@ export async function collectViewportMeasurements(page: {
       }
     }
 
-    function resolveCopySurface(element: HTMLElement, role: string) {
-      for (const [ruleIndex, rule] of surfaceRules.entries()) {
-        for (const [matcherIndex, matcher] of rule.matchers.entries()) {
-          if (unusableMatcherKeys.has(matcherKey(ruleIndex, matcherIndex))) {
-            continue;
-          }
-          if (matcher.kind === "role") {
-            if (role === matcher.value.trim().toLowerCase()) {
-              return { surface: rule.surface, ruleIndex, matcher };
+    function resolveCopySurface(element: HTMLElement) {
+      if (surfaceRules.length === 0) {
+        return undefined;
+      }
+      let current: HTMLElement | null = element;
+      while (current) {
+        const role = surfaceRoleFor(current);
+        for (const [ruleIndex, rule] of surfaceRules.entries()) {
+          for (const [matcherIndex, matcher] of rule.matchers.entries()) {
+            if (unusableMatcherKeys.has(matcherKey(ruleIndex, matcherIndex))) {
+              continue;
             }
-            continue;
-          }
-          if (matcher.adapter !== "web-dom") {
-            continue;
-          }
-          try {
-            if (element.matches(matcher.value)) {
-              return { surface: rule.surface, ruleIndex, matcher };
+            if (matcher.kind === "role") {
+              if (role === matcher.value.trim().toLowerCase()) {
+                return { surface: rule.surface, ruleIndex, matcher };
+              }
+              continue;
             }
-          } catch {
-            unusableMatcherKeys.add(matcherKey(ruleIndex, matcherIndex));
-            addSurfaceNotice(
-              "copy-surface-invalid-query",
-              `Copy surface query "${matcher.value}" is invalid and was skipped.`,
-              matcher,
-              ruleIndex,
-              matcherIndex
-            );
+            if (matcher.adapter !== "web-dom") {
+              continue;
+            }
+            try {
+              if (current.matches(matcher.value)) {
+                return { surface: rule.surface, ruleIndex, matcher };
+              }
+            } catch {
+              unusableMatcherKeys.add(matcherKey(ruleIndex, matcherIndex));
+              addSurfaceNotice(
+                "copy-surface-invalid-query",
+                `Copy surface query "${matcher.value}" is invalid and was skipped.`,
+                matcher,
+                ruleIndex,
+                matcherIndex
+              );
+            }
           }
         }
+        current = current.parentElement;
       }
       return undefined;
     }

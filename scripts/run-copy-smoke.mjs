@@ -18,6 +18,8 @@ const desktop = {
 };
 const explicitRoleEvidence = "unknown-token SWITCH checkbox";
 const nonMatchingWebDomSelector = "[data-design-harness-never-match='role-smoke']";
+const directNodeSelector = "#direct-surface-copy";
+const nearestAncestorSelector = "#nearest-surface-wrapper";
 const copyStyle = {
   schemaVersion: SCHEMA_VERSION,
   locale: "ko-KR",
@@ -56,6 +58,14 @@ const copyStyle = {
     {
       surface: "marketing",
       matchers: [{ kind: "adapter", adapter: "web-dom", value: nonMatchingWebDomSelector }]
+    },
+    {
+      surface: "marketing",
+      matchers: [{ kind: "adapter", adapter: "web-dom", value: directNodeSelector }]
+    },
+    {
+      surface: "body",
+      matchers: [{ kind: "adapter", adapter: "web-dom", value: nearestAncestorSelector }]
     }
   ],
   glossary: [
@@ -123,7 +133,7 @@ try {
   assertBadResult(bad.auditResult);
   assertGoodResult(good.auditResult);
   assertNoCopyResult(noCopy.auditResult);
-  console.log("Copy smoke passed: bad=5 findings/63.2, good=0 findings/100, role evidence and surface provenance verified.");
+  console.log("Copy smoke passed: bad=5 findings/63.2, good=0 findings/100, role evidence, nested inheritance, precedence, and provenance verified.");
 } finally {
   await new Promise((resolveClose) => server.close(resolveClose));
 }
@@ -181,6 +191,8 @@ function assertGoodResult(auditResult) {
   assert(auditResult.advisoryScore.value === 100, `good fixture score was ${auditResult.advisoryScore.value}`);
   assert(auditResult.advisoryScore.band === "strong", `good fixture band was ${auditResult.advisoryScore.band}`);
   assertNoticeAndSurfaceContract(auditResult);
+  assertNestedSurfaceInheritance(auditResult);
+  assertSurfacePrecedence(auditResult);
 }
 
 function assertNoCopyResult(auditResult) {
@@ -229,6 +241,29 @@ function assertNoticeAndSurfaceContract(auditResult) {
     items.every((item) => item.copySurface?.matcher?.value !== nonMatchingWebDomSelector),
     "valid non-matching web-dom selector assigned a copy surface"
   );
+}
+
+function assertNestedSurfaceInheritance(auditResult) {
+  const items = textInventoryItems(auditResult);
+  const nestedButtonItem = items.find((item) => item.selector === "#nested-button-copy");
+  assert(nestedButtonItem !== undefined, "nested button copy was not captured");
+  assert(nestedButtonItem.copySurface?.surface === "button", "nested button copy did not inherit the button surface");
+  assert(nestedButtonItem.copySurface.ruleIndex === 0, `nested button surface rule index was ${nestedButtonItem.copySurface.ruleIndex}`);
+  assert(nestedButtonItem.copySurface.matcher?.kind === "role", "nested button copy did not inherit a role matcher");
+  assert(nestedButtonItem.copySurface.matcher?.value === "button", "nested button copy did not inherit the native button role");
+}
+
+function assertSurfacePrecedence(auditResult) {
+  const items = textInventoryItems(auditResult);
+  const directNodeItem = items.find((item) => item.selector === directNodeSelector);
+  assert(directNodeItem?.copySurface?.surface === "marketing", "direct node surface did not outrank its button ancestor");
+  assert(directNodeItem.copySurface.ruleIndex === 7, `direct node surface rule index was ${directNodeItem.copySurface.ruleIndex}`);
+  assert(directNodeItem.copySurface.matcher?.value === directNodeSelector, "direct node matcher provenance was not retained");
+
+  const nearestAncestorItem = items.find((item) => item.selector === "#nearest-surface-copy");
+  assert(nearestAncestorItem?.copySurface?.surface === "body", "nearest ancestor surface did not outrank the farther button ancestor");
+  assert(nearestAncestorItem.copySurface.ruleIndex === 8, `nearest ancestor surface rule index was ${nearestAncestorItem.copySurface.ruleIndex}`);
+  assert(nearestAncestorItem.copySurface.matcher?.value === nearestAncestorSelector, "nearest ancestor matcher provenance was not retained");
 }
 
 function textInventoryItems(auditResult) {

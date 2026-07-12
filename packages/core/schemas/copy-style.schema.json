@@ -116,7 +116,7 @@
     "surfaceMapping": {
       "type": "array",
       "minItems": 1,
-      "description": "Ordered rules evaluated by one capture-side materializer. The first matching rule wins; unmatched nodes remain unconfigured.",
+      "description": "Ordered rules evaluated by one capture-side materializer for the captured node, then each ancestor nearest-first. At each candidate, rules and matchers run in array order; the first match wins. Nodes with no match on themselves or any ancestor remain unconfigured.",
       "items": {
         "$ref": "#/$defs/surfaceRule"
       }
