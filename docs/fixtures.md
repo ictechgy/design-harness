@@ -21,7 +21,7 @@ They are intentionally small, framework-free HTML pages used to calibrate determ
 - `korean-line-length-bad.html`: unconstrained full-width Korean paragraph; expects exactly one desktop `excessive-line-length` finding.
 - `korean-status-good.html`: Korean "저장 중..." status with `role="status"`; must stay silent.
 - `korean-status-bad.html`: Korean status text without live-region semantics; expects `status-live-region-risk` per viewport.
-- `korean/copy-good.html`: synthetic improved Korean copy; expects zero parser-free copy findings.
+- `korean/copy-good.html`: synthetic improved Korean copy; expects zero parser-free copy findings under `josaHedgePolicy: allow`; its rendered `을(를)` line is the allow-policy control.
 - `korean/copy-bad.html`: one synthetic defect for each parser-free copy criterion; the single-desktop copy smoke expects five findings and score 63.2.
 - `page-lang-good.html`: html element declares `lang`; must stay silent.
 - `page-lang-bad.html`: html element without a `lang` attribute; expects one `page-lang-missing` deterministic failure per viewport.
