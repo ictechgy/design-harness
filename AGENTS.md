@@ -17,7 +17,7 @@ Design Harness is an open-source, model-agnostic UI/UX QA loop for AI coding age
 9. **Report copy guardrails**: never claim "WCAG compliant", "accessible", "good design" etc. unqualified (`validateReportCopyGuardrails` in `packages/core/src/report.ts`). Scoped phrasing only — in reports AND public docs.
 10. **Enum lockstep**: `RubricCategory` is duplicated across `types.ts`, 3 JSON schemas, `rubric.yaml`, and `implementationAreaFor`. *Enforced: `check:enum-lockstep` — if the script and this sentence disagree, the script wins.* New source-strength kinds or check runtimes need a short ADR in `docs/adr/` first (ADR-001 added runtime `model-judged` and source strength `project-contract`; its policy matrix is enforced by `check:criteria-policy`).
 11. **Do not build cut-list items** (see Roadmap section below) without the owner explicitly reopening them.
-12. **Historical example runs preserve producer provenance.** Never mechanically bump their `harnessVersion` or `toolVersions`; regenerate the complete artifact set or retain the version that actually produced it.
+12. **Historical example runs preserve producer provenance.** Never mechanically bump their `harnessVersion` or `toolVersions`; regenerate the complete artifact set or retain the version that actually produced it. *Prose-only; detailed procedure: `docs/recipes/release-checklist.md`.*
 
 ## Ask the owner first (never proceed alone)
 
