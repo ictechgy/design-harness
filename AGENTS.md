@@ -37,6 +37,7 @@ pnpm check:core-purity              # core stays capture-agnostic (ADR-002)
 pnpm check:package-boundaries       # package imports/manifests stay one-way
 pnpm check:deps-policy              # ToS/GPL dependency policy
 pnpm check:tracked-hygiene          # local-only files untracked; AGENTS.md line budget
+pnpm calibrate:fixtures             # six Korean fixtures → parser-free copy TP/FP/FN drift gate
 pnpm example:serve                  # merchant-dashboard fixture on :4173
 pnpm smoke:copy                     # live parser-free copy/materializer golden path
 pnpm design-harness -- audit --url http://localhost:4173 --out runs/demo

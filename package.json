@@ -42,7 +42,7 @@
     "check:tracked-hygiene": "node scripts/check-tracked-hygiene.mjs",
     "validate:calibration-datasets": "pnpm validate:midjourney-lab && pnpm validate:korean-copy && pnpm check:midjourney-policy",
     "validate:midjourney-lab": "node examples/calibration-datasets/midjourney-reference-lab/validate-manifest.mjs examples/calibration-datasets/midjourney-reference-lab/manifest.example.jsonl && node examples/calibration-datasets/midjourney-reference-lab/validate-regressions.mjs",
-    "validate:korean-copy": "node examples/calibration-datasets/korean-copy/validate-manifest.mjs && node examples/calibration-datasets/korean-copy/validate-regressions.mjs",
+    "validate:korean-copy": "node examples/calibration-datasets/korean-copy/validate-manifest.mjs && node examples/calibration-datasets/korean-copy/validate-regressions.mjs && node scripts/run-calibration-regressions.mjs",
     "check:midjourney-policy": "node scripts/check-midjourney-reference-policy.mjs",
     "check:github-actions": "node scripts/check-github-action-artifacts.mjs",
     "check:agent-recipes": "node scripts/check-agent-recipes.mjs",
@@ -55,6 +55,7 @@
     "example:serve": "node scripts/serve-static.mjs examples/merchant-dashboard 4173",
     "smoke:example": "node scripts/run-example-smoke.mjs",
     "smoke:copy": "node scripts/run-copy-smoke.mjs",
+    "calibrate:fixtures": "pnpm validate:korean-copy && node scripts/run-calibration.mjs",
     "smoke:packed-cli": "node scripts/verify-packed-cli.mjs",
     "pack:dry-run": "pnpm --filter @design-harness/core pack --dry-run && pnpm --filter @design-harness/copy-audit pack --dry-run && pnpm --filter @design-harness/visual-audit pack --dry-run && pnpm --filter @design-harness/cli pack --dry-run",
     "release:check": "pnpm build && pnpm typecheck && pnpm test && pnpm validate && pnpm pack:dry-run && pnpm smoke:packed-cli"

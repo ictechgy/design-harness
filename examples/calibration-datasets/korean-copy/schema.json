@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://design-harness.dev/schemas/korean-copy-fixture-provenance.json",
-  "title": "Korean Copy Fixture Provenance",
+  "$id": "https://design-harness.dev/schemas/korean-copy-fixture-calibration.json",
+  "title": "Korean Copy Fixture Calibration Record",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -11,11 +11,14 @@
     "license",
     "redistributionStatus",
     "synthetic",
-    "derived"
+    "derived",
+    "josaHedgePolicy",
+    "expectedFindings",
+    "shouldNotFlag"
   ],
   "properties": {
     "schemaVersion": {
-      "const": "korean-copy-fixtures/v1"
+      "const": "korean-copy-fixtures/v2"
     },
     "fixturePath": {
       "type": "string",
@@ -41,6 +44,72 @@
     },
     "derived": {
       "type": "boolean"
+    },
+    "josaHedgePolicy": {
+      "enum": [
+        "flag",
+        "allow"
+      ]
+    },
+    "expectedFindings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "checkName",
+          "count"
+        ],
+        "properties": {
+          "checkName": {
+            "type": "string",
+            "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+          },
+          "count": {
+            "type": "integer",
+            "minimum": 1
+          }
+        }
+      }
+    },
+    "shouldNotFlag": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "registeredCheckNames",
+        "futureCriteria"
+      ],
+      "properties": {
+        "registeredCheckNames": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+          }
+        },
+        "futureCriteria": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "criterionId",
+              "rationale"
+            ],
+            "properties": {
+              "criterionId": {
+                "type": "string",
+                "pattern": "^[a-z0-9]+(?:[.-][a-z0-9]+)+$"
+              },
+              "rationale": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          }
+        }
+      }
     },
     "notes": {
       "type": "string",
