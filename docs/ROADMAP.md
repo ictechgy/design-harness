@@ -7,6 +7,10 @@ How to read this file:
 - Maintenance rule: any PR that changes scope, conventions, or architecture updates this file (and `AGENTS.md` if a rule changed) in the same PR.
 - Common definition of done for every milestone: `CI=true pnpm release:check` passes, new checks ship with good/bad fixtures, docs updated, handoff written (`docs/agent-protocol.md`), README claims match npm/code reality.
 
+## Post-v0.4b maintenance contracts
+
+1. **Epistemic integrity A1 (2026-07-14)** — a thrown `page.goto` error is a fail-closed boundary for that viewport: retain the existing navigation failure evidence/finding, skip marker/screenshot/measurement/text/ARIA/copy-derived output, close the page once, and continue later viewports. HTTP `>=400` responses retain their existing downstream behavior. The iteration prompt may include only deterministic `failure` and `risk` findings. Its adapter-aligned groups are render/blank failures, other deterministic failures, then high/medium-confidence deterministic risks; the low-confidence deterministic-risk tail and within-group severity, confidence, and stable producer-order tie-breakers are report-local policy. Apply the five-item cap only after this ordering, without mutating producer findings.
+
 ## v0.3.2 — ship, de-bias, gather evidence (COMPLETE 2026-07-08)
 
 1. **npm publish + GitHub release** — DONE 2026-07-07 (v0.3.1 on npm: core, visual-audit, cli; tag + release published; `pnpm dlx @design-harness/cli@0.3.1 --help` verified).

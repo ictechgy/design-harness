@@ -115,124 +115,127 @@ export async function auditUrl(options: AuditUrlOptions): Promise<AuditUrlResult
         isMobile: viewport.isMobile
       });
 
-      const viewportEvidenceRefs: string[] = [];
-      page.setDefaultTimeout(timeoutMs);
-      page.setDefaultNavigationTimeout(timeoutMs);
-
       try {
-        const response = await page.goto(options.url, {
-          waitUntil: "domcontentloaded",
-          timeout: timeoutMs
-        });
-        if (response && response.status() >= 400) {
-          const evidenceId = addFailureEvidence(evidenceAssets, viewport.name, "http-status", {
-            status: response.status(),
-            statusText: response.statusText()
+        const viewportEvidenceRefs: string[] = [];
+        page.setDefaultTimeout(timeoutMs);
+        page.setDefaultNavigationTimeout(timeoutMs);
+
+        try {
+          const response = await page.goto(options.url, {
+            waitUntil: "domcontentloaded",
+            timeout: timeoutMs
+          });
+          if (response && response.status() >= 400) {
+            const evidenceId = addFailureEvidence(evidenceAssets, viewport.name, "http-status", {
+              status: response.status(),
+              statusText: response.statusText()
+            });
+            viewportEvidenceRefs.push(evidenceId);
+            failedChecks.push(`${viewport.name}:http-${response.status()}`);
+            findings.push(createRenderFailureFinding({
+              id: `finding-${viewport.name}-http-status-${response.status()}`,
+              viewport: viewport.name,
+              evidenceRefs: [evidenceId],
+              problem: `The page returned HTTP ${response.status()} ${response.statusText()}.`
+            }));
+          }
+        } catch (error) {
+          const errorKind = error instanceof errors.TimeoutError ? "page-timeout" : "navigation-error";
+          const evidenceId = addFailureEvidence(evidenceAssets, viewport.name, errorKind, {
+            message: error instanceof Error ? error.message : String(error)
           });
           viewportEvidenceRefs.push(evidenceId);
-          failedChecks.push(`${viewport.name}:http-${response.status()}`);
+          failedChecks.push(`${viewport.name}:page-timeout-or-navigation`);
+          if (!(error instanceof errors.TimeoutError)) {
+            failedChecks.push(`${viewport.name}:navigation-error`);
+          }
           findings.push(createRenderFailureFinding({
-            id: `finding-${viewport.name}-http-status-${response.status()}`,
+            id: `finding-${viewport.name}-${errorKind}`,
             viewport: viewport.name,
             evidenceRefs: [evidenceId],
-            problem: `The page returned HTTP ${response.status()} ${response.statusText()}.`
+            problem: error instanceof errors.TimeoutError
+              ? `The page did not finish loading within ${timeoutMs}ms.`
+              : "The page could not be navigated successfully."
           }));
+          continue;
         }
-      } catch (error) {
-        const errorKind = error instanceof errors.TimeoutError ? "page-timeout" : "navigation-error";
-        const evidenceId = addFailureEvidence(evidenceAssets, viewport.name, errorKind, {
-          message: error instanceof Error ? error.message : String(error)
-        });
-        viewportEvidenceRefs.push(evidenceId);
-        failedChecks.push(`${viewport.name}:page-timeout-or-navigation`);
-        if (!(error instanceof errors.TimeoutError)) {
-          failedChecks.push(`${viewport.name}:navigation-error`);
+
+        try {
+          await page.evaluate((viewportName) => {
+            document.documentElement.dataset.designHarnessViewport = String(viewportName);
+          }, viewport.name);
+        } catch (error) {
+          const evidenceId = addFailureEvidence(evidenceAssets, viewport.name, "viewport-marker", {
+            message: error instanceof Error ? error.message : String(error)
+          });
+          viewportEvidenceRefs.push(evidenceId);
+          failedChecks.push(`${viewport.name}:viewport-marker`);
         }
-        findings.push(createRenderFailureFinding({
-          id: `finding-${viewport.name}-${errorKind}`,
-          viewport: viewport.name,
-          evidenceRefs: [evidenceId],
-          problem: error instanceof errors.TimeoutError
-            ? `The page did not finish loading within ${timeoutMs}ms.`
-            : "The page could not be navigated successfully."
-        }));
-      }
 
-      try {
-        await page.evaluate((viewportName) => {
-          document.documentElement.dataset.designHarnessViewport = String(viewportName);
-        }, viewport.name);
-      } catch (error) {
-        const evidenceId = addFailureEvidence(evidenceAssets, viewport.name, "viewport-marker", {
-          message: error instanceof Error ? error.message : String(error)
-        });
-        viewportEvidenceRefs.push(evidenceId);
-        failedChecks.push(`${viewport.name}:viewport-marker`);
-      }
-
-      const screenshotPath = join(screenshotsDir, `${viewport.name}.png`);
-      const screenshotEvidenceId = `screenshot-${viewport.name}`;
-      try {
-        await page.screenshot({
-          path: screenshotPath,
-          fullPage: false
-        });
-        evidenceAssets.push({
-          id: screenshotEvidenceId,
-          type: "screenshot",
-          path: `screenshots/${viewport.name}.png`,
-          viewport: viewport.name,
-          createdAt: new Date().toISOString()
-        });
-        viewportEvidenceRefs.push(screenshotEvidenceId);
-      } catch (error) {
-        const evidenceId = addFailureEvidence(evidenceAssets, viewport.name, "screenshot", {
-          message: error instanceof Error ? error.message : String(error)
-        });
-        viewportEvidenceRefs.push(evidenceId);
-        failedChecks.push(`${viewport.name}:screenshot`);
-      }
-
-      try {
-        const collection = await collectViewportMeasurements(page, options.copyStyle?.surfaceMapping);
-        const measurement = collection.measurements;
-        noticeCandidates.push(...collection.notices);
-        const measurementEvidenceId = `measurement-${viewport.name}`;
-        evidenceAssets.push({
-          id: measurementEvidenceId,
-          type: "measurement",
-          viewport: viewport.name,
-          data: measurementEvidenceData(measurement),
-          createdAt: new Date().toISOString()
-        });
-        viewportEvidenceRefs.push(measurementEvidenceId);
-        const textInventoryEvidenceId = `text-inventory-${viewport.name}`;
-        evidenceAssets.push({
-          id: textInventoryEvidenceId,
-          type: "text-inventory",
-          viewport: viewport.name,
-          data: textInventoryEvidenceData(measurement),
-          createdAt: new Date().toISOString()
-        });
-        viewportEvidenceRefs.push(textInventoryEvidenceId);
-        if (options.copyStyle) {
-          findings.push(...analyzeCopy({
-            viewport: measurement.viewport,
-            evidenceRef: textInventoryEvidenceId,
-            items: measurement.textInventory
-          }, options.copyStyle));
+        const screenshotPath = join(screenshotsDir, `${viewport.name}.png`);
+        const screenshotEvidenceId = `screenshot-${viewport.name}`;
+        try {
+          await page.screenshot({
+            path: screenshotPath,
+            fullPage: false
+          });
+          evidenceAssets.push({
+            id: screenshotEvidenceId,
+            type: "screenshot",
+            path: `screenshots/${viewport.name}.png`,
+            viewport: viewport.name,
+            createdAt: new Date().toISOString()
+          });
+          viewportEvidenceRefs.push(screenshotEvidenceId);
+        } catch (error) {
+          const evidenceId = addFailureEvidence(evidenceAssets, viewport.name, "screenshot", {
+            message: error instanceof Error ? error.message : String(error)
+          });
+          viewportEvidenceRefs.push(evidenceId);
+          failedChecks.push(`${viewport.name}:screenshot`);
         }
-        viewportEvidenceRefs.push(...await recordAriaSnapshotEvidence(page, evidenceAssets, viewport.name, failedChecks));
-        measurementRecords.push({
-          measurement,
-          evidenceRefs: [...viewportEvidenceRefs]
-        });
-      } catch (error) {
-        const evidenceId = addFailureEvidence(evidenceAssets, viewport.name, "measurement", {
-          message: error instanceof Error ? error.message : String(error)
-        });
-        viewportEvidenceRefs.push(evidenceId);
-        failedChecks.push(`${viewport.name}:measurement`);
+
+        try {
+          const collection = await collectViewportMeasurements(page, options.copyStyle?.surfaceMapping);
+          const measurement = collection.measurements;
+          noticeCandidates.push(...collection.notices);
+          const measurementEvidenceId = `measurement-${viewport.name}`;
+          evidenceAssets.push({
+            id: measurementEvidenceId,
+            type: "measurement",
+            viewport: viewport.name,
+            data: measurementEvidenceData(measurement),
+            createdAt: new Date().toISOString()
+          });
+          viewportEvidenceRefs.push(measurementEvidenceId);
+          const textInventoryEvidenceId = `text-inventory-${viewport.name}`;
+          evidenceAssets.push({
+            id: textInventoryEvidenceId,
+            type: "text-inventory",
+            viewport: viewport.name,
+            data: textInventoryEvidenceData(measurement),
+            createdAt: new Date().toISOString()
+          });
+          viewportEvidenceRefs.push(textInventoryEvidenceId);
+          if (options.copyStyle) {
+            findings.push(...analyzeCopy({
+              viewport: measurement.viewport,
+              evidenceRef: textInventoryEvidenceId,
+              items: measurement.textInventory
+            }, options.copyStyle));
+          }
+          viewportEvidenceRefs.push(...await recordAriaSnapshotEvidence(page, evidenceAssets, viewport.name, failedChecks));
+          measurementRecords.push({
+            measurement,
+            evidenceRefs: [...viewportEvidenceRefs]
+          });
+        } catch (error) {
+          const evidenceId = addFailureEvidence(evidenceAssets, viewport.name, "measurement", {
+            message: error instanceof Error ? error.message : String(error)
+          });
+          viewportEvidenceRefs.push(evidenceId);
+          failedChecks.push(`${viewport.name}:measurement`);
+        }
       } finally {
         await page.close();
       }

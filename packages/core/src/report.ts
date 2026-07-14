@@ -80,7 +80,7 @@ function renderFailedChecks(auditResult: AuditResult): string {
 }
 
 export function buildIterationPrompt(auditResult: AuditResult): string {
-  const topFindings = auditResult.findings.slice(0, 5);
+  const topFindings = selectIterationPromptFindings(auditResult.findings);
   const findingLines = topFindings.length
     ? topFindings.map((finding) => {
         const implementationArea = implementationAreaFor(finding);
@@ -97,6 +97,49 @@ export function buildIterationPrompt(auditResult: AuditResult): string {
     findingLines,
     "After revising, rerun the audit and compare the new report against this one."
   ].join("\n");
+}
+
+const ITERATION_PROMPT_SEVERITY_RANK: Record<Finding["severity"], number> = {
+  critical: 0,
+  high: 1,
+  medium: 2,
+  low: 3
+};
+
+const ITERATION_PROMPT_CONFIDENCE_RANK: Record<Finding["confidence"], number> = {
+  high: 0,
+  medium: 1,
+  low: 2
+};
+
+function selectIterationPromptFindings(findings: readonly Finding[]): Finding[] {
+  return findings
+    .map((finding, producerIndex) => ({ finding, producerIndex }))
+    .filter(({ finding }) => (
+      finding.determinism === "deterministic" &&
+      (finding.resultKind === "failure" || finding.resultKind === "risk")
+    ))
+    .sort((left, right) => (
+      iterationPromptPriorityGroup(left.finding) - iterationPromptPriorityGroup(right.finding) ||
+      ITERATION_PROMPT_SEVERITY_RANK[left.finding.severity] - ITERATION_PROMPT_SEVERITY_RANK[right.finding.severity] ||
+      ITERATION_PROMPT_CONFIDENCE_RANK[left.finding.confidence] - ITERATION_PROMPT_CONFIDENCE_RANK[right.finding.confidence] ||
+      left.producerIndex - right.producerIndex
+    ))
+    .slice(0, 5)
+    .map(({ finding }) => finding);
+}
+
+function iterationPromptPriorityGroup(finding: Finding): number {
+  if (
+    finding.resultKind === "failure" &&
+    (finding.checkName === "render-failure" || finding.checkName === "blank-render")
+  ) {
+    return 0;
+  }
+  if (finding.resultKind === "failure") {
+    return 1;
+  }
+  return finding.confidence === "low" ? 3 : 2;
 }
 
 function renderRunSummary(auditResult: AuditResult): string {
