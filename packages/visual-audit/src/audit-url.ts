@@ -237,7 +237,14 @@ export async function auditUrl(options: AuditUrlOptions): Promise<AuditUrlResult
           failedChecks.push(`${viewport.name}:measurement`);
         }
       } finally {
-        await page.close();
+        try {
+          await page.close();
+        } catch (error) {
+          addFailureEvidence(evidenceAssets, viewport.name, "page-close", {
+            message: error instanceof Error ? error.message : String(error)
+          });
+          failedChecks.push(`${viewport.name}:page-close`);
+        }
       }
     }
   } finally {

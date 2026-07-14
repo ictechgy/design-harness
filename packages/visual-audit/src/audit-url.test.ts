@@ -34,6 +34,7 @@ const tempDirs: string[] = [];
 interface FakeBrowserOptions {
   gotoError?: Error;
   gotoErrors?: Array<Error | undefined>;
+  closeErrors?: Array<Error | undefined>;
   screenshotError?: Error;
   ariaSnapshot?: string;
   ariaSnapshotError?: Error;
@@ -200,6 +201,57 @@ describe("auditUrl failure behavior", () => {
     expect(result.auditResult.findings.map((finding) => finding.id)).toEqual(["finding-desktop-navigation-error"]);
     expect(evidenceIds.filter((id) => id.endsWith("-desktop") && !id.startsWith("failure-"))).toEqual([]);
     expect(evidenceIds).toEqual(expect.arrayContaining([
+      "screenshot-mobile",
+      "measurement-mobile",
+      "text-inventory-mobile",
+      "aria-snapshot-mobile"
+    ]));
+    expect(options.pageCalls).toEqual([
+      { marker: 0, screenshot: 0, measurement: 0, ariaSnapshot: 0, close: 1 },
+      { marker: 1, screenshot: 1, measurement: 1, ariaSnapshot: 1, close: 1 }
+    ]);
+    expect(options.browserCloseCount).toBe(1);
+    expect(() => assertAuditResultIntegrity(result.auditResult)).not.toThrow();
+  });
+
+  it("records page cleanup failures and continues later viewports", async () => {
+    const options: FakeBrowserOptions = {
+      gotoErrors: [new Error("desktop refused"), undefined],
+      closeErrors: [new Error("desktop close failed"), undefined],
+      measurement: hostileMeasurementFor("desktop"),
+      collectionResults: [
+        { measurements: hostileMeasurementFor("desktop"), notices: [] },
+        { measurements: measurementFor("mobile"), notices: [] }
+      ],
+      pageCalls: []
+    };
+    const result = await auditUrl({
+      url: "http://localhost:3000",
+      outDir: await tempDir(),
+      viewportPresets: [viewport, mobileViewport],
+      copyStyle: copyStyle(),
+      launchBrowser: async () => fakeBrowser(options)
+    });
+
+    const cleanupEvidence = result.auditResult.evidenceAssets.find((asset) => (
+      asset.viewport === "desktop" && asset.data?.checkName === "page-close"
+    ));
+    expect(result.auditResult.status).toBe("partial");
+    expect(result.auditResult.failedChecks).toEqual([
+      "desktop:page-timeout-or-navigation",
+      "desktop:navigation-error",
+      "desktop:page-close"
+    ]);
+    expect(result.auditResult.findings.map((finding) => finding.id)).toEqual(["finding-desktop-navigation-error"]);
+    expect(cleanupEvidence).toMatchObject({
+      type: "measurement",
+      viewport: "desktop",
+      data: {
+        checkName: "page-close",
+        message: "desktop close failed"
+      }
+    });
+    expect(result.auditResult.evidenceAssets.map((asset) => asset.id)).toEqual(expect.arrayContaining([
       "screenshot-mobile",
       "measurement-mobile",
       "text-inventory-mobile",
@@ -603,6 +655,10 @@ function fakePage(options: FakeBrowserOptions, pageIndex: number): PageHandle {
       calls.close += 1;
       options.observedPasswordInputValues = passwordInputs.map((input) => input.value);
       options.observedPasswordAttributes = passwordInputs.map((input) => Object.fromEntries(input.attributes));
+      const closeError = options.closeErrors?.[pageIndex];
+      if (closeError) {
+        throw closeError;
+      }
     }
   };
   return page;
