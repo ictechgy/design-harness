@@ -2,6 +2,7 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { afterEach, describe, expect, it } from "vitest";
+import { errors } from "playwright";
 import {
   SCHEMA_VERSION,
   assertAuditResultIntegrity,
@@ -20,10 +21,20 @@ const viewport: ViewportPreset = {
   isMobile: false
 };
 
+const mobileViewport: ViewportPreset = {
+  name: "mobile",
+  width: 390,
+  height: 844,
+  deviceScaleFactor: 2,
+  isMobile: true
+};
+
 const tempDirs: string[] = [];
 
 interface FakeBrowserOptions {
   gotoError?: Error;
+  gotoErrors?: Array<Error | undefined>;
+  closeErrors?: Array<Error | undefined>;
   screenshotError?: Error;
   ariaSnapshot?: string;
   ariaSnapshotError?: Error;
@@ -37,6 +48,16 @@ interface FakeBrowserOptions {
     measurements: ViewportMeasurements;
     notices: AuditNotice[];
   }>;
+  pageCalls?: FakePageCalls[];
+  browserCloseCount?: number;
+}
+
+interface FakePageCalls {
+  marker: number;
+  screenshot: number;
+  measurement: number;
+  ariaSnapshot: number;
+  close: number;
 }
 
 interface FakePasswordInput {
@@ -67,21 +88,220 @@ describe("auditUrl failure behavior", () => {
     ).rejects.toThrow(BrowserUnavailableError);
   });
 
-  it("records navigation failures as partial render-failure findings", async () => {
+  it("stops the failed viewport after a generic navigation error and closes resources", async () => {
+    const options: FakeBrowserOptions = {
+      gotoError: new Error("connection refused"),
+      measurement: hostileMeasurementFor("desktop"),
+      pageCalls: []
+    };
     const result = await auditUrl({
       url: "http://localhost:3000",
       outDir: await tempDir(),
       viewportPresets: [viewport],
-      launchBrowser: async () =>
-        fakeBrowser({
-          gotoError: new Error("connection refused"),
-          measurement: measurementFor("desktop")
-        })
+      copyStyle: copyStyle(),
+      launchBrowser: async () => fakeBrowser(options)
     });
 
     expect(result.auditResult.status).toBe("partial");
-    expect(result.auditResult.failedChecks).toContain("desktop:page-timeout-or-navigation");
-    expect(result.auditResult.findings.some((finding) => finding.checkName === "render-failure")).toBe(true);
+    expect(result.auditResult.failedChecks).toEqual([
+      "desktop:page-timeout-or-navigation",
+      "desktop:navigation-error"
+    ]);
+    expect(result.auditResult.findings.map((finding) => finding.checkName)).toEqual(["render-failure"]);
+    const failureEvidence = result.auditResult.evidenceAssets[0];
+    expect(result.auditResult.evidenceAssets).toHaveLength(1);
+    expect(failureEvidence).toMatchObject({
+      type: "measurement",
+      viewport: "desktop",
+      data: {
+        checkName: "navigation-error",
+        message: "connection refused"
+      }
+    });
+    expect(result.auditResult.findings[0]?.evidenceRefs).toEqual([failureEvidence?.id]);
+    expect(result.auditResult.evidenceAssets.map((asset) => asset.id).filter((id) => (
+      id === "screenshot-desktop" ||
+      id === "measurement-desktop" ||
+      id === "text-inventory-desktop" ||
+      id === "aria-snapshot-desktop"
+    ))).toEqual([]);
+    expect(options.pageCalls).toEqual([{
+      marker: 0,
+      screenshot: 0,
+      measurement: 0,
+      ariaSnapshot: 0,
+      close: 1
+    }]);
+    expect(options.browserCloseCount).toBe(1);
+    expect(() => assertAuditResultIntegrity(result.auditResult)).not.toThrow();
+  });
+
+  it("stops the failed viewport after a navigation timeout without misclassifying it", async () => {
+    const options: FakeBrowserOptions = {
+      gotoError: new errors.TimeoutError("navigation timed out"),
+      measurement: hostileMeasurementFor("desktop"),
+      pageCalls: []
+    };
+    const result = await auditUrl({
+      url: "http://localhost:3000",
+      outDir: await tempDir(),
+      viewportPresets: [viewport],
+      copyStyle: copyStyle(),
+      launchBrowser: async () => fakeBrowser(options)
+    });
+
+    expect(result.auditResult.status).toBe("partial");
+    expect(result.auditResult.failedChecks).toEqual(["desktop:page-timeout-or-navigation"]);
+    expect(result.auditResult.findings).toHaveLength(1);
+    expect(result.auditResult.findings[0]).toMatchObject({
+      id: "finding-desktop-page-timeout",
+      checkName: "render-failure"
+    });
+    expect(result.auditResult.findings[0]?.problem).toContain("did not finish loading");
+    expect(result.auditResult.evidenceAssets).toHaveLength(1);
+    expect(result.auditResult.evidenceAssets[0]).toMatchObject({
+      type: "measurement",
+      viewport: "desktop",
+      data: {
+        checkName: "page-timeout",
+        message: "navigation timed out"
+      }
+    });
+    expect(options.pageCalls).toEqual([{
+      marker: 0,
+      screenshot: 0,
+      measurement: 0,
+      ariaSnapshot: 0,
+      close: 1
+    }]);
+    expect(options.browserCloseCount).toBe(1);
+    expect(() => assertAuditResultIntegrity(result.auditResult)).not.toThrow();
+  });
+
+  it("continues later viewports after one viewport cannot navigate", async () => {
+    const options: FakeBrowserOptions = {
+      gotoErrors: [new Error("desktop refused"), undefined],
+      measurement: hostileMeasurementFor("desktop"),
+      collectionResults: [
+        { measurements: hostileMeasurementFor("desktop"), notices: [] },
+        { measurements: measurementFor("mobile"), notices: [] }
+      ],
+      pageCalls: []
+    };
+    const result = await auditUrl({
+      url: "http://localhost:3000",
+      outDir: await tempDir(),
+      viewportPresets: [viewport, mobileViewport],
+      copyStyle: copyStyle(),
+      launchBrowser: async () => fakeBrowser(options)
+    });
+
+    const evidenceIds = result.auditResult.evidenceAssets.map((asset) => asset.id);
+    expect(result.auditResult.status).toBe("partial");
+    expect(result.auditResult.findings.map((finding) => finding.id)).toEqual(["finding-desktop-navigation-error"]);
+    expect(evidenceIds.filter((id) => id.endsWith("-desktop") && !id.startsWith("failure-"))).toEqual([]);
+    expect(evidenceIds).toEqual(expect.arrayContaining([
+      "screenshot-mobile",
+      "measurement-mobile",
+      "text-inventory-mobile",
+      "aria-snapshot-mobile"
+    ]));
+    expect(options.pageCalls).toEqual([
+      { marker: 0, screenshot: 0, measurement: 0, ariaSnapshot: 0, close: 1 },
+      { marker: 1, screenshot: 1, measurement: 1, ariaSnapshot: 1, close: 1 }
+    ]);
+    expect(options.browserCloseCount).toBe(1);
+    expect(() => assertAuditResultIntegrity(result.auditResult)).not.toThrow();
+  });
+
+  it("records page cleanup failures and continues later viewports", async () => {
+    const options: FakeBrowserOptions = {
+      gotoErrors: [new Error("desktop refused"), undefined],
+      closeErrors: [new Error("desktop close failed"), undefined],
+      measurement: hostileMeasurementFor("desktop"),
+      collectionResults: [
+        { measurements: hostileMeasurementFor("desktop"), notices: [] },
+        { measurements: measurementFor("mobile"), notices: [] }
+      ],
+      pageCalls: []
+    };
+    const result = await auditUrl({
+      url: "http://localhost:3000",
+      outDir: await tempDir(),
+      viewportPresets: [viewport, mobileViewport],
+      copyStyle: copyStyle(),
+      launchBrowser: async () => fakeBrowser(options)
+    });
+
+    const cleanupEvidence = result.auditResult.evidenceAssets.find((asset) => (
+      asset.viewport === "desktop" && asset.data?.checkName === "page-close"
+    ));
+    expect(result.auditResult.status).toBe("partial");
+    expect(result.auditResult.failedChecks).toEqual([
+      "desktop:page-timeout-or-navigation",
+      "desktop:navigation-error",
+      "desktop:page-close"
+    ]);
+    expect(result.auditResult.findings.map((finding) => finding.id)).toEqual(["finding-desktop-navigation-error"]);
+    expect(cleanupEvidence).toMatchObject({
+      type: "measurement",
+      viewport: "desktop",
+      data: {
+        checkName: "page-close",
+        message: "desktop close failed"
+      }
+    });
+    expect(result.auditResult.evidenceAssets.map((asset) => asset.id)).toEqual(expect.arrayContaining([
+      "screenshot-mobile",
+      "measurement-mobile",
+      "text-inventory-mobile",
+      "aria-snapshot-mobile"
+    ]));
+    expect(options.pageCalls).toEqual([
+      { marker: 0, screenshot: 0, measurement: 0, ariaSnapshot: 0, close: 1 },
+      { marker: 1, screenshot: 1, measurement: 1, ariaSnapshot: 1, close: 1 }
+    ]);
+    expect(options.browserCloseCount).toBe(1);
+    expect(() => assertAuditResultIntegrity(result.auditResult)).not.toThrow();
+  });
+
+  it("preserves completed viewport output when page cleanup fails", async () => {
+    const options: FakeBrowserOptions = {
+      closeErrors: [new Error("desktop close failed")],
+      measurement: {
+        ...measurementFor("desktop"),
+        documentScrollWidth: 1500
+      },
+      pageCalls: []
+    };
+    const result = await auditUrl({
+      url: "http://localhost:3000",
+      outDir: await tempDir(),
+      viewportPresets: [viewport],
+      launchBrowser: async () => fakeBrowser(options)
+    });
+
+    expect(result.auditResult.status).toBe("partial");
+    expect(result.auditResult.failedChecks).toEqual(["desktop:page-close"]);
+    expect(result.auditResult.findings.some((finding) => finding.checkName === "horizontal-overflow")).toBe(true);
+    expect(result.auditResult.evidenceAssets).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: "screenshot-desktop" }),
+      expect.objectContaining({ id: "measurement-desktop" }),
+      expect.objectContaining({ id: "text-inventory-desktop" }),
+      expect.objectContaining({ id: "aria-snapshot-desktop" }),
+      expect.objectContaining({
+        type: "measurement",
+        viewport: "desktop",
+        data: {
+          checkName: "page-close",
+          message: "desktop close failed"
+        }
+      })
+    ]));
+    expect(options.pageCalls).toEqual([
+      { marker: 1, screenshot: 1, measurement: 1, ariaSnapshot: 1, close: 1 }
+    ]);
+    expect(options.browserCloseCount).toBe(1);
     expect(() => assertAuditResultIntegrity(result.auditResult)).not.toThrow();
   });
 
@@ -346,13 +566,7 @@ describe("auditUrl copy analysis", () => {
   });
 
   it("deduplicates configuration notices across viewports without affecting status or score", async () => {
-    const mobile: ViewportPreset = {
-      name: "mobile",
-      width: 390,
-      height: 844,
-      deviceScaleFactor: 2,
-      isMobile: true
-    };
+    const mobile = mobileViewport;
     const desktopNotice: AuditNotice = {
       code: "copy-surface-unsupported-adapter",
       message: "Unsupported adapter was skipped.",
@@ -418,11 +632,14 @@ function fakeBrowser(options: FakeBrowserOptions): BrowserHandle {
   return {
     version: () => "fake-browser",
     newPage: async () => fakePage(options, pageIndex++),
-    close: async () => undefined
+    close: async () => {
+      options.browserCloseCount = (options.browserCloseCount ?? 0) + 1;
+    }
   };
 }
 
 function fakePage(options: FakeBrowserOptions, pageIndex: number): PageHandle {
+  const calls = pageCallsFor(options, pageIndex);
   const passwordInputs = (options.passwordInputValues ?? []).map(fakePasswordInput);
   const collectionResult = options.collectionResults?.[pageIndex] ?? {
     measurements: options.measurement,
@@ -432,8 +649,9 @@ function fakePage(options: FakeBrowserOptions, pageIndex: number): PageHandle {
     setDefaultTimeout: () => undefined,
     setDefaultNavigationTimeout: () => undefined,
     goto: async () => {
-      if (options.gotoError) {
-        throw options.gotoError;
+      const gotoError = options.gotoErrors ? options.gotoErrors[pageIndex] : options.gotoError;
+      if (gotoError) {
+        throw gotoError;
       }
       return {
         status: () => 200,
@@ -446,9 +664,11 @@ function fakePage(options: FakeBrowserOptions, pageIndex: number): PageHandle {
         return runWithFakeDocument(passwordInputs, () => pageFunction(arg)) as never;
       }
       if (source.includes("MAX_TEXT_INVENTORY_TEXT_LENGTH")) {
+        calls.measurement += 1;
         return collectionResult as never;
       }
       if (arg !== undefined) {
+        calls.marker += 1;
         return undefined as never;
       }
       return collectionResult as never;
@@ -457,6 +677,7 @@ function fakePage(options: FakeBrowserOptions, pageIndex: number): PageHandle {
       ? undefined
       : () => ({
         ariaSnapshot: async () => {
+          calls.ariaSnapshot += 1;
           if (options.ariaSnapshotError) {
             throw options.ariaSnapshotError;
           }
@@ -464,17 +685,38 @@ function fakePage(options: FakeBrowserOptions, pageIndex: number): PageHandle {
         }
       }),
     screenshot: async () => {
+      calls.screenshot += 1;
       if (options.screenshotError) {
         throw options.screenshotError;
       }
       return undefined;
     },
     close: async () => {
+      calls.close += 1;
       options.observedPasswordInputValues = passwordInputs.map((input) => input.value);
       options.observedPasswordAttributes = passwordInputs.map((input) => Object.fromEntries(input.attributes));
+      const closeError = options.closeErrors?.[pageIndex];
+      if (closeError) {
+        throw closeError;
+      }
     }
   };
   return page;
+}
+
+function pageCallsFor(options: FakeBrowserOptions, pageIndex: number): FakePageCalls {
+  const calls: FakePageCalls = {
+    marker: 0,
+    screenshot: 0,
+    measurement: 0,
+    ariaSnapshot: 0,
+    close: 0
+  };
+  if (!options.pageCalls) {
+    return calls;
+  }
+  options.pageCalls[pageIndex] = calls;
+  return calls;
 }
 
 function fakePasswordInput(value: string): FakePasswordInput {
@@ -587,6 +829,16 @@ function copyMeasurementFor(name: string): ViewportMeasurements {
         matcher: { kind: "adapter", adapter: "web-dom", value: "main p" }
       }
     }]
+  };
+}
+
+function hostileMeasurementFor(name: string): ViewportMeasurements {
+  return {
+    ...copyMeasurementFor(name),
+    textLength: 0,
+    meaningfulElementCount: 0,
+    pageLangMissing: true,
+    missingMainLandmark: true
   };
 }
 

@@ -19,6 +19,7 @@ import {
   DEFAULT_JOSA_HEDGE_POLICY,
   findingMetadataForCheck,
   getCriterion,
+  getCriterionForCheck,
   GLOSSARY_MATCH_MODES,
   GLOSSARY_TIERS,
   JOSA_HEDGE_POLICIES,
@@ -66,6 +67,38 @@ function createCopyFinding(
     sourceRefs,
     ...overrides
   };
+}
+
+function createPromptFinding(
+  id: string,
+  overrides: Partial<ReturnType<typeof createExampleFinding>> = {}
+) {
+  return {
+    ...createExampleFinding(),
+    id,
+    problem: `Problem ${id}.`,
+    recommendation: `Recommendation ${id}.`,
+    ...overrides
+  };
+}
+
+function createRegisteredPromptFinding(
+  id: string,
+  checkName: string,
+  overrides: Partial<ReturnType<typeof createExampleFinding>> = {}
+) {
+  const metadata = findingMetadataForCheck(checkName);
+  const criterion = getCriterionForCheck(checkName);
+  if (!metadata || !criterion) {
+    throw new Error(`Missing criterion metadata for ${checkName}`);
+  }
+
+  return createPromptFinding(id, {
+    category: criterion.category,
+    checkName,
+    ...metadata,
+    ...overrides
+  });
 }
 
 describe("core schemas", () => {
@@ -660,8 +693,110 @@ describe("report rendering", () => {
     expect(prompt).not.toContain("Codex");
   });
 
+  it("includes only deterministic failures and risks in the iteration prompt", () => {
+    const auditResult = createExampleAuditResult();
+    auditResult.findings = [
+      createPromptFinding("heuristic-risk", { determinism: "heuristic", resultKind: "risk" }),
+      createContentFinding({ id: "legacy-unclassified" }),
+      createCopyFinding("placeholder-leak", ["unicode-icu-messageformat"], {
+        id: "deterministic-failure",
+        problem: "Problem deterministic-failure.",
+        recommendation: "Recommendation deterministic-failure."
+      }),
+      createPromptFinding("deterministic-needs-review", { resultKind: "needs-review" }),
+      createPromptFinding("low-confidence-deterministic-risk", {
+        severity: "low",
+        confidence: "low"
+      }),
+      createPromptFinding("heuristic-needs-review", {
+        determinism: "heuristic",
+        resultKind: "needs-review"
+      }),
+      createPromptFinding("subjective-needs-review", {
+        determinism: "subjective",
+        resultKind: "needs-review"
+      })
+    ];
+
+    const prompt = buildIterationPrompt(auditResult);
+
+    expect(prompt).toContain("deterministic-failure");
+    expect(prompt).toContain("low-confidence-deterministic-risk");
+    for (const excludedId of [
+      "heuristic-risk",
+      "legacy-unclassified",
+      "deterministic-needs-review",
+      "heuristic-needs-review",
+      "subjective-needs-review"
+    ]) {
+      expect(prompt).not.toContain(excludedId);
+    }
+  });
+
+  it("prioritizes adapter failures, other failures, and deterministic risks before applying the cap", () => {
+    const auditResult = createExampleAuditResult();
+    auditResult.findings = [
+      createPromptFinding("low-confidence-risk", { severity: "critical", confidence: "low" }),
+      createPromptFinding("risk-high-high", { severity: "high", confidence: "high" }),
+      createRegisteredPromptFinding("other-failure", "placeholder-leak", { severity: "low" }),
+      createRegisteredPromptFinding("blank-render", "blank-render", { severity: "high" }),
+      createRegisteredPromptFinding("render-failure", "render-failure", { severity: "critical" }),
+      createPromptFinding("risk-critical-medium", { severity: "critical", confidence: "medium" }),
+      createPromptFinding("risk-high-medium", { severity: "high", confidence: "medium" }),
+      createPromptFinding("risk-medium-high", { severity: "medium", confidence: "high" })
+    ];
+
+    const prompt = buildIterationPrompt(auditResult);
+    const orderedIds = [
+      "render-failure",
+      "blank-render",
+      "other-failure",
+      "risk-critical-medium",
+      "risk-high-high"
+    ];
+
+    const promptOrder = orderedIds.map((id) => prompt.indexOf(id));
+    expect(promptOrder.every((index) => index >= 0)).toBe(true);
+    expect(promptOrder).toEqual([...promptOrder].sort((left, right) => left - right));
+    expect(prompt.split("\n").filter((line) => line.startsWith("- "))).toHaveLength(5);
+    expect(prompt).not.toContain("risk-high-medium");
+    expect(prompt).not.toContain("risk-medium-high");
+    expect(prompt).not.toContain("low-confidence-risk");
+  });
+
+  it("keeps producer order for equal-priority findings without mutating the audit result", () => {
+    const auditResult = createExampleAuditResult();
+    auditResult.findings = [
+      createPromptFinding("tie-b"),
+      createPromptFinding("tie-a")
+    ];
+    const before = structuredClone(auditResult.findings);
+
+    const prompt = buildIterationPrompt(auditResult);
+
+    expect(prompt.indexOf("tie-b")).toBeLessThan(prompt.indexOf("tie-a"));
+    expect(auditResult.findings).toEqual(before);
+  });
+
+  it("uses the fallback when no deterministic failure or risk is eligible", () => {
+    const auditResult = createExampleAuditResult();
+    auditResult.findings = [
+      createPromptFinding("heuristic-only", { determinism: "heuristic", resultKind: "risk" }),
+      createPromptFinding("needs-review-only", { resultKind: "needs-review" }),
+      createContentFinding({ id: "legacy-only" })
+    ];
+
+    const prompt = buildIterationPrompt(auditResult);
+
+    expect(prompt).toContain("No blocking deterministic findings were detected");
+    expect(prompt).not.toContain("heuristic-only");
+    expect(prompt).not.toContain("needs-review-only");
+    expect(prompt).not.toContain("legacy-only");
+  });
+
   it("routes content category findings to the content implementation area", () => {
-    const contentFinding = createContentFinding({
+    const contentFinding = createCopyFinding("placeholder-leak", ["unicode-icu-messageformat"], {
+      id: "finding-desktop-overflow",
       problem: "Rendered copy exposes an interpolation placeholder.",
       recommendation: "Render the localized value before showing the copy."
     });
