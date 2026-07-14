@@ -4,6 +4,12 @@
 
 No changes yet.
 
+## 0.4.3 - 2026-07-14
+
+- Made thrown navigation errors fail closed per viewport while preserving failure evidence and continuing later viewports.
+- Recorded page cleanup rejections as partial failure evidence without discarding completed viewport output or aborting the audit loop.
+- Restricted iteration prompts to deterministic failures and risks with stable priority ordering and a post-ordering five-finding cap.
+
 ## 0.4.2 - 2026-07-12
 
 - Added `@design-harness/copy-audit` with five parser-free rendered-copy checks and programmatic `auditUrl({ copyStyle })` integration.
