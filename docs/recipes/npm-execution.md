@@ -13,9 +13,9 @@ pnpm design-harness -- audit --url http://localhost:3000 --out runs/demo
 After publish, the intended one-off audit flow is:
 
 ```bash
-npx @design-harness/cli@0.4.2 --help
+npx @design-harness/cli@0.4.3 --help
 npx playwright install chromium
-npx @design-harness/cli@0.4.2 audit --url http://localhost:3000 --out runs/demo
+npx @design-harness/cli@0.4.3 audit --url http://localhost:3000 --out runs/demo
 ```
 
 ## Local Package Smoke Test
