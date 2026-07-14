@@ -265,6 +265,46 @@ describe("auditUrl failure behavior", () => {
     expect(() => assertAuditResultIntegrity(result.auditResult)).not.toThrow();
   });
 
+  it("preserves completed viewport output when page cleanup fails", async () => {
+    const options: FakeBrowserOptions = {
+      closeErrors: [new Error("desktop close failed")],
+      measurement: {
+        ...measurementFor("desktop"),
+        documentScrollWidth: 1500
+      },
+      pageCalls: []
+    };
+    const result = await auditUrl({
+      url: "http://localhost:3000",
+      outDir: await tempDir(),
+      viewportPresets: [viewport],
+      launchBrowser: async () => fakeBrowser(options)
+    });
+
+    expect(result.auditResult.status).toBe("partial");
+    expect(result.auditResult.failedChecks).toEqual(["desktop:page-close"]);
+    expect(result.auditResult.findings.some((finding) => finding.checkName === "horizontal-overflow")).toBe(true);
+    expect(result.auditResult.evidenceAssets).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: "screenshot-desktop" }),
+      expect.objectContaining({ id: "measurement-desktop" }),
+      expect.objectContaining({ id: "text-inventory-desktop" }),
+      expect.objectContaining({ id: "aria-snapshot-desktop" }),
+      expect.objectContaining({
+        type: "measurement",
+        viewport: "desktop",
+        data: {
+          checkName: "page-close",
+          message: "desktop close failed"
+        }
+      })
+    ]));
+    expect(options.pageCalls).toEqual([
+      { marker: 1, screenshot: 1, measurement: 1, ariaSnapshot: 1, close: 1 }
+    ]);
+    expect(options.browserCloseCount).toBe(1);
+    expect(() => assertAuditResultIntegrity(result.auditResult)).not.toThrow();
+  });
+
   it("keeps finding evidence refs valid when screenshots fail", async () => {
     const result = await auditUrl({
       url: "http://localhost:3000",

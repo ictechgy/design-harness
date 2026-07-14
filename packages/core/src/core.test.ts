@@ -19,6 +19,7 @@ import {
   DEFAULT_JOSA_HEDGE_POLICY,
   findingMetadataForCheck,
   getCriterion,
+  getCriterionForCheck,
   GLOSSARY_MATCH_MODES,
   GLOSSARY_TIERS,
   JOSA_HEDGE_POLICIES,
@@ -79,6 +80,25 @@ function createPromptFinding(
     recommendation: `Recommendation ${id}.`,
     ...overrides
   };
+}
+
+function createRegisteredPromptFinding(
+  id: string,
+  checkName: string,
+  overrides: Partial<ReturnType<typeof createExampleFinding>> = {}
+) {
+  const metadata = findingMetadataForCheck(checkName);
+  const criterion = getCriterionForCheck(checkName);
+  if (!metadata || !criterion) {
+    throw new Error(`Missing criterion metadata for ${checkName}`);
+  }
+
+  return createPromptFinding(id, {
+    category: criterion.category,
+    checkName,
+    ...metadata,
+    ...overrides
+  });
 }
 
 describe("core schemas", () => {
@@ -718,17 +738,9 @@ describe("report rendering", () => {
     auditResult.findings = [
       createPromptFinding("low-confidence-risk", { severity: "critical", confidence: "low" }),
       createPromptFinding("risk-high-high", { severity: "high", confidence: "high" }),
-      createPromptFinding("other-failure", { severity: "low", resultKind: "failure" }),
-      createPromptFinding("blank-render", {
-        checkName: "blank-render",
-        severity: "high",
-        resultKind: "failure"
-      }),
-      createPromptFinding("render-failure", {
-        checkName: "render-failure",
-        severity: "critical",
-        resultKind: "failure"
-      }),
+      createRegisteredPromptFinding("other-failure", "placeholder-leak", { severity: "low" }),
+      createRegisteredPromptFinding("blank-render", "blank-render", { severity: "high" }),
+      createRegisteredPromptFinding("render-failure", "render-failure", { severity: "critical" }),
       createPromptFinding("risk-critical-medium", { severity: "critical", confidence: "medium" }),
       createPromptFinding("risk-high-medium", { severity: "high", confidence: "medium" }),
       createPromptFinding("risk-medium-high", { severity: "medium", confidence: "high" })
