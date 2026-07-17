@@ -19,6 +19,22 @@ try {
   );
 
   writeSource(root, "core", "export const core = true;\n");
+  writeManifest(root, "core", { dependencies: { yaml: "2.9.0" } });
+  writeSource(root, "core", 'import "yaml";\n');
+  writeSource(root, "copy-audit", 'import "yaml";\n');
+  writeSource(root, "visual-audit", 'import "yaml";\n');
+  assertFailures(
+    checkPackageBoundaries(root),
+    [
+      'packages/core/package.json dependencies declares forbidden module "yaml"',
+      'packages/core/src/index.ts imports forbidden module "yaml"',
+      'packages/copy-audit/src/index.ts imports forbidden module "yaml"',
+      'packages/visual-audit/src/index.ts imports forbidden module "yaml"'
+    ],
+    "CLI-only YAML config boundary"
+  );
+
+  seedValidPackages(root);
   writeSource(
     root,
     "copy-audit",
@@ -73,7 +89,7 @@ try {
     "visual-audit -> cli reverse dependency"
   );
 
-  console.log("check-package-boundaries-regressions passed: forbidden imports and runtime dependencies fail closed.");
+  console.log("check-package-boundaries-regressions passed: forbidden imports, runtime dependencies, and YAML boundary violations fail closed.");
 } finally {
   rmSync(root, { recursive: true, force: true });
 }

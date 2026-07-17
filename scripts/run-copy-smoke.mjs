@@ -1,6 +1,7 @@
-import { rmSync, writeFileSync } from "node:fs";
+import { spawn } from "node:child_process";
+import { readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { renderMarkdownReport } from "../packages/core/dist/index.js";
+import { DEFAULT_VIEWPORT_PRESETS, HARNESS_VERSION, renderMarkdownReport } from "../packages/core/dist/index.js";
 import { auditUrl } from "../packages/visual-audit/dist/index.js";
 import {
   copyStyleForSmoke,
@@ -8,7 +9,8 @@ import {
   directNodeSelector,
   explicitRoleEvidence,
   nearestAncestorSelector,
-  nonMatchingWebDomSelector
+  nonMatchingWebDomSelector,
+  parserFreeCopyCheckNames
 } from "./copy-calibration-config.mjs";
 import { startLocalFixtureServer } from "./local-fixture-server.mjs";
 
@@ -24,13 +26,61 @@ try {
   const bad = await auditFixture("bad", `${baseUrl}/copy-bad.html`, copyStyleForSmoke("flag"));
   const good = await auditFixture("good", `${baseUrl}/copy-good.html`, copyStyleForSmoke("allow"));
   const noCopy = await auditFixture("no-copy", `${baseUrl}/copy-good.html`);
+  const cli = await auditCliFixture(`${baseUrl}/copy-bad.html`);
 
   assertBadResult(bad.auditResult);
   assertGoodResult(good.auditResult);
   assertNoCopyResult(noCopy.auditResult);
-  console.log("Copy smoke passed: bad=5 findings/63.2, good=0 findings/100, role evidence, nested inheritance, precedence, and provenance verified.");
+  assertCliResult(cli.auditResult, cli.metadata);
+  console.log("Copy smoke passed: programmatic and CLI parser-free findings, no-copy behavior, surfaces, evidence, and provenance verified.");
 } finally {
   await fixtureServer.close();
+}
+
+async function auditCliFixture(url) {
+  const outDir = join(outRoot, "cli-bad");
+  const exitCode = await run(process.execPath, [
+    resolve("packages/cli/dist/index.js"),
+    "audit",
+    "--url",
+    url,
+    "--out",
+    outDir,
+    "--copy",
+    resolve("examples/configs/copy-style.ko-example.yaml")
+  ]);
+  assert(exitCode === 0, `built CLI copy audit exited ${exitCode}`);
+  return {
+    auditResult: JSON.parse(readFileSync(join(outDir, "audit.json"), "utf8")),
+    metadata: JSON.parse(readFileSync(join(outDir, "metadata.json"), "utf8"))
+  };
+}
+
+function assertCliResult(auditResult, metadata) {
+  assert(auditResult.status === "success", `CLI fixture status was ${auditResult.status}`);
+  assert(auditResult.failedChecks.length === 0, "CLI fixture recorded failed checks");
+  for (const viewport of DEFAULT_VIEWPORT_PRESETS) {
+    const findings = auditResult.findings.filter((finding) => finding.viewport === viewport.name);
+    assert(
+      JSON.stringify(findings.map((finding) => finding.checkName)) === JSON.stringify(parserFreeCopyCheckNames),
+      `CLI ${viewport.name} checks were ${findings.map((finding) => finding.checkName).join(", ")}`
+    );
+    assert(
+      findings.every((finding) => (
+        finding.evidenceRefs.length === 1 &&
+        finding.evidenceRefs[0] === `text-inventory-${viewport.name}`
+      )),
+      `CLI ${viewport.name} findings did not use exact text-inventory evidence`
+    );
+  }
+  assert(
+    auditResult.findings.length === parserFreeCopyCheckNames.length * DEFAULT_VIEWPORT_PRESETS.length,
+    `CLI fixture emitted ${auditResult.findings.length} findings`
+  );
+  assert(
+    metadata.toolVersions?.["@design-harness/copy-audit"] === HARNESS_VERSION,
+    "CLI metadata omitted or changed the copy-audit tool version"
+  );
 }
 
 async function auditFixture(name, url, style) {
@@ -48,18 +98,11 @@ async function auditFixture(name, url, style) {
 }
 
 function assertBadResult(auditResult) {
-  const expectedChecks = [
-    "placeholder-leak",
-    "josa-hedge",
-    "glossary-banned-term",
-    "glossary-use-carefully-term",
-    "banned-phrase"
-  ];
   assert(auditResult.status === "success", `bad fixture status was ${auditResult.status}`);
   assert(auditResult.failedChecks.length === 0, "bad fixture recorded failed checks");
   assert(auditResult.findings.length === 5, `bad fixture emitted ${auditResult.findings.length} findings`);
   assert(
-    JSON.stringify(auditResult.findings.map((finding) => finding.checkName)) === JSON.stringify(expectedChecks),
+    JSON.stringify(auditResult.findings.map((finding) => finding.checkName)) === JSON.stringify(parserFreeCopyCheckNames),
     `bad fixture check order was ${auditResult.findings.map((finding) => finding.checkName).join(", ")}`
   );
   assert(auditResult.advisoryScore.value === 63.2, `bad fixture score was ${auditResult.advisoryScore.value}`);
@@ -176,4 +219,12 @@ function assert(condition, message) {
 
 function sum(values) {
   return Math.round(values.reduce((total, value) => total + value, 0) * 10) / 10;
+}
+
+function run(command, args) {
+  return new Promise((resolveRun, reject) => {
+    const child = spawn(command, args, { stdio: "inherit" });
+    child.on("error", reject);
+    child.on("exit", (code) => resolveRun(code ?? 1));
+  });
 }

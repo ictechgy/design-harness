@@ -1,0 +1,39 @@
+schemaVersion: "0.2"
+locale: ko-KR
+josaHedgePolicy: flag
+surfaceMapping:
+  - surface: button
+    matchers:
+      - kind: role
+        value: switch
+      - kind: role
+        value: button
+      - kind: adapter
+        adapter: web-dom
+        value: button
+  - surface: body
+    matchers:
+      - kind: adapter
+        adapter: web-dom
+        value: main p
+      - kind: adapter
+        adapter: web-dom
+        value: p
+glossary:
+  - term: 해지
+    tier: banned
+    preferredTerm: 탈퇴
+    match: literal
+    surfaces:
+      - body
+  - term: 혁신적인
+    tier: use-carefully
+    preferredTerm: 새
+    match: literal
+    surfaces:
+      - body
+bannedPhrases:
+  - phrase: 무조건 성공
+    suggestedReplacement: 예상 결과를 확인할 수 있습니다
+    surfaces:
+      - body

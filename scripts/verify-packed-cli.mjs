@@ -1,4 +1,4 @@
-import { mkdtemp, mkdir, readdir, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, mkdir, readdir, rm, stat, writeFile } from "node:fs/promises";
 import { spawn } from "node:child_process";
 import { tmpdir } from "node:os";
 import { dirname, join, relative, resolve } from "node:path";
@@ -44,13 +44,57 @@ try {
   await runPnpm(["install", "--prefer-offline", "--ignore-scripts=false"], { cwd: consumerDir });
   const help = await runPnpm(["exec", "design-harness", "--help"], { cwd: consumerDir, capture: true });
 
-  if (!help.includes("Design Harness") || !help.includes("design-harness audit")) {
+  if (!help.includes("Design Harness") || !help.includes("design-harness audit") || !help.includes("--copy <copy-style.yaml>")) {
     throw new Error(`Packed CLI help output did not include expected usage text:\n${help}`);
   }
 
-  console.log("Validated packed CLI install and design-harness --help.");
+  await assertFailClosedConfig({
+    consumerDir,
+    name: "malformed",
+    source: "schemaVersion: [\n",
+    expectedStage: "parse"
+  });
+  await assertFailClosedConfig({
+    consumerDir,
+    name: "schema-invalid",
+    source: "schemaVersion: '0.2'\nlocale: NOT_VALID\n",
+    expectedStage: "schema"
+  });
+
+  console.log("Validated packed CLI install, --copy help, and fail-closed parse/schema config errors.");
 } finally {
   await rm(tempRoot, { recursive: true, force: true });
+}
+
+async function assertFailClosedConfig({ consumerDir, name, source, expectedStage }) {
+  const configPath = join(consumerDir, `${name}.yaml`);
+  const outDir = join(consumerDir, `${name}-out`);
+  await writeFile(configPath, source);
+  const result = await runPnpm([
+    "exec",
+    "design-harness",
+    "audit",
+    "--url",
+    "http://localhost:1",
+    "--out",
+    outDir,
+    "--copy",
+    configPath
+  ], { cwd: consumerDir, capture: true, allowFailure: true });
+  if (result.code !== 1) {
+    throw new Error(`Packed CLI ${name} config exited ${result.code}, expected 1.\n${result.stderr}`);
+  }
+  if (!result.stderr.includes(`Copy style ${expectedStage} error`)) {
+    throw new Error(`Packed CLI ${name} config did not report ${expectedStage} stage:\n${result.stderr}`);
+  }
+  try {
+    await stat(outDir);
+    throw new Error(`Packed CLI ${name} config created output artifacts`);
+  } catch (error) {
+    if (!(error && typeof error === "object" && "code" in error && error.code === "ENOENT")) {
+      throw error;
+    }
+  }
 }
 
 async function packPackage(filter, packDir) {
@@ -102,6 +146,11 @@ async function runPnpm(args, options = {}) {
 
     child.on("error", reject);
     child.on("close", (code) => {
+      const result = { code: code ?? 1, stdout, stderr };
+      if (options.allowFailure) {
+        resolvePromise(result);
+        return;
+      }
       if (code === 0) {
         resolvePromise(stdout);
         return;

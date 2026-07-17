@@ -44,6 +44,7 @@
   },
   "dependencies": {
     "@design-harness/core": "workspace:^",
-    "@design-harness/visual-audit": "workspace:^"
+    "@design-harness/visual-audit": "workspace:^",
+    "yaml": "^2.9.0"
   }
 }

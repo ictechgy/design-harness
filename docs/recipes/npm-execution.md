@@ -18,6 +18,17 @@ npx playwright install chromium
 npx @design-harness/cli@0.4.3 audit --url http://localhost:3000 --out runs/demo
 ```
 
+Parser-free copy CLI wiring is implemented in the current checkout but is not attributed to an npm version until that version is published. Test it from the checkout with the committed example:
+
+```bash
+pnpm design-harness -- audit \
+  --url http://localhost:3000 \
+  --out runs/demo \
+  --copy examples/configs/copy-style.ko-example.yaml
+```
+
+The CLI rejects unreadable, oversized, malformed, ambiguous, or schema-invalid config before launching Chromium or creating the output directory. Use the equivalent `npx @design-harness/cli@<version> ... --copy` form only after that version is actually published.
+
 ## Local Package Smoke Test
 
 Maintainers can verify the packed CLI before publishing:
@@ -26,7 +37,7 @@ Maintainers can verify the packed CLI before publishing:
 pnpm smoke:packed-cli
 ```
 
-The smoke test packs the four workspace packages, installs the CLI tarball into a temporary consumer project, resolves the internal packages through local tarball overrides, and runs:
+The smoke test packs the four workspace packages, installs the CLI tarball into a temporary consumer project, resolves the internal packages through local tarball overrides, checks `--copy` help, and verifies malformed and schema-invalid configs exit `1` without artifacts. Its installed help command is:
 
 ```bash
 pnpm exec design-harness --help

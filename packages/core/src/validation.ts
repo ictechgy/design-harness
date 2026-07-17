@@ -132,21 +132,21 @@ function validateObject(
 ): void {
   const required = Array.isArray(schema.required) ? schema.required : [];
   for (const key of required) {
-    if (typeof key === "string" && !(key in value)) {
+    if (typeof key === "string" && !hasOwn(value, key)) {
       issues.push({ path: `${path}.${key}`, message: "is required" });
     }
   }
 
   const properties = isPlainObject(schema.properties) ? schema.properties : {};
   for (const [key, propertySchema] of Object.entries(properties)) {
-    if (key in value && isPlainObject(propertySchema)) {
+    if (hasOwn(value, key) && isPlainObject(propertySchema)) {
       visit(propertySchema as JsonSchema, value[key], `${path}.${key}`, root, issues);
     }
   }
 
   if (schema.additionalProperties === false) {
     for (const key of Object.keys(value)) {
-      if (!(key in properties)) {
+      if (!hasOwn(properties, key)) {
         issues.push({ path: `${path}.${key}`, message: "is not allowed" });
       }
     }
@@ -186,7 +186,7 @@ function resolveRef(root: JsonSchema, ref: string): JsonSchema {
     .slice(2)
     .split("/")
     .reduce<unknown>((current, segment) => {
-      if (!isPlainObject(current) || !(segment in current)) {
+      if (!isPlainObject(current) || !hasOwn(current, segment)) {
         throw new Error(`Cannot resolve schema ref ${ref}`);
       }
       return current[segment];
@@ -195,6 +195,10 @@ function resolveRef(root: JsonSchema, ref: string): JsonSchema {
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function hasOwn(value: object, key: PropertyKey): boolean {
+  return Object.prototype.hasOwnProperty.call(value, key);
 }
 
 function formatIssues(issues: ValidationIssue[]): string {

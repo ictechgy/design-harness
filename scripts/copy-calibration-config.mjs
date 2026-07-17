@@ -18,6 +18,13 @@ export const explicitRoleEvidence = "unknown-token SWITCH checkbox";
 export const nonMatchingWebDomSelector = "[data-design-harness-never-match='role-smoke']";
 export const directNodeSelector = "#direct-surface-copy";
 export const nearestAncestorSelector = "#nearest-surface-wrapper";
+export const parserFreeCopyCheckNames = Object.freeze([
+  "placeholder-leak",
+  "josa-hedge",
+  "glossary-banned-term",
+  "glossary-use-carefully-term",
+  "banned-phrase"
+]);
 
 /** @type {CopyStyleSurfaceRule} */
 const buttonSurfaceRule = {
