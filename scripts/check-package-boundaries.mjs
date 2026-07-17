@@ -22,18 +22,22 @@ const CAPTURE_MODULES = [
   "selenium-webdriver",
   "cypress"
 ];
+const CLI_CONFIG_MODULES = ["yaml"];
 const CORE_FORBIDDEN_MODULES = [
   ...CAPTURE_MODULES,
+  ...CLI_CONFIG_MODULES,
   "@design-harness/copy-audit",
   "@design-harness/visual-audit",
   "@design-harness/cli"
 ];
 const COPY_AUDIT_FORBIDDEN_MODULES = [
   ...CAPTURE_MODULES,
+  ...CLI_CONFIG_MODULES,
   "@design-harness/visual-audit",
   "@design-harness/cli"
 ];
 const VISUAL_AUDIT_FORBIDDEN_MODULES = [
+  ...CLI_CONFIG_MODULES,
   "@design-harness/cli"
 ];
 const EXPECTED_COPY_AUDIT_RUNTIME_DEPENDENCIES = {
@@ -205,5 +209,5 @@ if (invokedPath === import.meta.url) {
     }
     process.exit(1);
   }
-  console.log("check-package-boundaries passed: core, copy-audit, and visual-audit preserve the approved dependency graph.");
+  console.log("check-package-boundaries passed: dependency direction and the CLI-only YAML config boundary are preserved.");
 }

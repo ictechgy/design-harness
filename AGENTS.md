@@ -35,7 +35,7 @@ pnpm check:criteria-policy          # criterion registry vs ADR-001 policy matri
 pnpm check:version-consistency      # package/HARNESS_VERSION + schemaVersion lockstep
 pnpm check:release-hook-policy      # release-block hook sample coverage
 pnpm check:core-purity              # core stays capture-agnostic (ADR-002)
-pnpm check:package-boundaries       # package imports/manifests stay one-way
+pnpm check:package-boundaries       # one-way graph; YAML config parsing stays CLI-only
 pnpm check:deps-policy              # ToS/GPL dependency policy
 pnpm check:tracked-hygiene          # local-only files untracked; AGENTS.md line budget
 pnpm calibrate:fixtures             # six Korean fixtures → parser-free copy TP/FP/FN drift gate
@@ -52,7 +52,7 @@ Criterion in `packages/core/src/criteria.ts` (with `CRITERION_SOURCES` entry) �
 
 ## Roadmap
 
-**Current milestone: v0.4b parser-free release — COMPLETE 2026-07-12** — `@design-harness/copy-audit`, copy-style contract, Korean fixtures/provenance, and calibration runner. No next milestone is scheduled; do not start the approval-gated morphology/CLI sub-slices or a future milestone until the owner schedules one. Full specs and acceptance criteria: **`docs/ROADMAP.md`** (committed, canonical).
+**Current milestone: v0.4c parser-free CLI wiring — COMPLETE 2026-07-16** — the existing five parser-free copy checks are available through an explicit local `--copy <copy-style.yaml>` CLI path with strict YAML/schema validation and no-copy regressions. Kiwi/morphology, spelling providers, judges, schema changes, config auto-discovery, and cut-list items stay closed. No next milestone is scheduled. Full specs and acceptance criteria: **`docs/ROADMAP.md`** (committed, canonical).
 
 **Cut list (do NOT build now)**: MCP server (file contract `audit.json`/`report.md` is canonical; capture is commoditized) · best-of-N picker · community fixture pipeline · interaction-simulation / below-fold sweep / pixel contrast · more than two agent surfaces (Claude Code + Codex) · `guide from-references` CLI before the manual workflow proves value · Open Design integration · **evidence-against, do not build**: hue-template color harmony, symmetry/balance scoring for real UIs, scored Korean readability, MQM translation LQA, Figma-plugin surface, generic English style-guide enforcement (details: `docs/ROADMAP.md` cut list).
 

@@ -2,11 +2,15 @@ export interface AuditCommandArgs {
   command: "audit";
   url: string;
   outDir: string;
+  copyStylePath?: string;
   timeoutMs?: number;
   allowPartial: boolean;
 }
 
 export type ParsedArgs = AuditCommandArgs | { command: "help" };
+
+const VALUE_OPTIONS = new Set(["url", "out", "timeout-ms", "copy"]);
+const BOOLEAN_OPTIONS = new Set(["allow-partial"]);
 
 export function parseArgs(argv: string[]): ParsedArgs {
   const normalizedArgv = argv[0] === "--" ? argv.slice(1) : argv;
@@ -26,15 +30,25 @@ export function parseArgs(argv: string[]): ParsedArgs {
     if (!token.startsWith("--")) {
       throw new Error(`Unexpected argument: ${token}`);
     }
-    if (token === "--allow-partial") {
-      flags.add(token.slice(2));
+    const option = token.slice(2);
+    if (BOOLEAN_OPTIONS.has(option)) {
+      if (flags.has(option)) {
+        throw new Error(`Duplicate option: ${token}`);
+      }
+      flags.add(option);
       continue;
+    }
+    if (!VALUE_OPTIONS.has(option)) {
+      throw new Error(`Unknown option: ${token}`);
+    }
+    if (values.has(option)) {
+      throw new Error(`Duplicate option: ${token}`);
     }
     const next = rest[index + 1];
     if (!next || next.startsWith("--")) {
       throw new Error(`Missing value for ${token}`);
     }
-    values.set(token.slice(2), next);
+    values.set(option, next);
     index += 1;
   }
 
@@ -53,6 +67,7 @@ export function parseArgs(argv: string[]): ParsedArgs {
     command: "audit",
     url,
     outDir,
+    copyStylePath: values.get("copy"),
     timeoutMs,
     allowPartial: flags.has("allow-partial")
   };
@@ -63,13 +78,14 @@ export function helpText(): string {
     "Design Harness",
     "",
     "Usage:",
-    "  design-harness audit --url <local-url> --out <directory> [--timeout-ms <ms>] [--allow-partial]",
+    "  design-harness audit --url <local-url> --out <directory> [--copy <copy-style.yaml>] [--timeout-ms <ms>] [--allow-partial]",
     "",
     "Commands:",
     "  audit    Capture desktop/mobile screenshots and write audit artifacts.",
     "",
     "Notes:",
     "  Audit targets must be local http(s) URLs such as http://localhost:3000.",
+    "  Copy analysis is opt-in and reads only the explicit local --copy file.",
     "  Partial audits write artifacts and exit 2 unless --allow-partial is set."
   ].join("\n");
 }

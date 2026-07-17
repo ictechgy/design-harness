@@ -36,7 +36,7 @@ The exhaustive sourceStrength x determinism x resultKind matrix (ceiling semanti
 
 ### Copy Style Contract
 
-`copy-style.yaml` is the project-declared contract for rendered-copy checks. The core schema is `packages/core/schemas/copy-style.schema.json`; until CLI YAML parsing is implemented with an approved dependency, JSON-equivalent fixtures validate the same structure.
+`copy-style.yaml` is the project-declared contract for rendered-copy checks. The core schema is `packages/core/schemas/copy-style.schema.json`. CLI users pass one explicit local file with `--copy <copy-style.yaml>`; the CLI applies a strict YAML 1.2 subset and validates the result against that existing schema before browser launch. It does not auto-discover configuration.
 
 The v1 contract includes:
 
@@ -72,7 +72,7 @@ Copy-style-backed criteria use `sourceStrength: "project-contract"` and can emit
 
 #### Parser-Free Copy Audit
 
-Library callers can pass a validated `CopyStyle` through `auditUrl({ copyStyle })`. The capture adapter resolves surfaces on live nodes, then `@design-harness/copy-audit` analyzes the serialized text inventory without importing Playwright. CLI YAML loading remains a later slice.
+Library callers can pass a validated `CopyStyle` through `auditUrl({ copyStyle })`. CLI callers can pass the same contract with `--copy <copy-style.yaml>`; the validated object enters that existing `auditUrl({ copyStyle })` path rather than a separate analyzer. The capture adapter resolves surfaces on live nodes, then `@design-harness/copy-audit` analyzes the serialized text inventory without importing Playwright.
 
 | Check | Contract | Result |
 |---|---|---|

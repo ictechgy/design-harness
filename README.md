@@ -69,6 +69,17 @@ pnpm build
 pnpm design-harness -- audit --url http://localhost:3000 --out runs/demo
 ```
 
+The current checkout can opt into the five parser-free rendered-copy checks with its committed example contract:
+
+```bash
+pnpm design-harness -- audit \
+  --url http://localhost:3000 \
+  --out runs/demo \
+  --copy examples/configs/copy-style.ko-example.yaml
+```
+
+The config is validated before Chromium starts. Without `--copy`, Design Harness does not discover a copy config or run copy analysis. The five checks are documented in [Criteria and Checks](docs/criteria-and-checks.md#parser-free-copy-audit). Use the equivalent `npx` command only after a package version containing parser-free CLI wiring is published.
+
 Use `pnpm playwright:install` if Chromium is missing.
 
 ## Agent Loop

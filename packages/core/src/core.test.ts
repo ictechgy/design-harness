@@ -29,6 +29,7 @@ import {
   scoreFindings,
   tailText,
   validateReportCopyGuardrails,
+  validateAgainstSchema,
   validateAuditResultIntegrity,
   validateSchema
 } from "./index.js";
@@ -160,6 +161,48 @@ describe("core schemas", () => {
       "$.glossary[0].surfaces",
       "$.bannedPhrases[0].phrase"
     ]));
+  });
+
+  it("rejects prototype-named own properties in closed schemas", () => {
+    for (const key of ["constructor", "toString", "__proto__"] as const) {
+      const copyStyle = createMinimalCopyStyle() as unknown as Record<string, unknown>;
+      Object.defineProperty(copyStyle, key, {
+        value: "unexpected",
+        enumerable: true,
+        configurable: true,
+        writable: true
+      });
+
+      const result = validateSchema("copy-style", copyStyle);
+      expect(result.valid).toBe(false);
+      expect(result.issues).toContainEqual({ path: `$.${key}`, message: "is not allowed" });
+    }
+  });
+
+  it("requires own properties and ignores inherited declared properties", () => {
+    const requiredSchema = {
+      type: "object",
+      additionalProperties: false,
+      required: ["value"],
+      properties: {
+        value: { type: "string" }
+      }
+    };
+    const inheritedRequired = Object.create({ value: "inherited" }) as Record<string, unknown>;
+    expect(validateAgainstSchema(requiredSchema, inheritedRequired).issues).toContainEqual({
+      path: "$.value",
+      message: "is required"
+    });
+
+    const optionalSchema = {
+      type: "object",
+      additionalProperties: false,
+      properties: {
+        value: { type: "string" }
+      }
+    };
+    const inheritedInvalid = Object.create({ value: 42 }) as Record<string, unknown>;
+    expect(validateAgainstSchema(optionalSchema, inheritedInvalid)).toEqual({ valid: true, issues: [] });
   });
 
   it("rejects blank copy match values and empty surface rules", () => {
