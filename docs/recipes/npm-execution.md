@@ -13,21 +13,21 @@ pnpm design-harness -- audit --url http://localhost:3000 --out runs/demo
 After publish, the intended one-off audit flow is:
 
 ```bash
-npx @design-harness/cli@0.4.3 --help
+npx @design-harness/cli@0.4.4 --help
 npx playwright install chromium
-npx @design-harness/cli@0.4.3 audit --url http://localhost:3000 --out runs/demo
+npx @design-harness/cli@0.4.4 audit --url http://localhost:3000 --out runs/demo
 ```
 
-Parser-free copy CLI wiring is implemented in the current checkout but is not attributed to an npm version until that version is published. Test it from the checkout with the committed example:
+Parser-free copy CLI wiring is available in v0.4.4. Run it with the committed example config:
 
 ```bash
-pnpm design-harness -- audit \
+npx @design-harness/cli@0.4.4 audit \
   --url http://localhost:3000 \
   --out runs/demo \
   --copy examples/configs/copy-style.ko-example.yaml
 ```
 
-The CLI rejects unreadable, oversized, malformed, ambiguous, or schema-invalid config before launching Chromium or creating the output directory. Use the equivalent `npx @design-harness/cli@<version> ... --copy` form only after that version is actually published.
+The CLI rejects unreadable, oversized, malformed, ambiguous, or schema-invalid config before launching Chromium or creating the output directory.
 
 ## Local Package Smoke Test
 
