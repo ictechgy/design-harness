@@ -4,6 +4,12 @@
 
 No changes yet.
 
+## 0.4.4 - 2026-07-18
+
+- Added explicit parser-free copy analysis through `design-harness audit --copy <copy-style.yaml>` while preserving the visual-only default path.
+- Added strict CLI-only YAML loading with bounded regular-file reads, UTF-8 and ambiguity checks, schema validation, and fail-closed errors before browser or artifact side effects.
+- Added argument, loader, orchestration, packed-CLI, live-copy, calibration, and no-copy regression coverage for the public CLI path.
+
 ## 0.4.3 - 2026-07-14
 
 - Made thrown navigation errors fail closed per viewport while preserving failure evidence and continuing later viewports.
