@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://design-harness.dev/schemas/design-guide.schema.json",
+  "title": "DesignGuide",
+  "description": "Closed authoring envelope for the Design Harness v0.5a supported design-token profile.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "tokens",
+    "prohibitions",
+    "signatureElement"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "type": "string",
+      "const": "0.2"
+    },
+    "tokens": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "color",
+        "font",
+        "spacing",
+        "radius"
+      ],
+      "properties": {
+        "color": {
+          "type": "object"
+        },
+        "font": {
+          "type": "object"
+        },
+        "spacing": {
+          "type": "object"
+        },
+        "radius": {
+          "type": "object"
+        }
+      }
+    },
+    "prohibitions": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z][a-z0-9-]*$"
+      }
+    },
+    "signatureElement": {
+      "type": "string",
+      "minLength": 1
+    }
+  }
+}

@@ -50,9 +50,10 @@ describe("loadCopyStyleFile", () => {
     await expect(loadCopyStyleFile(path)).resolves.toEqual({ schemaVersion: "0.2", locale: "ko" });
   });
 
-  it("locks the production non-blocking flag where the runtime exposes it", () => {
+  it("locks the production non-blocking and no-follow flags where the runtime exposes them", () => {
     const nonBlocking = typeof constants.O_NONBLOCK === "number" ? constants.O_NONBLOCK : 0;
-    expect(copyStyleOpenFlags()).toBe(constants.O_RDONLY | nonBlocking);
+    const noFollow = typeof constants.O_NOFOLLOW === "number" ? constants.O_NOFOLLOW : 0;
+    expect(copyStyleOpenFlags()).toBe(constants.O_RDONLY | nonBlocking | noFollow);
   });
 
   it("rejects a production-path directory as non-regular", async () => {

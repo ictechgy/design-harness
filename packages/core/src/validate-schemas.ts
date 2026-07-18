@@ -5,6 +5,7 @@ import {
   createExampleBrief,
   createExampleCopyStyle,
   createExampleCriterion,
+  createExampleDesignGuide,
   createExampleFinding,
   createExampleMetadata,
   createExampleReportManifest
@@ -20,6 +21,7 @@ for (const [name, schema] of Object.entries(schemas)) {
 
 assertValidSchema("brief", createExampleBrief());
 assertValidSchema("copy-style", createExampleCopyStyle());
+assertValidSchema("design-guide", createExampleDesignGuide());
 assertValidSchema("criterion", createExampleCriterion());
 assertValidSchema("finding", createExampleFinding());
 assertValidSchema("audit-result", createExampleAuditResult());

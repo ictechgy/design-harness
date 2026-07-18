@@ -70,6 +70,55 @@ export interface DesignBrief {
   successCriteria?: string[];
 }
 
+export interface DtcgColorValue {
+  colorSpace: "srgb";
+  components: [number, number, number];
+  alpha?: number;
+}
+
+export interface DtcgDimensionValue {
+  value: number;
+  unit: "px" | "rem";
+}
+
+export interface DtcgToken<T> {
+  $value: T;
+}
+
+export interface DtcgColorSemanticGroup {
+  $type: "color";
+  [tokenName: string]: "color" | DtcgToken<DtcgColorValue>;
+}
+
+export interface DtcgFontFamilyGroup {
+  $type: "fontFamily";
+  heading: DtcgToken<string | string[]>;
+  body: DtcgToken<string | string[]>;
+}
+
+export interface DtcgDimensionGroup {
+  $type: "dimension";
+  [tokenName: string]: "dimension" | DtcgToken<DtcgDimensionValue>;
+}
+
+export interface DesignGuideTokens {
+  color: {
+    semantic: DtcgColorSemanticGroup;
+  };
+  font: {
+    family: DtcgFontFamilyGroup;
+  };
+  spacing: DtcgDimensionGroup;
+  radius: DtcgDimensionGroup;
+}
+
+export interface DesignGuide {
+  schemaVersion: "0.2";
+  tokens: DesignGuideTokens;
+  prohibitions: string[];
+  signatureElement: string;
+}
+
 export const COPY_SURFACES = ["button", "error", "marketing", "body"] as const;
 export const COPY_REGISTERS = ["haeyoche", "hapsyoche", "noun-form", "banmal"] as const;
 export const GLOSSARY_TIERS = ["approved", "banned", "use-carefully"] as const;
