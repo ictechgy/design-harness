@@ -1,10 +1,12 @@
 import { createHash } from "node:crypto";
+import copyStyleSchema from "../schemas/copy-style.schema.json" with { type: "json" };
 import {
   assertDesignGuideProfile,
   DESIGN_GUIDE_PROFILE_ID,
   GUIDE_CATALOG_VERSION
 } from "./design-guide.js";
 import { SLOP_FINGERPRINT_CATALOG } from "./generated/slop-fingerprints.js";
+import type { JsonSchema } from "./schema-registry.js";
 import type {
   CopyStyle,
   CopyStyleBannedPhrase,
@@ -14,6 +16,7 @@ import type {
   DesignGuide,
   DesignGuideTokens
 } from "./types.js";
+import { SchemaValidationError, validateAgainstSchema } from "./validation.js";
 
 export const GUIDE_TOKEN_ESTIMATE_METHOD = "guide-token-estimate-v1" as const;
 export const GUIDE_TOKEN_HARD_CEILING = 2000 as const;
@@ -100,11 +103,15 @@ const CONTROL_OR_BIDI_PATTERN = /[\u0000-\u001f\u007f-\u009f\u00ad\u034f\u061c\u
 const CATALOG_BY_ID = new Map<string, FingerprintEntry>(
   SLOP_FINGERPRINT_CATALOG.entries.map((entry) => [entry.id, entry])
 );
+const COPY_STYLE_SCHEMA = copyStyleSchema as unknown as JsonSchema;
 
 export function compileDesignGuide(designGuide: DesignGuide, copyStyle?: CopyStyle): GuideCompilationResult {
   assertDesignGuideProfile(designGuide);
+  if (copyStyle !== undefined) {
+    assertValidCopyStyle(copyStyle);
+  }
   const normalizedGuide = normalizeDesignGuide(designGuide);
-  const safeCopy = copyStyle ? projectCopyStyle(copyStyle) : undefined;
+  const safeCopy = copyStyle === undefined ? undefined : projectCopyStyle(copyStyle);
   const fingerprints = normalizedGuide.prohibitions.map((id) => {
     const entry = CATALOG_BY_ID.get(id);
     if (!entry) {
@@ -502,7 +509,7 @@ function assertRuleIntegrity(rules: GuideRule[]): void {
 
 function renderGuideMarkdown(rules: GuideRule[], sourceHash: string): string {
   const lines = [
-    "## Design Harness Guide",
+    "## UI work: follow all rules",
     "",
     `Profile=${DESIGN_GUIDE_PROFILE_ID}; catalog=${GUIDE_CATALOG_VERSION}; source=sha256:${sourceHash}`,
     ""
@@ -513,6 +520,13 @@ function renderGuideMarkdown(rules: GuideRule[], sourceHash: string): string {
     );
   });
   return `${lines.join("\n")}\n`;
+}
+
+function assertValidCopyStyle(value: unknown): asserts value is CopyStyle {
+  const result = validateAgainstSchema(COPY_STYLE_SCHEMA, value);
+  if (!result.valid) {
+    throw new SchemaValidationError("copy-style", result.issues);
+  }
 }
 
 function normalizeSafeText(value: unknown, path: string): string {

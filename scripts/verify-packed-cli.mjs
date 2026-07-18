@@ -56,20 +56,38 @@ try {
 
   await assertPackedGuideCommands(consumerDir);
 
-  await assertFailClosedConfig({
+  await assertFailClosedCopyConfig({
     consumerDir,
     name: "malformed",
     source: "schemaVersion: [\n",
     expectedStage: "parse"
   });
-  await assertFailClosedConfig({
+  await assertFailClosedCopyConfig({
     consumerDir,
     name: "schema-invalid",
     source: "schemaVersion: '0.2'\nlocale: NOT_VALID\n",
     expectedStage: "schema"
   });
+  await assertFailClosedGuideConfig({
+    consumerDir,
+    name: "guide-malformed",
+    source: "schemaVersion: [\n",
+    expectedStage: "parse"
+  });
+  await assertFailClosedGuideConfig({
+    consumerDir,
+    name: "guide-schema-invalid",
+    source: `${packedGuideYaml()}unknown: true\n`,
+    expectedStage: "schema"
+  });
+  await assertFailClosedGuideConfig({
+    consumerDir,
+    name: "guide-profile-invalid",
+    source: packedGuideYaml().replace("generic-card-grid", "unknown-fingerprint"),
+    expectedStage: "profile"
+  });
 
-  console.log("Validated packed CLI audit help/config gates and guide compile/check/idempotence/drift without root data lookup.");
+  console.log("Validated packed CLI audit config gates plus guide fail-closed/compile/check/idempotence/drift without root data lookup.");
 } finally {
   await rm(tempRoot, { recursive: true, force: true });
 }
@@ -138,7 +156,7 @@ async function assertPackedGuideCommands(consumerDir) {
   assertFileSnapshotsEqual(beforeDriftCheck, afterDriftCheck, "Packed guide check wrote while reporting drift");
 }
 
-async function assertFailClosedConfig({ consumerDir, name, source, expectedStage }) {
+async function assertFailClosedCopyConfig({ consumerDir, name, source, expectedStage }) {
   const configPath = join(consumerDir, `${name}.yaml`);
   const outDir = join(consumerDir, `${name}-out`);
   await writeFile(configPath, source);
@@ -165,6 +183,37 @@ async function assertFailClosedConfig({ consumerDir, name, source, expectedStage
   } catch (error) {
     if (!(error && typeof error === "object" && "code" in error && error.code === "ENOENT")) {
       throw error;
+    }
+  }
+}
+
+async function assertFailClosedGuideConfig({ consumerDir, name, source, expectedStage }) {
+  const target = join(consumerDir, name);
+  const configPath = join(target, "design-guide.yaml");
+  await mkdir(target, { recursive: true });
+  await writeFile(configPath, source);
+  const before = (await readdir(target)).sort();
+
+  for (const action of ["compile", "check"]) {
+    const result = await runPnpm([
+      "exec",
+      "design-harness",
+      "guide",
+      action,
+      "--guide",
+      relative(consumerDir, configPath),
+      "--target",
+      relative(consumerDir, target)
+    ], { cwd: consumerDir, capture: true, allowFailure: true });
+    if (result.code !== 1) {
+      throw new Error(`Packed guide ${action} ${name} exited ${result.code}, expected 1.\n${result.stderr}`);
+    }
+    if (!result.stderr.includes(`Guide ${expectedStage} error at --guide:`)) {
+      throw new Error(`Packed guide ${action} ${name} did not report ${expectedStage} stage:\n${result.stderr}`);
+    }
+    const after = (await readdir(target)).sort();
+    if (JSON.stringify(after) !== JSON.stringify(before)) {
+      throw new Error(`Packed guide ${action} ${name} created output or transaction residue: ${after.join(", ")}`);
     }
   }
 }

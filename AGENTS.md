@@ -35,7 +35,7 @@ pnpm check:criteria-policy          # criterion registry vs ADR-001 policy matri
 pnpm check:version-consistency      # package/HARNESS_VERSION + schemaVersion lockstep
 pnpm check:release-hook-policy      # release-block hook sample coverage
 pnpm check:core-purity              # core stays capture-agnostic (ADR-002)
-pnpm check:package-boundaries       # one-way graph; YAML config parsing stays CLI-only
+pnpm check:package-boundaries       # graph + explicit runtime deps; YAML stays CLI-only
 pnpm check:deps-policy              # ToS/GPL dependency policy
 pnpm check:tracked-hygiene          # local-only files untracked; AGENTS.md line budget
 pnpm check:guide-data               # guide fingerprint source/generated mirror parity

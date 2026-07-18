@@ -8,7 +8,9 @@ import {
   estimateGuideTokens,
   GUIDE_CATALOG_VERSION,
   GUIDE_TOKEN_ESTIMATE_METHOD,
-  GuideCompileError
+  GuideCompileError,
+  SchemaValidationError,
+  type CopyStyle
 } from "./index.js";
 
 describe("pure guide compiler", () => {
@@ -29,6 +31,7 @@ describe("pure guide compiler", () => {
         sourceHash: result.sourceHash
       });
       expect(result.designTokensJson).toBe(`${JSON.stringify(result.designTokens, null, 2)}\n`);
+      expect(result.markdown).toMatch(/^## UI work: follow all rules\n\nProfile=/u);
       expect(result.markdown).not.toMatch(/timestamp|harnessVersion|process\.env|\/Users\//u);
       expect(result.rules.every((rule) => (
         rule.id && rule.name && rule.description && rule.badExample && rule.goodExample
@@ -62,7 +65,7 @@ describe("pure guide compiler", () => {
       { phrase: "act now", surfaces: ["body"] },
       { phrase: "act now", surfaces: ["marketing"] }
     ];
-    copy.surfaceRegisters = undefined;
+    delete copy.surfaceRegisters;
     const guide = createExampleDesignGuide();
     guide.prohibitions = ["generic-card-grid"];
     const first = compileDesignGuide(guide, copy);
@@ -105,6 +108,23 @@ describe("pure guide compiler", () => {
     expect(result.markdown).not.toContain("web-dom");
     expect(result.markdown).not.toContain("a.btn");
     expect(result.markdown).not.toContain("josaHedgePolicy");
+  });
+
+  it("rejects runtime copy values outside the public copy-style schema", () => {
+    const invalid = {
+      ...createExampleCopyStyle(),
+      schemaVersion: "999",
+      unexpected: true
+    } as unknown as CopyStyle;
+
+    expectCopySchemaFailure(
+      () => compileDesignGuide(createExampleDesignGuide(), invalid),
+      ["$.schemaVersion", "$.unexpected"]
+    );
+    expect(() => compileDesignGuide(
+      createExampleDesignGuide(),
+      null as unknown as CopyStyle
+    )).toThrow(SchemaValidationError);
   });
 
   it("rejects duplicate and required-vs-banned copy declarations deterministically", () => {
@@ -234,5 +254,17 @@ function expectCompilePhase(run: () => unknown, phase: string): void {
   } catch (error) {
     expect(error).toBeInstanceOf(GuideCompileError);
     expect((error as GuideCompileError).phase).toBe(phase);
+  }
+}
+
+function expectCopySchemaFailure(run: () => unknown, paths: string[]): void {
+  try {
+    run();
+    throw new Error("Expected copy-style validation to fail.");
+  } catch (error) {
+    expect(error).toBeInstanceOf(SchemaValidationError);
+    expect((error as SchemaValidationError).schemaName).toBe("copy-style");
+    expect((error as SchemaValidationError).issues.map((issue) => issue.path))
+      .toEqual(expect.arrayContaining(paths));
   }
 }

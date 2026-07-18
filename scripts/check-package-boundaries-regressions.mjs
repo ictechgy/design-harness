@@ -11,6 +11,48 @@ try {
   seedValidPackages(root);
   assertNoFailures(checkPackageBoundaries(root), "valid package graph");
 
+  writeRootManifest(root, {
+    dependencies: { "style-dictionary": "5.5.0" },
+    devDependencies: { "style-dictionary": "^5.5.0" }
+  });
+  assertFailures(
+    checkPackageBoundaries(root),
+    [
+      "devDependencies must pin style-dictionary exactly to 5.5.0",
+      'dependencies must not declare build-only module "style-dictionary"'
+    ],
+    "root-only exact Style Dictionary placement"
+  );
+
+  seedValidPackages(root);
+  writeManifest(root, "cli", {
+    dependencies: {
+      "@design-harness/core": "workspace:^",
+      "@design-harness/visual-audit": "workspace:^",
+      yaml: "^2.9.0",
+      "style-dictionary": "5.5.0"
+    }
+  });
+  writeSource(root, "cli", 'import "style-dictionary";\n');
+  assertFailures(
+    checkPackageBoundaries(root),
+    [
+      'packages/cli/package.json dependencies declares forbidden module "style-dictionary"',
+      'packages/cli/src/index.ts imports forbidden module "style-dictionary"',
+      "packages/cli/package.json dependencies must equal"
+    ],
+    "published Style Dictionary runtime"
+  );
+
+  seedValidPackages(root);
+  writeManifest(root, "core", { dependencies: { "future-tokenizer": "1.0.0" } });
+  assertFailures(
+    checkPackageBoundaries(root),
+    ["packages/core/package.json dependencies must equal {}", "future-tokenizer"],
+    "arbitrary tokenizer runtime dependency"
+  );
+
+  seedValidPackages(root);
   writeSource(root, "core", 'import "@design-harness/copy-audit";\n');
   assertFailures(
     checkPackageBoundaries(root),
@@ -89,20 +131,44 @@ try {
     "visual-audit -> cli reverse dependency"
   );
 
-  console.log("check-package-boundaries-regressions passed: forbidden imports, runtime dependencies, and YAML boundary violations fail closed.");
+  console.log("check-package-boundaries-regressions passed: imports, explicit runtime dependencies, CLI-only YAML, and root-only build tooling fail closed.");
 } finally {
   rmSync(root, { recursive: true, force: true });
 }
 
 function seedValidPackages(workspaceRoot) {
+  writeRootManifest(workspaceRoot, {
+    devDependencies: { "style-dictionary": "5.5.0" }
+  });
   writeManifest(workspaceRoot, "core", { dependencies: {} });
   writeSource(workspaceRoot, "core", "export const core = true;\n");
   writeManifest(workspaceRoot, "copy-audit", {
     dependencies: { "@design-harness/core": "workspace:^" }
   });
   writeSource(workspaceRoot, "copy-audit", 'import type { Finding } from "@design-harness/core";\nexport type Result = Finding[];\n');
-  writeManifest(workspaceRoot, "visual-audit", { dependencies: {} });
+  writeManifest(workspaceRoot, "visual-audit", {
+    dependencies: {
+      "@design-harness/copy-audit": "workspace:^",
+      "@design-harness/core": "workspace:^",
+      playwright: "^1.49.1"
+    }
+  });
   writeSource(workspaceRoot, "visual-audit", "export const visualAudit = true;\n");
+  writeManifest(workspaceRoot, "cli", {
+    dependencies: {
+      "@design-harness/core": "workspace:^",
+      "@design-harness/visual-audit": "workspace:^",
+      yaml: "^2.9.0"
+    }
+  });
+  writeSource(workspaceRoot, "cli", "export const cli = true;\n");
+}
+
+function writeRootManifest(workspaceRoot, fields) {
+  writeFileSync(
+    join(workspaceRoot, "package.json"),
+    `${JSON.stringify({ name: "design-harness", private: true, ...fields }, null, 2)}\n`
+  );
 }
 
 function writeManifest(workspaceRoot, packageName, fields) {

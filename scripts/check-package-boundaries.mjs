@@ -7,6 +7,8 @@ const defaultRoot = fileURLToPath(new URL("..", import.meta.url));
 const SOURCE_FILE = /\.(?:[cm]?[jt]s|[jt]sx)$/;
 const IMPORT_PATTERN = /(?:from\s+|import\s+|import\s*\(\s*|require\s*\(\s*)(["'`])([^"'`]+)\1/g;
 const DEPENDENCY_FIELDS = ["dependencies", "devDependencies", "peerDependencies", "optionalDependencies"];
+const STYLE_DICTIONARY_VERSION = "5.5.0";
+const BUILD_ONLY_MODULES = ["style-dictionary"];
 const CAPTURE_MODULES = [
   "playwright",
   "@playwright/",
@@ -26,6 +28,7 @@ const CLI_CONFIG_MODULES = ["yaml"];
 const CORE_FORBIDDEN_MODULES = [
   ...CAPTURE_MODULES,
   ...CLI_CONFIG_MODULES,
+  ...BUILD_ONLY_MODULES,
   "@design-harness/copy-audit",
   "@design-harness/visual-audit",
   "@design-harness/cli"
@@ -33,20 +36,45 @@ const CORE_FORBIDDEN_MODULES = [
 const COPY_AUDIT_FORBIDDEN_MODULES = [
   ...CAPTURE_MODULES,
   ...CLI_CONFIG_MODULES,
+  ...BUILD_ONLY_MODULES,
   "@design-harness/visual-audit",
   "@design-harness/cli"
 ];
 const VISUAL_AUDIT_FORBIDDEN_MODULES = [
   ...CLI_CONFIG_MODULES,
+  ...BUILD_ONLY_MODULES,
   "@design-harness/cli"
 ];
-const EXPECTED_COPY_AUDIT_RUNTIME_DEPENDENCIES = {
-  "@design-harness/core": "workspace:^"
+const CLI_FORBIDDEN_MODULES = [...BUILD_ONLY_MODULES];
+const EXPECTED_RUNTIME_DEPENDENCIES = {
+  core: {},
+  "copy-audit": {
+    "@design-harness/core": "workspace:^"
+  },
+  "visual-audit": {
+    "@design-harness/copy-audit": "workspace:^",
+    "@design-harness/core": "workspace:^",
+    playwright: "^1.49.1"
+  },
+  cli: {
+    "@design-harness/core": "workspace:^",
+    "@design-harness/visual-audit": "workspace:^",
+    yaml: "^2.9.0"
+  }
 };
 
 export function checkPackageBoundaries(rootDir = defaultRoot) {
   const root = resolve(rootDir);
   const failures = [];
+  const rootManifestPath = join(root, "package.json");
+  const rootManifest = existsSync(rootManifestPath)
+    ? readManifest(rootManifestPath, root, failures)
+    : undefined;
+  if (!rootManifest) {
+    failures.push("package.json is missing or invalid");
+  } else {
+    checkRootBuildDependencies(rootManifest, failures);
+  }
   const packages = [
     {
       label: "core",
@@ -62,6 +90,11 @@ export function checkPackageBoundaries(rootDir = defaultRoot) {
       label: "visual-audit",
       directory: resolve(root, "packages/visual-audit"),
       forbiddenModules: VISUAL_AUDIT_FORBIDDEN_MODULES
+    },
+    {
+      label: "cli",
+      directory: resolve(root, "packages/cli"),
+      forbiddenModules: CLI_FORBIDDEN_MODULES
     }
   ];
 
@@ -91,25 +124,38 @@ export function checkPackageBoundaries(rootDir = defaultRoot) {
       failures
     );
 
-    if (packageBoundary.label === "copy-audit") {
-      const actualDependencies = manifest.dependencies ?? {};
-      if (!sameStringMap(actualDependencies, EXPECTED_COPY_AUDIT_RUNTIME_DEPENDENCIES)) {
+    const expectedDependencies = EXPECTED_RUNTIME_DEPENDENCIES[packageBoundary.label];
+    const actualDependencies = manifest.dependencies ?? {};
+    if (!sameStringMap(actualDependencies, expectedDependencies)) {
+      failures.push(
+        `${displayPath(root, manifestPath)} dependencies must equal ${JSON.stringify(expectedDependencies)}, got ${JSON.stringify(actualDependencies)}`
+      );
+    }
+    for (const field of ["peerDependencies", "optionalDependencies"]) {
+      const entries = manifest[field] ?? {};
+      if (Object.keys(entries).length > 0) {
         failures.push(
-          `${displayPath(root, manifestPath)} dependencies must equal ${JSON.stringify(EXPECTED_COPY_AUDIT_RUNTIME_DEPENDENCIES)}, got ${JSON.stringify(actualDependencies)}`
+          `${displayPath(root, manifestPath)} ${field} must be empty, got ${JSON.stringify(entries)}`
         );
-      }
-      for (const field of ["peerDependencies", "optionalDependencies"]) {
-        const entries = manifest[field] ?? {};
-        if (Object.keys(entries).length > 0) {
-          failures.push(
-            `${displayPath(root, manifestPath)} ${field} must be empty, got ${JSON.stringify(entries)}`
-          );
-        }
       }
     }
   }
 
   return failures;
+}
+
+function checkRootBuildDependencies(manifest, failures) {
+  const actualVersion = manifest.devDependencies?.["style-dictionary"];
+  if (actualVersion !== STYLE_DICTIONARY_VERSION) {
+    failures.push(
+      `package.json devDependencies must pin style-dictionary exactly to ${STYLE_DICTIONARY_VERSION}, got ${JSON.stringify(actualVersion)}`
+    );
+  }
+  for (const field of ["dependencies", "peerDependencies", "optionalDependencies"]) {
+    if (Object.hasOwn(manifest[field] ?? {}, "style-dictionary")) {
+      failures.push(`package.json ${field} must not declare build-only module "style-dictionary"`);
+    }
+  }
 }
 
 function readManifest(manifestPath, root, failures) {
@@ -209,5 +255,5 @@ if (invokedPath === import.meta.url) {
     }
     process.exit(1);
   }
-  console.log("check-package-boundaries passed: dependency direction and the CLI-only YAML config boundary are preserved.");
+  console.log("check-package-boundaries passed: dependency direction, CLI-only YAML, and root-only build tooling are preserved.");
 }
