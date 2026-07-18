@@ -4,6 +4,12 @@
 
 No changes yet.
 
+## 0.5.0 - 2026-07-19
+
+- Added explicit `design-harness guide compile` and zero-write `guide check` commands that derive marker-owned agent guidance and `design.tokens.json` from one local, schema-validated guide.
+- Added the bounded `v0.5a-1` design-token profile, versioned prohibition catalog, optional safe copy-style projection, deterministic 2,000-token estimate ceiling, and a bounded Style Dictionary 5.5 compatibility smoke.
+- Added fail-closed target containment, ownership, locking, staged commit, concurrent-change, rollback, and cleanup handling with source and packed-CLI regression coverage.
+
 ## 0.4.4 - 2026-07-18
 
 - Added explicit parser-free copy analysis through `design-harness audit --copy <copy-style.yaml>` while preserving the visual-only default path.
