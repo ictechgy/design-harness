@@ -57,7 +57,7 @@ Check performs zero writes. It returns success only when the inputs are valid, e
 
 ### Supported Design Guide Profile `v0.5a-1`
 
-The [example guide](../../examples/configs/design-guide.example.yaml) shows the complete YAML shape. Top-level fields are exactly `schemaVersion: "0.2"`, `tokens`, `prohibitions`, and `signatureElement`.
+The [example guide](https://github.com/ictechgy/design-harness/blob/main/examples/configs/design-guide.example.yaml) shows the complete YAML shape. Top-level fields are exactly `schemaVersion: "0.2"`, `tokens`, `prohibitions`, and `signatureElement`.
 
 - `tokens.color.semantic`: 4–6 lower-kebab leaves under `$type: color`; each `$value` is a literal `srgb` color with three finite components in `[0,1]` and optional alpha in `[0,1]`.
 - `tokens.font.family`: exactly `heading` and `body` under `$type: fontFamily`; each value is one family or an array of 1–4 families.

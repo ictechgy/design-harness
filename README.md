@@ -57,7 +57,7 @@ runs/demo/
 
 Partial audits still write artifacts but exit with code `2` by default. Use `--allow-partial` when a debugging workflow should treat partial artifacts as success.
 
-The npm release is audit-CLI focused. The PR comment renderer, scenario audit runner, and MCP adapter are checkout-local — they run only from a clone of this repository, not from the npm packages — until they are promoted to shipped package APIs.
+The npm package is CLI-focused: it ships the local audit command and explicit guide compile/check commands. The PR comment renderer, scenario audit runner, and MCP adapter are checkout-local — they run only from a clone of this repository, not from the npm packages — until they are promoted to shipped package APIs.
 
 ### From a checkout (for contributors)
 
@@ -78,9 +78,26 @@ pnpm design-harness -- audit \
   --copy examples/configs/copy-style.ko-example.yaml
 ```
 
-The config is validated before Chromium starts. Without `--copy`, Design Harness does not discover a copy config or run copy analysis. The five checks are documented in [Criteria and Checks](docs/criteria-and-checks.md#parser-free-copy-audit). Use the equivalent `npx` command only after a package version containing parser-free CLI wiring is published.
+The config is validated before Chromium starts. Without `--copy`, Design Harness does not discover a copy config or run copy analysis. The five checks are documented in [Criteria and Checks](docs/criteria-and-checks.md#parser-free-copy-audit). The equivalent explicit `npx` path is available in published versions starting with v0.4.4.
 
 Use `pnpm playwright:install` if Chromium is missing.
+
+### Guide compile/check (v0.5.0)
+
+From inside the project that owns an explicit `design-guide.yaml`:
+
+```bash
+npx @design-harness/cli@0.5.0 guide compile \
+  --guide ./design-guide.yaml \
+  --target .
+
+npx @design-harness/cli@0.5.0 guide check \
+  --guide ./design-guide.yaml \
+  --target . \
+  --max-tokens 2000
+```
+
+Compile derives marker-owned `AGENTS.md`/`DESIGN.md` guidance, a non-duplicating `CLAUDE.md` import, and an owned `design.tokens.json`. Check compares the same outputs without writing. Both commands require explicit local guide and target paths; neither discovers config or uses network input. Add `--copy ./copy-style.yaml` when the target also owns a compatible copy contract.
 
 ## Agent Loop
 

@@ -14,13 +14,14 @@ pnpm release:check
 - tests,
 - schema and calibration validation,
 - dry-run package packing for `@design-harness/core`, `@design-harness/copy-audit`, `@design-harness/visual-audit`, and `@design-harness/cli`,
-- a local packed-CLI install smoke test that installs the generated tarballs into a temporary consumer project and runs `design-harness --help`.
+- temporary-project guide compile/check and Style Dictionary 5.5 compatibility smokes,
+- a local packed-CLI install smoke test that installs the generated tarballs into a temporary consumer project and exercises audit/copy/guide help and failure gates.
 
 Committed example runs are provenance artifacts, not release-version mirrors. Never mechanically bump their `harnessVersion` or `toolVersions`: either regenerate the complete run (`audit.json`, `metadata.json`, `report-manifest.json`, `report.md`, and screenshots) with the release candidate, or retain the version that actually produced the committed run.
 
 ## npm Publish
 
-After an approved version bump and tag plan, publish the audit CLI surface and its workspace dependencies in dependency order:
+After an approved version bump and tag plan, publish the CLI surface and its workspace dependencies in dependency order:
 
 ```bash
 pnpm --filter @design-harness/core publish --access public
