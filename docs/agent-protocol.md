@@ -51,8 +51,16 @@ npm publish / version tags / GitHub releases / any external publication · new r
 | Report/output | `report.ts` + `output.ts` + report-manifest in lockstep; regenerate an example report and read it |
 | Schema/enum | `pnpm check:enum-lockstep` + `pnpm validate` + integrity tests |
 | CLI flags/commands | args tests + packed-CLI smoke (inside `release:check`) |
+| Guide compiler/materialization | profile/catalog/compiler tests + marker/ownership/containment/race/rollback failure matrix + zero-write `guide check` + `pnpm check:guide-data` + `pnpm smoke:guide` + packed-CLI smoke + `CI=true pnpm release:check` |
 | Dependencies | `pnpm check:deps-policy`; CI runs `--frozen-lockfile` — a new dep requires a lockfile change (this is also the slopsquatting guard: 5–22% of LLM-recommended packages don't exist) |
 | Docs only | Links resolve; every quantitative claim traces to an experiment/benchmark record |
+
+## High-authority guide materialization
+
+- Guide and copy YAML parsing, config paths, target resolution, and writes stay CLI-only. Both config files must be explicit and resolve inside the real, existing `--target`; no discovery, symlink traversal, or outside-target exception. Outside-target input uses the stable `containment` phase and an actionable path-class diagnostic.
+- `AGENTS.md`, `CLAUDE.md`, and `DESIGN.md` are instruction boundaries. Only one valid marker-owned span may be created or replaced; a standalone Claude `@AGENTS.md` import is left byte-identical. Malformed/ambiguous markers, foreign `design.tokens.json` ownership, sanitizer failures, or concurrent changes abort instead of being repaired heuristically.
+- Compile every body and preflight every destination before staging. Serialize cooperating guide compiles with the canonical private lock, verify same-device hard links, stage inside the lock, move existing destinations into private recovery, and use conditional hard links for commit and restoration. Bind config bytes to the contained identity and revalidate target/config/stage/output identity around commit steps; once a target replacement is observed, stop mutating through that path. Preserve the original failure as primary and attach rollback/residue cleanup failures as ordered secondary details. This handled-error protocol covers changes observable across its guards; it does not claim global atomicity, process/power-loss recovery, or resistance to hostile parent-directory ABA completed within one path-based syscall window.
+- `guide check` is compare-only: it may read and report source hash, profile/catalog versions, changed paths, and the `guide-token-estimate-v1` value/ceiling, but it must perform zero writes. Never describe the estimate as an exact model-token count.
 
 ## Handoff format
 

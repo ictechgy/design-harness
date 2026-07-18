@@ -4,6 +4,7 @@ import { basename } from "node:path";
 export type SchemaName =
   | "brief"
   | "copy-style"
+  | "design-guide"
   | "criterion"
   | "audit-target"
   | "viewport-preset"

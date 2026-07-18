@@ -9,6 +9,8 @@ import {
 } from "@design-harness/core";
 import { BrowserUnavailableError, type AuditUrlOptions } from "@design-harness/visual-audit";
 import { CopyStyleLoadError } from "./copy-style.js";
+import { GuideOperationError } from "./guide-errors.js";
+import type { GuideRunDependencies, GuideRunResult } from "./guide-run.js";
 import { runCli, type RunCliDependencies } from "./run.js";
 
 const baseArgv = ["audit", "--url", "http://localhost:3000", "--out", "runs/demo"];
@@ -87,6 +89,67 @@ describe("runCli", () => {
     expect(writeArtifacts).not.toHaveBeenCalled();
     expect(stderr).toHaveBeenCalledWith("browser unavailable");
   });
+
+  it("routes guide compile without invoking the audit path", async () => {
+    const { dependencies, runGuide, audit, loadCopyStyle, writeArtifacts, stdout } = successfulDependencies();
+
+    await expect(runCli([
+      "guide",
+      "compile",
+      "--guide",
+      "project/design-guide.yaml",
+      "--target",
+      "project"
+    ], dependencies)).resolves.toBe(0);
+
+    expect(runGuide).toHaveBeenCalledOnce();
+    expect(runGuide.mock.calls[0]?.[1]).toMatchObject({ cwd: dependencies.cwd });
+    expect(audit).not.toHaveBeenCalled();
+    expect(loadCopyStyle).not.toHaveBeenCalled();
+    expect(writeArtifacts).not.toHaveBeenCalled();
+    expect(stdout).toHaveBeenCalledWith("guide-token-estimate-v1: 1234/2000");
+  });
+
+  it("returns exit 1 for zero-write guide drift and renders scoped help", async () => {
+    const first = successfulDependencies();
+    first.runGuide.mockResolvedValue({ ...guideResult("check"), ok: false });
+    await expect(runCli([
+      "guide",
+      "check",
+      "--guide",
+      "project/design-guide.yaml",
+      "--target",
+      "project"
+    ], first.dependencies)).resolves.toBe(1);
+    expect(first.stderr).toHaveBeenCalledWith("Guide check found stale or missing owned artifacts.");
+
+    const help = successfulDependencies();
+    await expect(runCli(["guide", "check", "--help"], help.dependencies)).resolves.toBe(0);
+    expect(help.stdout.mock.calls[0]?.[0]).toContain("--max-tokens <1..2000>");
+    expect(help.runGuide).not.toHaveBeenCalled();
+  });
+
+  it("prints a phase-coded guide failure without auditing or writing", async () => {
+    const { dependencies, runGuide, audit, writeArtifacts, stderr } = successfulDependencies();
+    runGuide.mockRejectedValue(new GuideOperationError(
+      "containment",
+      "--guide",
+      "--guide must be inside --target"
+    ));
+
+    await expect(runCli([
+      "guide",
+      "compile",
+      "--guide",
+      "outside.yaml",
+      "--target",
+      "project"
+    ], dependencies)).resolves.toBe(1);
+
+    expect(stderr).toHaveBeenCalledWith(expect.stringContaining("Guide containment error"));
+    expect(audit).not.toHaveBeenCalled();
+    expect(writeArtifacts).not.toHaveBeenCalled();
+  });
 });
 
 function successfulDependencies(status: "success" | "partial" = "success") {
@@ -103,14 +166,41 @@ function successfulDependencies(status: "success" | "partial" = "success") {
   const writeArtifacts = vi.fn(async () => undefined);
   const stdout = vi.fn();
   const stderr = vi.fn();
+  const runGuide = vi.fn(async (
+    args: { action: "compile" | "check" },
+    _guideDependencies?: GuideRunDependencies
+  ) => guideResult(args.action));
   const dependencies: RunCliDependencies = {
     audit,
     loadCopyStyle,
+    runGuide,
     writeArtifacts,
     assertUrl: vi.fn((url: string) => `${url}/`),
     cwd: () => "/project",
     stdout,
     stderr
   };
-  return { dependencies, audit, loadCopyStyle, writeArtifacts, stdout, stderr };
+  return { dependencies, audit, loadCopyStyle, runGuide, writeArtifacts, stdout, stderr };
+}
+
+function guideResult(action: "compile" | "check"): GuideRunResult {
+  return {
+    action,
+    ok: true,
+    targetDir: "project",
+    profileId: "design-guide-v0.5a-1",
+    catalogVersion: "2026-07-18",
+    sourceHash: "a".repeat(64),
+    tokenEstimate: {
+      method: "guide-token-estimate-v1",
+      estimated: 1234,
+      ceiling: 2000
+    },
+    artifacts: [
+      { name: "AGENTS.md", status: "changed", checkStatus: action === "check" ? "current" : undefined },
+      { name: "CLAUDE.md", status: "unchanged", checkStatus: action === "check" ? "current" : undefined },
+      { name: "DESIGN.md", status: "changed", checkStatus: action === "check" ? "current" : undefined },
+      { name: "design.tokens.json", status: "changed", checkStatus: action === "check" ? "current" : undefined }
+    ]
+  };
 }

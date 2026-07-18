@@ -1,4 +1,4 @@
-import { mkdtemp, mkdir, readdir, rm, stat, writeFile } from "node:fs/promises";
+import { mkdtemp, mkdir, readFile, readdir, rm, stat, writeFile } from "node:fs/promises";
 import { spawn } from "node:child_process";
 import { tmpdir } from "node:os";
 import { dirname, join, relative, resolve } from "node:path";
@@ -44,9 +44,17 @@ try {
   await runPnpm(["install", "--prefer-offline", "--ignore-scripts=false"], { cwd: consumerDir });
   const help = await runPnpm(["exec", "design-harness", "--help"], { cwd: consumerDir, capture: true });
 
-  if (!help.includes("Design Harness") || !help.includes("design-harness audit") || !help.includes("--copy <copy-style.yaml>")) {
+  if (
+    !help.includes("Design Harness")
+    || !help.includes("design-harness audit")
+    || !help.includes("--copy <copy-style.yaml>")
+    || !help.includes("guide compile")
+    || !help.includes("guide check")
+  ) {
     throw new Error(`Packed CLI help output did not include expected usage text:\n${help}`);
   }
+
+  await assertPackedGuideCommands(consumerDir);
 
   await assertFailClosedConfig({
     consumerDir,
@@ -61,9 +69,73 @@ try {
     expectedStage: "schema"
   });
 
-  console.log("Validated packed CLI install, --copy help, and fail-closed parse/schema config errors.");
+  console.log("Validated packed CLI audit help/config gates and guide compile/check/idempotence/drift without root data lookup.");
 } finally {
   await rm(tempRoot, { recursive: true, force: true });
+}
+
+async function assertPackedGuideCommands(consumerDir) {
+  const target = join(consumerDir, "guide-project");
+  await mkdir(target, { recursive: true });
+  await writeFile(join(target, "design-guide.yaml"), packedGuideYaml());
+  await writeFile(join(target, "AGENTS.md"), "# Packed consumer agents\n");
+
+  const command = [
+    "exec",
+    "design-harness",
+    "guide",
+    "compile",
+    "--guide",
+    "guide-project/design-guide.yaml",
+    "--target",
+    "guide-project"
+  ];
+  const firstOutput = await runPnpm(command, { cwd: consumerDir, capture: true });
+  if (!firstOutput.includes("guide-token-estimate-v1")) {
+    throw new Error(`Packed guide compile omitted estimate output:\n${firstOutput}`);
+  }
+  const paths = ["AGENTS.md", "CLAUDE.md", "DESIGN.md", "design.tokens.json"];
+  const first = await fileSnapshot(target, paths);
+  const ownership = JSON.parse(first.get("design.tokens.json").source).$extensions?.["dev.design-harness"];
+  if (!ownership?.sourceHash) {
+    throw new Error("Packed guide compile omitted token ownership provenance.");
+  }
+
+  await runPnpm(command, { cwd: consumerDir, capture: true });
+  const second = await fileSnapshot(target, paths);
+  assertFileSnapshotsEqual(first, second, "Packed second compile changed owned output");
+
+  await runPnpm([
+    "exec",
+    "design-harness",
+    "guide",
+    "check",
+    "--guide",
+    "guide-project/design-guide.yaml",
+    "--target",
+    "guide-project",
+    "--max-tokens",
+    "2000"
+  ], { cwd: consumerDir, capture: true });
+
+  const agentsPath = join(target, "AGENTS.md");
+  await writeFile(agentsPath, first.get("AGENTS.md").source.replace("Content-shaped", "Drifted"));
+  const beforeDriftCheck = await fileSnapshot(target, paths);
+  const drift = await runPnpm([
+    "exec",
+    "design-harness",
+    "guide",
+    "check",
+    "--guide",
+    "guide-project/design-guide.yaml",
+    "--target",
+    "guide-project"
+  ], { cwd: consumerDir, capture: true, allowFailure: true });
+  if (drift.code !== 1) {
+    throw new Error(`Packed drifted guide check exited ${drift.code}, expected 1.`);
+  }
+  const afterDriftCheck = await fileSnapshot(target, paths);
+  assertFileSnapshotsEqual(beforeDriftCheck, afterDriftCheck, "Packed guide check wrote while reporting drift");
 }
 
 async function assertFailClosedConfig({ consumerDir, name, source, expectedStage }) {
@@ -110,6 +182,55 @@ async function packPackage(filter, packDir) {
 
 async function tgzFiles(dir) {
   return (await readdir(dir)).filter((file) => file.endsWith(".tgz")).sort();
+}
+
+async function fileSnapshot(root, paths) {
+  const result = new Map();
+  for (const path of paths) {
+    const absolute = join(root, path);
+    const [source, metadata] = await Promise.all([readFile(absolute, "utf8"), stat(absolute)]);
+    result.set(path, { source, mode: metadata.mode, mtimeMs: metadata.mtimeMs });
+  }
+  return result;
+}
+
+function assertFileSnapshotsEqual(expected, actual, message) {
+  for (const [path, value] of expected) {
+    const next = actual.get(path);
+    if (!next || next.source !== value.source || next.mode !== value.mode || next.mtimeMs !== value.mtimeMs) {
+      throw new Error(`${message}: ${path}`);
+    }
+  }
+}
+
+function packedGuideYaml() {
+  return [
+    "schemaVersion: '0.2'",
+    "tokens:",
+    "  color:",
+    "    semantic:",
+    "      $type: color",
+    "      background: { $value: { colorSpace: srgb, components: [1, 1, 1], alpha: 1 } }",
+    "      surface: { $value: { colorSpace: srgb, components: [0.95, 0.95, 0.95], alpha: 1 } }",
+    "      text: { $value: { colorSpace: srgb, components: [0.08, 0.08, 0.08], alpha: 1 } }",
+    "      accent: { $value: { colorSpace: srgb, components: [0.1, 0.4, 0.8], alpha: 1 } }",
+    "  font:",
+    "    family:",
+    "      $type: fontFamily",
+    "      heading: { $value: [Inter, sans-serif] }",
+    "      body: { $value: [Inter, sans-serif] }",
+    "  spacing:",
+    "    $type: dimension",
+    "    sm: { $value: { value: 0.5, unit: rem } }",
+    "    md: { $value: { value: 1, unit: rem } }",
+    "  radius:",
+    "    $type: dimension",
+    "    sm: { $value: { value: 4, unit: px } }",
+    "    md: { $value: { value: 8, unit: px } }",
+    "prohibitions: [generic-card-grid]",
+    "signatureElement: Use one compact status rail.",
+    ""
+  ].join("\n");
 }
 
 function fileDependency(fromDir, tarballPath) {

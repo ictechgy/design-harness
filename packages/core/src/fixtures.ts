@@ -6,6 +6,7 @@ import {
   type CopyStyle,
   type Criterion,
   type DesignBrief,
+  type DesignGuide,
   type Finding,
   type ReportManifest,
   type RunMetadata
@@ -22,6 +23,46 @@ export function createExampleBrief(): DesignBrief {
     targetUsers: ["Local shop owner"],
     constraints: ["Must work on mobile and desktop"],
     successCriteria: ["Primary metrics are visible without horizontal scrolling"]
+  };
+}
+
+export function createExampleDesignGuide(): DesignGuide {
+  return {
+    schemaVersion: SCHEMA_VERSION,
+    tokens: {
+      color: {
+        semantic: {
+          $type: "color",
+          background: { $value: { colorSpace: "srgb", components: [1, 1, 1], alpha: 1 } },
+          "background-muted": { $value: { colorSpace: "srgb", components: [0.96, 0.97, 0.98] } },
+          text: { $value: { colorSpace: "srgb", components: [0.08, 0.08, 0.1] } },
+          accent: { $value: { colorSpace: "srgb", components: [0.1, 0.35, 0.95] } }
+        }
+      },
+      font: {
+        family: {
+          $type: "fontFamily",
+          heading: { $value: ["Example Sans", "sans-serif"] },
+          body: { $value: ["Example Sans", "sans-serif"] }
+        }
+      },
+      spacing: {
+        $type: "dimension",
+        sm: { $value: { value: 0.5, unit: "rem" } },
+        md: { $value: { value: 1, unit: "rem" } }
+      },
+      radius: {
+        $type: "dimension",
+        sm: { $value: { value: 4, unit: "px" } },
+        md: { $value: { value: 8, unit: "px" } }
+      }
+    },
+    prohibitions: [
+      "decorative-gradient-without-purpose",
+      "generic-card-grid",
+      "uniform-visual-emphasis"
+    ],
+    signatureElement: "Use a compact outlined status rail as the recurring product signature."
   };
 }
 

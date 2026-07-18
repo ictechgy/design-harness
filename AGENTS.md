@@ -38,9 +38,11 @@ pnpm check:core-purity              # core stays capture-agnostic (ADR-002)
 pnpm check:package-boundaries       # one-way graph; YAML config parsing stays CLI-only
 pnpm check:deps-policy              # ToS/GPL dependency policy
 pnpm check:tracked-hygiene          # local-only files untracked; AGENTS.md line budget
+pnpm check:guide-data               # guide fingerprint source/generated mirror parity
 pnpm calibrate:fixtures             # six Korean fixtures → parser-free copy TP/FP/FN drift gate
 pnpm example:serve                  # merchant-dashboard fixture on :4173
 pnpm smoke:copy                     # live parser-free copy/materializer golden path
+pnpm smoke:guide                    # temporary-project guide compile/check + compatibility gate
 pnpm design-harness -- audit --url http://localhost:4173 --out runs/demo
 ```
 
@@ -52,7 +54,7 @@ Criterion in `packages/core/src/criteria.ts` (with `CRITERION_SOURCES` entry) �
 
 ## Roadmap
 
-**Current milestone: v0.4c parser-free CLI wiring — COMPLETE 2026-07-16** — the existing five parser-free copy checks are available through an explicit local `--copy <copy-style.yaml>` CLI path with strict YAML/schema validation and no-copy regressions. Kiwi/morphology, spelling providers, judges, schema changes, config auto-discovery, and cut-list items stay closed. No next milestone is scheduled. Full specs and acceptance criteria: **`docs/ROADMAP.md`** (committed, canonical).
+**Latest milestone: v0.5a guide compile/check — COMPLETE 2026-07-18** — compile one explicit in-target `design-guide.yaml` (plus optional `copy-style.yaml`) into marker-owned `AGENTS.md`/`DESIGN.md` guidance, a non-duplicating Claude import shim, and a supported-profile `design.tokens.json`; `guide check` is the zero-write drift/budget gate. Inputs and outputs remain inside the real `--target`; unsafe ownership, markers, observable concurrent changes, or transaction failures fail closed. No next milestone is scheduled. Audit-time `--guide`, token-adherence checks, loops, benchmarks, auto-discovery, extra agent surfaces, v0.5 items 2–6, and cut-list items remain unscheduled. Full scope, threat boundary, and acceptance criteria: **`docs/ROADMAP.md`** (committed, canonical).
 
 **Cut list (do NOT build now)**: MCP server (file contract `audit.json`/`report.md` is canonical; capture is commoditized) · best-of-N picker · community fixture pipeline · interaction-simulation / below-fold sweep / pixel contrast · more than two agent surfaces (Claude Code + Codex) · `guide from-references` CLI before the manual workflow proves value · Open Design integration · **evidence-against, do not build**: hue-template color harmony, symmetry/balance scoring for real UIs, scored Korean readability, MQM translation LQA, Figma-plugin surface, generic English style-guide enforcement (details: `docs/ROADMAP.md` cut list).
 
