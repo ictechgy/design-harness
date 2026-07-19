@@ -180,7 +180,7 @@ export function findingsFromMeasurements(
         region: stack.regions[0],
         evidenceRefs,
         problem: `The computed font-family list for ${stack.affectedElementCount} visible text ${stack.affectedElementCount === 1 ? "element contains" : "elements contain"} names outside the configured project guide.`,
-        recommendation: "Use the declared font-family tokens, deliberately update the guide, or add a narrowly scoped selector exception for third-party content.",
+        recommendation: "Use the declared generation tokens, add intentional runtime families under audit.fontFamily.additionalAllowedFamilies, or reserve selector exceptions for third-party content.",
         checkName: "unapproved-font-family",
         observed: {
           rawComputedStack: stack.rawStack,

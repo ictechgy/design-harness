@@ -125,6 +125,8 @@ describe("criteria policy matrix", () => {
       confidenceDefault: "high",
       checkNames: ["unapproved-font-family"]
     });
+    expect(criterion?.remediationHint).toContain("audit.fontFamily.additionalAllowedFamilies");
+    expect(criterion?.remediationHint).toContain("third-party content");
     expect(validateCriteriaPolicy([
       { ...criterion!, resultKind: "failure" }
     ], CRITERION_SOURCES).valid).toBe(false);

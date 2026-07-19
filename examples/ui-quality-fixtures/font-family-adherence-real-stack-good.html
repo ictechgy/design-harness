@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Font family adherence real stack good fixture</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 2rem;
+        color: #171717;
+        background: #ffffff;
+        font-family: Pretendard, sans-serif;
+      }
+      main {
+        max-width: 36rem;
+      }
+      h1 {
+        font-family: "Space Grotesk", sans-serif;
+      }
+      .pretendard-stack {
+        font-family: Pretendard, "Pretendard Fallback", -apple-system, BlinkMacSystemFont, system-ui, "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", sans-serif;
+      }
+      .mono-stack {
+        font-family: "JetBrains Mono", "JetBrains Mono Fallback", ui-monospace, SFMono-Regular, Menlo, monospace;
+      }
+      .space-stack {
+        font-family: "Space Grotesk", "Space Grotesk Fallback", "system-ui", system-ui;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Account overview</h1>
+      <p class="pretendard-stack">The project contract declares this long platform and Korean fallback stack explicitly.</p>
+      <p class="mono-stack">The intentional monospace role stays audit-only instead of becoming a generation token.</p>
+      <p class="space-stack">Quoted and unquoted system-ui members retain their named and generic identities.</p>
+    </main>
+  </body>
+</html>

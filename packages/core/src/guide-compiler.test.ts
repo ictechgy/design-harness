@@ -60,21 +60,61 @@ describe("pure guide compiler", () => {
       "e775c105733d39aa086f2e5aa9bc189bb4ba2850cc163e0762f4b86b14893243"
     );
 
-    const withAudit = structuredClone(base);
-    withAudit.audit = { fontFamily: { ignoreSelectors: [".third-party-widget"] } };
-    expect(compileDesignGuide(withAudit)).toEqual(compiledBase);
+    const selectorOnly = structuredClone(base);
+    selectorOnly.audit = { fontFamily: { ignoreSelectors: [".third-party-widget"] } };
 
-    withAudit.audit.fontFamily.ignoreSelectors = ["[data-vendor-shell]"];
-    expect(compileDesignGuide(withAudit)).toEqual(compiledBase);
+    const additionalOnlyA = structuredClone(base);
+    additionalOnlyA.audit = {
+      fontFamily: {
+        additionalAllowedFamilies: [
+          { value: "Pretendard Fallback", kind: "named" },
+          { value: "ui-monospace", kind: "generic" }
+        ]
+      }
+    };
+
+    const additionalOnlyB = structuredClone(base);
+    additionalOnlyB.audit = {
+      fontFamily: {
+        additionalAllowedFamilies: [
+          { value: "system-ui", kind: "named" },
+          { value: "Apple SD Gothic Neo", kind: "named" },
+          { value: "Space Grotesk Fallback", kind: "named" }
+        ]
+      }
+    };
+
+    const combined = structuredClone(additionalOnlyA);
+    combined.audit!.fontFamily.ignoreSelectors = ["[data-vendor-shell]"];
+
+    const tokenOverlap = structuredClone(base);
+    tokenOverlap.audit = {
+      fontFamily: {
+        additionalAllowedFamilies: [{ value: "INTER", kind: "named" }]
+      }
+    };
+
+    const overlays = [selectorOnly, additionalOnlyA, additionalOnlyB, combined, tokenOverlap];
+    for (const overlay of overlays) {
+      expect(compileDesignGuide(overlay)).toEqual(compiledBase);
+    }
+    expect(compiledBase.markdown).not.toMatch(
+      /third-party-widget|Pretendard Fallback|ui-monospace|Apple SD Gothic Neo|Space Grotesk Fallback/u
+    );
+    expect(compiledBase.designTokensJson).not.toMatch(
+      /third-party-widget|Pretendard Fallback|ui-monospace|Apple SD Gothic Neo|Space Grotesk Fallback/u
+    );
 
     const copyStyle = createExampleCopyStyle();
     const compiledWithCopy = compileDesignGuide(base, copyStyle);
     expect(compiledWithCopy.sourceHash).toBe(
       "4652280f8dbbb982e13d450cbc1d3659e24ed73c02caa1387491343b21917ef9"
     );
-    expect(compileDesignGuide(withAudit, copyStyle)).toEqual(compiledWithCopy);
+    for (const overlay of overlays) {
+      expect(compileDesignGuide(overlay, copyStyle)).toEqual(compiledWithCopy);
+    }
 
-    const changedToken = structuredClone(withAudit);
+    const changedToken = structuredClone(combined);
     changedToken.tokens.font.family.body.$value = ["Different Sans", "sans-serif"];
     expect(compileDesignGuide(changedToken).sourceHash).not.toBe(compiledBase.sourceHash);
     expect(compileDesignGuide(changedToken).markdown).not.toBe(compiledBase.markdown);

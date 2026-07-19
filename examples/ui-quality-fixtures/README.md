@@ -13,6 +13,8 @@ Small pages used to calibrate source-backed criteria and report wording.
 - `interaction-state-bad.html`: static signals for interaction-state risks.
 - `font-family-adherence-good.html`: approved computed family lists only.
 - `font-family-adherence-bad.html`: one isolated undeclared family member.
+- `font-family-adherence-real-stack-good.html`: approved long platform/Korean, monospace, runtime-companion, and named/generic `system-ui` computed lists.
+- `font-family-adherence-real-stack-bad.html`: a declared `Rogue` family plus one deliberately undeclared `Rogue Fallback` companion.
 - `font-family-adherence-ignored.html`: one vendor mismatch under the configured selector exception plus an evaluated control.
 - `font-family-adherence-errors.html`: query-selected hostile candidate, computed-value, and selector-evaluation boundaries for the live smoke.
 - `midjourney-derived/scanability-good.html`: hand-authored dense-dashboard scanability fixture.

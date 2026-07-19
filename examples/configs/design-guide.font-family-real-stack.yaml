@@ -27,9 +27,9 @@ tokens:
     family:
       $type: fontFamily
       heading:
-        $value: ["Inter", "sans-serif"]
+        $value: ["Space Grotesk", "sans-serif"]
       body:
-        $value: ["Inter", "sans-serif"]
+        $value: ["Pretendard", "sans-serif"]
   spacing:
     $type: dimension
     sm:
@@ -50,7 +50,18 @@ audit:
   fontFamily:
     additionalAllowedFamilies:
       - { value: "Pretendard Fallback", kind: named }
+      - { value: -apple-system, kind: named }
+      - { value: BlinkMacSystemFont, kind: named }
+      - { value: system-ui, kind: generic }
+      - { value: "Apple SD Gothic Neo", kind: named }
+      - { value: "Noto Sans KR", kind: named }
+      - { value: "Malgun Gothic", kind: named }
+      - { value: "JetBrains Mono", kind: named }
+      - { value: "JetBrains Mono Fallback", kind: named }
       - { value: ui-monospace, kind: generic }
+      - { value: SFMono-Regular, kind: named }
+      - { value: Menlo, kind: named }
+      - { value: monospace, kind: generic }
+      - { value: "Space Grotesk Fallback", kind: named }
       - { value: system-ui, kind: named }
-    ignoreSelectors:
-      - ".third-party-widget"
+      - { value: Rogue, kind: named }

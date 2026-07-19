@@ -119,6 +119,14 @@ export function projectFontFamilyAdherencePolicy(designGuide: DesignGuide): Font
     }
   }
 
+  for (const family of designGuide.audit?.fontFamily.additionalAllowedFamilies ?? []) {
+    const identity = fontFamilyComparisonIdentity(family.value, family.kind);
+    if (!seen.has(identity)) {
+      seen.add(identity);
+      allowedFamilies.push({ value: family.value, kind: family.kind });
+    }
+  }
+
   return {
     allowedFamilies,
     ignoreSelectors: [...(designGuide.audit?.fontFamily.ignoreSelectors ?? [])],
@@ -150,12 +158,90 @@ function validateAudit(value: unknown, path: string, issues: DesignGuideProfileI
     return;
   }
   const fontFamilyPath = `${path}.fontFamily`;
-  checkExactKeys(fontFamily, ["ignoreSelectors"], fontFamilyPath, issues);
-  validateIgnoreSelectors(
-    hasOwn(fontFamily, "ignoreSelectors") ? fontFamily.ignoreSelectors : undefined,
-    `${fontFamilyPath}.ignoreSelectors`,
-    issues
+  checkExactKeys(
+    fontFamily,
+    ["additionalAllowedFamilies", "ignoreSelectors"],
+    fontFamilyPath,
+    issues,
+    ["additionalAllowedFamilies", "ignoreSelectors"]
   );
+  if (!hasOwn(fontFamily, "additionalAllowedFamilies") && !hasOwn(fontFamily, "ignoreSelectors")) {
+    issues.push(invalid(fontFamilyPath, "must contain additionalAllowedFamilies or ignoreSelectors"));
+  }
+  if (hasOwn(fontFamily, "additionalAllowedFamilies")) {
+    validateAdditionalAllowedFamilies(
+      fontFamily.additionalAllowedFamilies,
+      `${fontFamilyPath}.additionalAllowedFamilies`,
+      issues
+    );
+  }
+  if (hasOwn(fontFamily, "ignoreSelectors")) {
+    validateIgnoreSelectors(fontFamily.ignoreSelectors, `${fontFamilyPath}.ignoreSelectors`, issues);
+  }
+}
+
+function validateAdditionalAllowedFamilies(
+  value: unknown,
+  path: string,
+  issues: DesignGuideProfileIssue[]
+): void {
+  if (!Array.isArray(value) || value.length < 1 || value.length > 32) {
+    issues.push(invalid(path, "must contain 1..32 unique allowed font families"));
+    return;
+  }
+
+  const seen = new Set<string>();
+  for (let index = 0; index < value.length; index += 1) {
+    const itemPath = `${path}[${index}]`;
+    if (!hasOwn(value, index)) {
+      issues.push(invalid(itemPath, "must be an allowed font family object"));
+      continue;
+    }
+
+    const family = value[index];
+    if (!isRecord(family)) {
+      issues.push(invalid(itemPath, "must be an allowed font family object"));
+      continue;
+    }
+
+    checkExactKeys(family, ["value", "kind"], itemPath, issues);
+    const familyValue = hasOwn(family, "value") ? family.value : undefined;
+    const kind = hasOwn(family, "kind") ? family.kind : undefined;
+    const valuePath = `${itemPath}.value`;
+    const kindPath = `${itemPath}.kind`;
+    const validValue = typeof familyValue === "string"
+      && [...familyValue].length >= 1
+      && [...familyValue].length <= 128
+      && familyValue === familyValue.trim()
+      && !hasUnpairedSurrogate(familyValue)
+      && !CONTROL_OR_BIDI_PATTERN.test(familyValue)
+      && !URL_OR_IMPORT_PATTERN.test(familyValue);
+
+    if (!validValue) {
+      issues.push(invalid(
+        valuePath,
+        "must be a trim-stable plain local font family name of 1..128 safe Unicode scalar values"
+      ));
+    }
+    if (kind !== "named" && kind !== "generic") {
+      issues.push(invalid(kindPath, "must equal named or generic"));
+    } else if (
+      kind === "generic"
+      && typeof familyValue === "string"
+      && !CSS_GENERIC_FONT_FAMILY_VALUE_SET.has(foldAsciiCase(familyValue))
+    ) {
+      issues.push(invalid(valuePath, "must be a supported CSS generic font family when kind is generic"));
+    }
+
+    if (validValue && (kind === "named" || kind === "generic")) {
+      const identity = fontFamilyComparisonIdentity(familyValue, kind);
+      if (seen.has(identity)) {
+        issues.push(invalid(itemPath, "duplicates an earlier allowed font family"));
+      } else {
+        seen.add(identity);
+      }
+    }
+  }
 }
 
 function validateIgnoreSelectors(value: unknown, path: string, issues: DesignGuideProfileIssue[]): void {

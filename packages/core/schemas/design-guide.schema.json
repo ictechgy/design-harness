@@ -62,10 +62,36 @@
         "fontFamily": {
           "type": "object",
           "additionalProperties": false,
-          "required": [
-            "ignoreSelectors"
-          ],
+          "minProperties": 1,
           "properties": {
+            "additionalAllowedFamilies": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 32,
+              "uniqueItems": true,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "value",
+                  "kind"
+                ],
+                "properties": {
+                  "value": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 128
+                  },
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "named",
+                      "generic"
+                    ]
+                  }
+                }
+              }
+            },
             "ignoreSelectors": {
               "type": "array",
               "minItems": 1,

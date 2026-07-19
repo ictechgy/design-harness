@@ -113,7 +113,8 @@ export interface DesignGuideTokens {
 }
 
 export interface DesignGuideFontFamilyAudit {
-  ignoreSelectors: string[];
+  additionalAllowedFamilies?: AllowedFontFamily[];
+  ignoreSelectors?: string[];
 }
 
 export interface DesignGuideAudit {

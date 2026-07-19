@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Font family adherence real stack bad fixture</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 2rem;
+        color: #171717;
+        background: #ffffff;
+        font-family: Pretendard, sans-serif;
+      }
+      main {
+        max-width: 36rem;
+      }
+      h1 {
+        font-family: "Space Grotesk", sans-serif;
+      }
+      .unexpected-stack {
+        font-family: "Rogue", "Rogue Fallback", sans-serif;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Account overview</h1>
+      <p class="unexpected-stack">Rogue is declared, but its similarly named fallback companion is not.</p>
+    </main>
+  </body>
+</html>
