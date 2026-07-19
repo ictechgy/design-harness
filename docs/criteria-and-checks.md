@@ -70,6 +70,14 @@ Recommended authoring rules, not built-in defaults:
 
 Copy-style-backed criteria use `sourceStrength: "project-contract"` and can emit deterministic `risk` at most. They assert "this captured copy conflicts with your declared contract", not universal language quality.
 
+### Font Family Contract
+
+CLI users may pass one explicit `design-guide.yaml` to `audit --guide`. The CLI projects the heading/body font-family union and optional `audit.fontFamily.ignoreSelectors` into `font-family-adherence-v1`; neither YAML nor the whole guide crosses into the capture package. Without `--guide`, this check performs no loading, capture, or reporting work.
+
+`unapproved-font-family` maps to `visual.font-family.project-contract` and emits low-severity, high-confidence deterministic `project-contract` risks. It evaluates the computed `font-family` serialization for the existing visible-text candidate set, ignores configured selector subtrees for this check only, and reports when any parsed family member falls outside the declared union. Results are grouped by raw stack and capped at five findings per viewport.
+
+The evidence proves only that a computed family list conflicts with the declared list. It does not identify which face rendered a glyph, enforce heading/body roles or stack order, diagnose fallback loading, or establish typography quality. The v1 identity distinguishes named and generic families, folds ASCII letters only, preserves all non-ASCII code points exactly, and deliberately performs no Unicode normalization or locale-aware matching. Selector-engine or computed-family processing errors become a scoped partial check while unrelated measurements and findings remain available.
+
 #### Parser-Free Copy Audit
 
 Library callers can pass a validated `CopyStyle` through `auditUrl({ copyStyle })`. CLI callers can pass the same contract with `--copy <copy-style.yaml>`; the validated object enters that existing `auditUrl({ copyStyle })` path rather than a separate analyzer. The capture adapter resolves surfaces on live nodes, then `@design-harness/copy-audit` analyzes the serialized text inventory without importing Playwright.

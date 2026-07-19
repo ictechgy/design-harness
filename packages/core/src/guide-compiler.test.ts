@@ -53,6 +53,33 @@ describe("pure guide compiler", () => {
     expect(compileDesignGuide(composed)).toEqual(first);
   });
 
+  it("keeps generation output, hash, and provenance invariant under audit-overlay changes", () => {
+    const base = createExampleDesignGuide();
+    const compiledBase = compileDesignGuide(base);
+    expect(compiledBase.sourceHash).toBe(
+      "e775c105733d39aa086f2e5aa9bc189bb4ba2850cc163e0762f4b86b14893243"
+    );
+
+    const withAudit = structuredClone(base);
+    withAudit.audit = { fontFamily: { ignoreSelectors: [".third-party-widget"] } };
+    expect(compileDesignGuide(withAudit)).toEqual(compiledBase);
+
+    withAudit.audit.fontFamily.ignoreSelectors = ["[data-vendor-shell]"];
+    expect(compileDesignGuide(withAudit)).toEqual(compiledBase);
+
+    const copyStyle = createExampleCopyStyle();
+    const compiledWithCopy = compileDesignGuide(base, copyStyle);
+    expect(compiledWithCopy.sourceHash).toBe(
+      "4652280f8dbbb982e13d450cbc1d3659e24ed73c02caa1387491343b21917ef9"
+    );
+    expect(compileDesignGuide(withAudit, copyStyle)).toEqual(compiledWithCopy);
+
+    const changedToken = structuredClone(withAudit);
+    changedToken.tokens.font.family.body.$value = ["Different Sans", "sans-serif"];
+    expect(compileDesignGuide(changedToken).sourceHash).not.toBe(compiledBase.sourceHash);
+    expect(compileDesignGuide(changedToken).markdown).not.toBe(compiledBase.markdown);
+  });
+
   it("is byte deterministic across scoped copy declaration order and sorts by Unicode scalar value", () => {
     const copy = createExampleCopyStyle();
     copy.glossary = [

@@ -21,6 +21,19 @@ design-harness audit \
 
 Without `--copy`, the CLI does not discover a config or run copy analysis. The supported checks are `placeholder-leak`, `josa-hedge`, `glossary-banned-term`, `glossary-use-carefully-term`, and `banned-phrase`. Morphology, register, spelling, and model-judged checks are not enabled by this flag.
 
+Font-family adherence is a separate explicit opt-in through the same strictly validated project guide used by guide compile/check:
+
+```bash
+design-harness audit \
+  --url http://localhost:3000 \
+  --out runs/demo \
+  --guide ./design-guide.yaml
+```
+
+`--guide` performs no discovery and may be combined with `--copy`. It unions the guide's heading/body family declarations and evaluates the computed `font-family` list on visible text candidates. A list containing any undeclared member emits the low-severity deterministic project-contract risk `unapproved-font-family`; order, roles, and omitted approved fallbacks are not enforced. Optional `audit.fontFamily.ignoreSelectors` entries exclude matching subtrees from this check only.
+
+This evidence describes the computed family list, not the font face that rendered each glyph. Selector-engine or computed-family processing errors mark only this check partial and retain unrelated measurements. Without audit `--guide`, the CLI performs no font-policy loading, capture, findings, notices, or failed checks.
+
 ## Guide compile and check
 
 From inside the project that owns the guide:
@@ -57,13 +70,14 @@ Check performs zero writes. It returns success only when the inputs are valid, e
 
 ### Supported Design Guide Profile `v0.5a-1`
 
-The [example guide](https://github.com/ictechgy/design-harness/blob/main/examples/configs/design-guide.example.yaml) shows the complete YAML shape. Top-level fields are exactly `schemaVersion: "0.2"`, `tokens`, `prohibitions`, and `signatureElement`.
+The [example guide](https://github.com/ictechgy/design-harness/blob/main/examples/configs/design-guide.example.yaml) shows the complete YAML shape. Its generation projection is exactly `schemaVersion: "0.2"`, `tokens`, `prohibitions`, and `signatureElement`; v0.5b adds the optional closed audit-only `audit.fontFamily.ignoreSelectors` subtree.
 
 - `tokens.color.semantic`: 4–6 lower-kebab leaves under `$type: color`; each `$value` is a literal `srgb` color with three finite components in `[0,1]` and optional alpha in `[0,1]`.
 - `tokens.font.family`: exactly `heading` and `body` under `$type: fontFamily`; each value is one family or an array of 1–4 families.
 - `tokens.spacing` and `tokens.radius`: 2–12 lower-kebab leaves each under `$type: dimension`; values are finite, non-negative `px` or `rem` dimensions.
 - `prohibitions`: 1–8 unique IDs from the bundled, versioned project-guidance catalog.
 - `signatureElement`: one sanitized, NFC-normalized line of 1–280 Unicode scalar values.
+- `audit.fontFamily.ignoreSelectors`: optional 1–32 unique, trim-stable selectors of at most 256 safe Unicode scalar values; syntax is validated by the captured browser at audit time.
 
 This is a documented supported profile of DTCG 2025.10, not an arbitrary DTCG-file resolver or a full-conformance claim. v0.5a rejects aliases/references, `$extends`, `$root`, composites, gradients, token-file imports, themes, token-level metadata, and arbitrary input `$extensions`. It produces token JSON, not CSS or another platform format. The repository tests this profile with exact Style Dictionary 5.5.0 in a bounded CSS smoke; Style Dictionary is a root development dependency only, not a published runtime dependency.
 
@@ -79,6 +93,6 @@ max(Unicode scalar count, ceil(UTF-8 byte length / 2))
 
 It is an estimate, not an exact tokenizer count. Diagnostics identify the method, value, and ceiling.
 
-Guide compile/check does not add audit-time `--guide` checks, token-adherence findings, auto-discovery, an agent repair loop, a Claude skill, reference-file ingestion, anti-slop scoring, or an obedience/quality claim. Existing audit behavior and exit code `2` for allowed partial audits are unchanged; invalid or stale guide operations exit `1`.
+Audit `--guide` adds only computed-list font-family adherence and its selector exception. Palette/spacing adherence, actual glyph-face detection, auto-discovery, an agent repair loop, a Claude skill, reference-file ingestion, anti-slop scoring, and obedience/quality claims remain out of scope. Partial audits still write artifacts and exit `2` unless `--allow-partial` is set; invalid audit config and invalid or stale guide operations exit `1`.
 
 Repository: https://github.com/ictechgy/design-harness

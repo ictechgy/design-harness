@@ -4,15 +4,47 @@ import type { ViewportMeasurements } from "./checks.js";
 export interface ViewportCollectionResult {
   measurements: ViewportMeasurements;
   notices: AuditNotice[];
+  fontFamilyCollection?: FontFamilyCollectionCounts;
+  fontFamilyError?: FontFamilyMeasurementError;
+}
+
+export interface ViewportMeasurementConfig {
+  surfaceMapping?: CopyStyleSurfaceRule[];
+  fontFamily?: {
+    ignoreSelectors: string[];
+  };
+}
+
+export interface FontFamilyCollectionCounts {
+  evaluatedElementCount: number;
+  ignoredElementCount: number;
+}
+
+export interface FontFamilyMeasurementError {
+  code: "invalid-selector" | "selector-evaluation" | "candidate-limit" | "computed-family";
+  selectorIndex?: number;
+  elementIndex?: number;
+  candidateCount?: number;
+  valueLength?: number;
+  limit?: number;
 }
 
 export async function collectViewportMeasurements(page: {
   evaluate: <T>(pageFunction: ((arg?: unknown) => T | Promise<T>), arg?: unknown) => Promise<T>;
-}, surfaceMapping?: CopyStyleSurfaceRule[]): Promise<ViewportCollectionResult> {
-  return page.evaluate((rawSurfaceMapping): ViewportCollectionResult => {
+}, config?: ViewportMeasurementConfig): Promise<ViewportCollectionResult> {
+  return page.evaluate((rawConfig): ViewportCollectionResult => {
     const MAX_TEXT_INVENTORY_TEXT_LENGTH = 2_000;
-    const surfaceRules = Array.isArray(rawSurfaceMapping)
-      ? rawSurfaceMapping as CopyStyleSurfaceRule[]
+    const MAX_FONT_FAMILY_CANDIDATES = 2_000;
+    const MAX_COMPUTED_FONT_FAMILY_LENGTH = 1_024;
+    const measurementConfig = rawConfig && typeof rawConfig === "object"
+      ? rawConfig as ViewportMeasurementConfig
+      : undefined;
+    const surfaceRules = Array.isArray(measurementConfig?.surfaceMapping)
+      ? measurementConfig.surfaceMapping
+      : [];
+    const fontFamilyEnabled = measurementConfig?.fontFamily !== undefined;
+    const fontFamilyIgnoreSelectors = Array.isArray(measurementConfig?.fontFamily?.ignoreSelectors)
+      ? measurementConfig.fontFamily.ignoreSelectors
       : [];
     const notices: AuditNotice[] = [];
     const unusableMatcherKeys = new Set<string>();
@@ -106,8 +138,12 @@ export async function collectViewportMeasurements(page: {
       width: window.innerWidth,
       height: window.innerHeight
     };
+    let fontFamilyError: FontFamilyMeasurementError | undefined;
+    let evaluatedFontFamilyElementCount = 0;
+    let ignoredFontFamilyElementCount = 0;
 
     prepareSurfaceMatchers();
+    prepareFontFamilySelectors();
 
     const textElements = Array.from(document.body.querySelectorAll<HTMLElement>("body *"))
       .filter((element) => {
@@ -239,7 +275,17 @@ export async function collectViewportMeasurements(page: {
       textInventory
     };
 
-    return { measurements, notices };
+    return {
+      measurements,
+      notices,
+      ...(fontFamilyEnabled && fontFamilyError === undefined ? {
+        fontFamilyCollection: {
+          evaluatedElementCount: evaluatedFontFamilyElementCount,
+          ignoredElementCount: ignoredFontFamilyElementCount
+        }
+      } : {}),
+      ...(fontFamilyError ? { fontFamilyError } : {})
+    };
 
     function sampleElement(element: HTMLElement) {
       const rect = element.getBoundingClientRect();
@@ -256,39 +302,98 @@ export async function collectViewportMeasurements(page: {
     }
 
     function collectTextInventory() {
-      return Array.from(document.body.querySelectorAll<HTMLElement>("body *"))
+      const candidates = Array.from(document.body.querySelectorAll<HTMLElement>("body *"))
         .filter(isTextInventoryCandidate)
         .map((element) => ({
           element,
           text: textForInventory(element)
         }))
-        .filter(({ text }) => text.length > 0)
-        .map(({ element, text }) => {
-          const style = window.getComputedStyle(element);
-          const rect = element.getBoundingClientRect();
-          const textValue = truncateTextForInventory(text);
-          const accessibleName = truncateTextForInventory(accessibleNameFor(element));
-          const role = roleFor(element);
-          const copySurface = resolveCopySurface(element);
-          return {
-            selector: selectorFor(element),
-            text: textValue.text,
-            ...(textValue.truncated || accessibleName.truncated ? { truncated: true as const } : {}),
-            region: {
-              x: Math.round(rect.x),
-              y: Math.round(rect.y),
-              width: Math.round(rect.width),
-              height: Math.round(rect.height)
-            },
-            fontSize: Number.parseFloat(style.fontSize || "16"),
-            fontWeight: style.fontWeight || "400",
-            nearestLang: nearestLangFor(element),
-            tag: element.tagName.toLowerCase(),
-            role,
-            accessibleName: accessibleName.text,
-            ...(copySurface ? { copySurface } : {})
-          };
-        });
+        .filter(({ text }) => text.length > 0);
+
+      if (
+        fontFamilyEnabled
+        && fontFamilyError === undefined
+        && candidates.length > MAX_FONT_FAMILY_CANDIDATES
+      ) {
+        fontFamilyError = {
+          code: "candidate-limit",
+          candidateCount: candidates.length,
+          limit: MAX_FONT_FAMILY_CANDIDATES
+        };
+      }
+
+      const items = candidates.map(({ element, text }, elementIndex) => {
+        const style = window.getComputedStyle(element);
+        const rect = element.getBoundingClientRect();
+        const textValue = truncateTextForInventory(text);
+        const accessibleName = truncateTextForInventory(accessibleNameFor(element));
+        const role = roleFor(element);
+        const copySurface = resolveCopySurface(element);
+        let fontFamily: string | undefined;
+        if (fontFamilyEnabled && fontFamilyError === undefined) {
+          try {
+            const ignored = fontFamilyIgnoreSelectors.some((selector) => element.closest(selector) !== null);
+            if (ignored) {
+              ignoredFontFamilyElementCount += 1;
+            } else {
+              const fontFamilyLength = [...style.fontFamily].length;
+              if (style.fontFamily.trim().length === 0) {
+                fontFamilyError = { code: "computed-family", elementIndex };
+              } else if (fontFamilyLength > MAX_COMPUTED_FONT_FAMILY_LENGTH) {
+                fontFamilyError = {
+                  code: "computed-family",
+                  elementIndex,
+                  valueLength: fontFamilyLength,
+                  limit: MAX_COMPUTED_FONT_FAMILY_LENGTH
+                };
+              } else {
+                evaluatedFontFamilyElementCount += 1;
+                fontFamily = style.fontFamily;
+              }
+            }
+          } catch {
+            fontFamilyError = { code: "selector-evaluation", elementIndex };
+          }
+        }
+        return {
+          selector: selectorFor(element),
+          text: textValue.text,
+          ...(textValue.truncated || accessibleName.truncated ? { truncated: true as const } : {}),
+          region: {
+            x: Math.round(rect.x),
+            y: Math.round(rect.y),
+            width: Math.round(rect.width),
+            height: Math.round(rect.height)
+          },
+          fontSize: Number.parseFloat(style.fontSize || "16"),
+          fontWeight: style.fontWeight || "400",
+          nearestLang: nearestLangFor(element),
+          tag: element.tagName.toLowerCase(),
+          role,
+          accessibleName: accessibleName.text,
+          ...(copySurface ? { copySurface } : {}),
+          ...(fontFamily === undefined ? {} : { fontFamily })
+        };
+      });
+
+      if (fontFamilyError === undefined) {
+        return items;
+      }
+      return items.map(({ fontFamily: _fontFamily, ...item }) => item);
+    }
+
+    function prepareFontFamilySelectors(): void {
+      if (!fontFamilyEnabled) {
+        return;
+      }
+      for (const [selectorIndex, selector] of fontFamilyIgnoreSelectors.entries()) {
+        try {
+          document.documentElement.matches(selector);
+        } catch {
+          fontFamilyError = { code: "invalid-selector", selectorIndex };
+          return;
+        }
+      }
     }
 
     function prepareSurfaceMatchers(): void {
@@ -1223,5 +1328,5 @@ export async function collectViewportMeasurements(page: {
       const variance = values.reduce((sum, value) => sum + (value - average) ** 2, 0) / Math.max(values.length, 1);
       return Math.sqrt(variance);
     }
-  }, surfaceMapping);
+  }, config);
 }

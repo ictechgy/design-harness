@@ -197,7 +197,12 @@ export function assertGuideTokenCeiling(estimate: GuideTokenEstimate, ceiling: n
   }
 }
 
-function normalizeDesignGuide(guide: DesignGuide): DesignGuide {
+type GenerationGuideProjection = Pick<
+  DesignGuide,
+  "schemaVersion" | "tokens" | "prohibitions" | "signatureElement"
+>;
+
+function normalizeDesignGuide(guide: DesignGuide): GenerationGuideProjection {
   return {
     schemaVersion: "0.2",
     tokens: canonicalize(normalizeStrings(guide.tokens)) as DesignGuideTokens,

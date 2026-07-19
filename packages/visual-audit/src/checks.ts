@@ -1,5 +1,6 @@
 import {
   findingMetadataForCheck,
+  type AllowedFontFamily,
   type Confidence,
   type CopySurfaceResolution,
   type Finding,
@@ -80,6 +81,31 @@ export interface TextInventoryItem {
   role: string;
   accessibleName: string;
   copySurface?: CopySurfaceResolution;
+  fontFamily?: string;
+}
+
+export interface FontFamilyAdherenceDisplayFamily extends AllowedFontFamily {
+  truncated?: true;
+}
+
+export interface FontFamilyAdherenceStack {
+  rawStack: string;
+  unexpectedFamilies: FontFamilyAdherenceDisplayFamily[];
+  affectedElementCount: number;
+  selectors: string[];
+  regions: Array<NonNullable<ElementSample["region"]>>;
+}
+
+export interface FontFamilyAdherenceSummary {
+  policyId: "font-family-adherence-v1";
+  allowedFamilies: FontFamilyAdherenceDisplayFamily[];
+  evaluatedElementCount: number;
+  ignoredElementCount: number;
+  violatingElementCount: number;
+  distinctViolationStackCount: number;
+  emittedStackCount: number;
+  truncated: boolean;
+  stacks: FontFamilyAdherenceStack[];
 }
 
 export interface ViewportMeasurements {
@@ -114,6 +140,7 @@ export interface ViewportMeasurements {
   customControlSemanticsRisks: ElementSample[];
   movingContentControlRisks: ElementSample[];
   textInventory: TextInventoryItem[];
+  fontFamilyAdherence?: FontFamilyAdherenceSummary;
 }
 
 export function findingsFromMeasurements(
@@ -139,6 +166,36 @@ export function findingsFromMeasurements(
       expected: "Meaningful visible content is present."
     }));
     return findings;
+  }
+
+  const fontFamilyAdherence = measurements.fontFamilyAdherence;
+  if (fontFamilyAdherence) {
+    for (const [index, stack] of fontFamilyAdherence.stacks.entries()) {
+      findings.push(createFinding({
+        id: `finding-${measurements.viewport}-unapproved-font-family-${index + 1}`,
+        category: "visual-polish",
+        severity: "low",
+        viewport: measurements.viewport,
+        selector: stack.selectors[0],
+        region: stack.regions[0],
+        evidenceRefs,
+        problem: `The computed font-family list for ${stack.affectedElementCount} visible text ${stack.affectedElementCount === 1 ? "element contains" : "elements contain"} names outside the configured project guide.`,
+        recommendation: "Use the declared font-family tokens, deliberately update the guide, or add a narrowly scoped selector exception for third-party content.",
+        checkName: "unapproved-font-family",
+        observed: {
+          rawComputedStack: stack.rawStack,
+          unexpectedFamilies: stack.unexpectedFamilies,
+          affectedElementCount: stack.affectedElementCount,
+          selectors: stack.selectors,
+          regions: stack.regions,
+          policyId: fontFamilyAdherence.policyId
+        },
+        expected: {
+          allowedFamilies: fontFamilyAdherence.allowedFamilies,
+          comparison: "Every computed list member is declared by the explicit project guide."
+        }
+      }));
+    }
   }
 
   if (hasHorizontalOverflow(measurements)) {

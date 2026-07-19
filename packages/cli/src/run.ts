@@ -1,4 +1,8 @@
-import type { CopyStyle } from "@design-harness/core";
+import {
+  projectFontFamilyAdherencePolicy,
+  type CopyStyle,
+  type DesignGuide
+} from "@design-harness/core";
 import {
   BrowserUnavailableError,
   auditUrl,
@@ -7,6 +11,7 @@ import {
 } from "@design-harness/visual-audit";
 import { helpText, parseArgs } from "./args.js";
 import { loadCopyStyleFile, type LoadCopyStyleOptions } from "./copy-style.js";
+import { loadDesignGuideFile, type LoadDesignGuideOptions } from "./design-guide.js";
 import {
   runGuideCommand,
   type GuideCommandArgs,
@@ -18,6 +23,7 @@ import { assertLocalHttpUrl } from "./url.js";
 
 export interface RunCliDependencies {
   audit?: (options: AuditUrlOptions) => Promise<AuditUrlResult>;
+  loadDesignGuide?: (path: string, options?: LoadDesignGuideOptions) => Promise<DesignGuide>;
   loadCopyStyle?: (path: string, options?: LoadCopyStyleOptions) => Promise<CopyStyle>;
   runGuide?: (args: GuideCommandArgs, dependencies?: GuideRunDependencies) => Promise<GuideRunResult>;
   writeArtifacts?: (input: WriteAuditArtifactsInput) => Promise<void>;
@@ -60,9 +66,18 @@ export async function runCli(argv: string[], dependencies: RunCliDependencies = 
 
   try {
     const url = (dependencies.assertUrl ?? assertLocalHttpUrl)(args.url);
+    const configCwd = args.guidePath || args.copyStylePath
+      ? (dependencies.cwd ?? process.cwd)()
+      : undefined;
+    const designGuide = args.guidePath
+      ? await (dependencies.loadDesignGuide ?? loadDesignGuideFile)(args.guidePath, { cwd: configCwd })
+      : undefined;
+    const fontFamilyPolicy = designGuide
+      ? projectFontFamilyAdherencePolicy(designGuide)
+      : undefined;
     const copyStyle = args.copyStylePath
       ? await (dependencies.loadCopyStyle ?? loadCopyStyleFile)(args.copyStylePath, {
-          cwd: (dependencies.cwd ?? process.cwd)()
+          cwd: configCwd
         })
       : undefined;
     const auditOptions: AuditUrlOptions = {
@@ -72,6 +87,9 @@ export async function runCli(argv: string[], dependencies: RunCliDependencies = 
     };
     if (copyStyle) {
       auditOptions.copyStyle = copyStyle;
+    }
+    if (fontFamilyPolicy) {
+      auditOptions.fontFamilyPolicy = fontFamilyPolicy;
     }
 
     const result = await (dependencies.audit ?? auditUrl)(auditOptions);

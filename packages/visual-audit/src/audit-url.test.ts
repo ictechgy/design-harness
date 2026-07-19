@@ -8,9 +8,11 @@ import {
   assertAuditResultIntegrity,
   type AuditNotice,
   type CopyStyle,
+  type FontFamilyAdherencePolicy,
   type ViewportPreset
 } from "@design-harness/core";
 import { auditUrl, BrowserUnavailableError, type BrowserHandle, type PageHandle } from "./index.js";
+import type { ViewportCollectionResult } from "./browser-measurements.js";
 import type { ViewportMeasurements } from "./checks.js";
 
 const viewport: ViewportPreset = {
@@ -44,10 +46,8 @@ interface FakeBrowserOptions {
   observedPasswordAttributes?: Array<Record<string, string>>;
   measurement: ViewportMeasurements;
   notices?: AuditNotice[];
-  collectionResults?: Array<{
-    measurements: ViewportMeasurements;
-    notices: AuditNotice[];
-  }>;
+  collectionResults?: ViewportCollectionResult[];
+  measurementArgs?: unknown[];
   pageCalls?: FakePageCalls[];
   browserCloseCount?: number;
 }
@@ -534,6 +534,177 @@ describe("auditUrl failure behavior", () => {
   });
 });
 
+describe("auditUrl font-family adherence", () => {
+  it("omits all font policy work and evidence when no guide policy is supplied", async () => {
+    const measurement = fontMeasurementFor("desktop");
+    const options: FakeBrowserOptions = {
+      measurement,
+      measurementArgs: []
+    };
+
+    const result = await auditUrl({
+      url: "http://localhost:3000",
+      outDir: await tempDir(),
+      viewportPresets: [viewport],
+      launchBrowser: async () => fakeBrowser(options)
+    });
+
+    const measurementEvidence = result.auditResult.evidenceAssets.find((asset) => asset.id === "measurement-desktop");
+    const textEvidence = result.auditResult.evidenceAssets.find((asset) => asset.id === "text-inventory-desktop");
+    expect(options.measurementArgs).toEqual([undefined]);
+    expect(measurementEvidence?.data).not.toHaveProperty("fontFamilyAdherence");
+    expect(textEvidence?.data?.items).toEqual([
+      expect.not.objectContaining({ fontFamily: expect.anything() })
+    ]);
+    expect(result.auditResult.findings.some((finding) => finding.checkName === "unapproved-font-family")).toBe(false);
+    expect(result.auditResult.failedChecks).not.toContain("desktop:unapproved-font-family");
+    expect(result.auditResult).not.toHaveProperty("notices");
+  });
+
+  it("records a bounded summary and a source-backed risk for an unexpected computed member", async () => {
+    const measurement = fontMeasurementFor("desktop", '"Other", sans-serif');
+    const options: FakeBrowserOptions = {
+      measurement,
+      measurementArgs: [],
+      collectionResults: [{
+        measurements: measurement,
+        notices: [],
+        fontFamilyCollection: { evaluatedElementCount: 1, ignoredElementCount: 0 }
+      }]
+    };
+    const result = await auditUrl({
+      url: "http://localhost:3000",
+      outDir: await tempDir(),
+      viewportPresets: [viewport],
+      fontFamilyPolicy: fontFamilyPolicy(),
+      launchBrowser: async () => fakeBrowser(options)
+    });
+
+    const measurementEvidence = result.auditResult.evidenceAssets.find((asset) => asset.id === "measurement-desktop");
+    const textEvidence = result.auditResult.evidenceAssets.find((asset) => asset.id === "text-inventory-desktop");
+    expect(options.measurementArgs).toEqual([{
+      fontFamily: { ignoreSelectors: [".third-party-widget"] }
+    }]);
+    expect(measurementEvidence?.data?.fontFamilyAdherence).toMatchObject({
+      policyId: "font-family-adherence-v1",
+      evaluatedElementCount: 1,
+      ignoredElementCount: 0,
+      violatingElementCount: 1,
+      distinctViolationStackCount: 1,
+      emittedStackCount: 1,
+      truncated: false
+    });
+    expect(textEvidence?.data?.items).toEqual([
+      expect.objectContaining({ fontFamily: '"Other", sans-serif' })
+    ]);
+    expect(result.auditResult.findings).toEqual([
+      expect.objectContaining({
+        checkName: "unapproved-font-family",
+        criterionId: "visual.font-family.project-contract",
+        severity: "low",
+        confidence: "high",
+        determinism: "deterministic",
+        resultKind: "risk"
+      })
+    ]);
+    expect(result.auditResult.advisoryScore).toMatchObject({
+      formulaVersion: "epistemic-weight-v1",
+      value: 97.6,
+      deductions: [
+        expect.objectContaining({ points: 2.4, reason: expect.stringContaining("deterministic risk") })
+      ]
+    });
+    expect(result.auditResult.status).toBe("success");
+    expect(() => assertAuditResultIntegrity(result.auditResult)).not.toThrow();
+  });
+
+  it("records ignored candidates in a clean observable summary", async () => {
+    const measurement = fontMeasurementFor("desktop");
+    const result = await auditUrl({
+      url: "http://localhost:3000",
+      outDir: await tempDir(),
+      viewportPresets: [viewport],
+      fontFamilyPolicy: fontFamilyPolicy(),
+      launchBrowser: async () => fakeBrowser({
+        measurement,
+        collectionResults: [{
+          measurements: measurement,
+          notices: [],
+          fontFamilyCollection: { evaluatedElementCount: 0, ignoredElementCount: 1 }
+        }]
+      })
+    });
+
+    const measurementEvidence = result.auditResult.evidenceAssets.find((asset) => asset.id === "measurement-desktop");
+    expect(measurementEvidence?.data?.fontFamilyAdherence).toMatchObject({
+      evaluatedElementCount: 0,
+      ignoredElementCount: 1,
+      violatingElementCount: 0,
+      stacks: []
+    });
+    expect(result.auditResult.findings).toEqual([]);
+    expect(result.auditResult.status).toBe("success");
+  });
+
+  it.each([
+    ["browser selector failure", {
+      error: { code: "invalid-selector" as const, selectorIndex: 0 },
+      stack: "Inter, sans-serif",
+      expectedReason: "invalid-selector"
+    }],
+    ["computed serialization parse failure", {
+      error: undefined,
+      stack: "Inter,,sans-serif",
+      expectedReason: "unparsable-computed-family"
+    }]
+  ])("keeps base measurements but marks only the font check partial on %s", async (_label, scenario) => {
+    const measurement = {
+      ...fontMeasurementFor("desktop", scenario.stack),
+      documentScrollWidth: 1500
+    };
+    const collection: ViewportCollectionResult = {
+      measurements: measurement,
+      notices: [],
+      ...(scenario.error
+        ? { fontFamilyError: scenario.error }
+        : { fontFamilyCollection: { evaluatedElementCount: 1, ignoredElementCount: 0 } })
+    };
+    const result = await auditUrl({
+      url: "http://localhost:3000",
+      outDir: await tempDir(),
+      viewportPresets: [viewport],
+      fontFamilyPolicy: fontFamilyPolicy(),
+      launchBrowser: async () => fakeBrowser({
+        measurement,
+        collectionResults: [collection]
+      })
+    });
+
+    const measurementEvidence = result.auditResult.evidenceAssets.find((asset) => asset.id === "measurement-desktop");
+    const textEvidence = result.auditResult.evidenceAssets.find((asset) => asset.id === "text-inventory-desktop");
+    expect(result.auditResult.status).toBe("partial");
+    expect(result.auditResult.failedChecks).toEqual(["desktop:unapproved-font-family"]);
+    expect(result.auditResult.findings.map((finding) => finding.checkName)).toContain("horizontal-overflow");
+    expect(result.auditResult.findings.map((finding) => finding.checkName)).not.toContain("unapproved-font-family");
+    expect(measurementEvidence?.data).not.toHaveProperty("fontFamilyAdherence");
+    expect(textEvidence?.data?.items).toEqual([
+      expect.not.objectContaining({ fontFamily: expect.anything() })
+    ]);
+    expect(result.auditResult.notices).toEqual([
+      expect.objectContaining({
+        code: "font-family-adherence-measurement-failed",
+        message: "Font-family adherence could not be evaluated for this viewport.",
+        details: expect.objectContaining({
+          viewport: "desktop",
+          reasonCode: scenario.expectedReason
+        })
+      })
+    ]);
+    expect(JSON.stringify(result.auditResult)).not.toContain(".third-party-widget");
+    expect(() => assertAuditResultIntegrity(result.auditResult)).not.toThrow();
+  });
+});
+
 describe("auditUrl copy analysis", () => {
   it("analyzes pre-materialized text inventory against its exact evidence asset", async () => {
     const result = await auditUrl({
@@ -665,6 +836,7 @@ function fakePage(options: FakeBrowserOptions, pageIndex: number): PageHandle {
       }
       if (source.includes("MAX_TEXT_INVENTORY_TEXT_LENGTH")) {
         calls.measurement += 1;
+        options.measurementArgs?.push(arg);
         return collectionResult as never;
       }
       if (arg !== undefined) {
@@ -832,6 +1004,24 @@ function copyMeasurementFor(name: string): ViewportMeasurements {
   };
 }
 
+function fontMeasurementFor(name: string, fontFamily?: string): ViewportMeasurements {
+  return {
+    ...measurementFor(name),
+    textInventory: [{
+      selector: "main > p",
+      text: "Visible text",
+      region: { x: 12, y: 24, width: 240, height: 32 },
+      fontSize: 16,
+      fontWeight: "400",
+      nearestLang: "en",
+      tag: "p",
+      role: "",
+      accessibleName: "Visible text",
+      ...(fontFamily === undefined ? {} : { fontFamily })
+    }]
+  };
+}
+
 function hostileMeasurementFor(name: string): ViewportMeasurements {
   return {
     ...copyMeasurementFor(name),
@@ -839,6 +1029,17 @@ function hostileMeasurementFor(name: string): ViewportMeasurements {
     meaningfulElementCount: 0,
     pageLangMissing: true,
     missingMainLandmark: true
+  };
+}
+
+function fontFamilyPolicy(): FontFamilyAdherencePolicy {
+  return {
+    policyId: "font-family-adherence-v1",
+    allowedFamilies: [
+      { value: "Inter", kind: "named" },
+      { value: "sans-serif", kind: "generic" }
+    ],
+    ignoreSelectors: [".third-party-widget"]
   };
 }
 

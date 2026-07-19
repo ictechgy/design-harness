@@ -52,6 +52,7 @@ npm publish / version tags / GitHub releases / any external publication · new r
 | Schema/enum | `pnpm check:enum-lockstep` + `pnpm validate` + integrity tests |
 | CLI flags/commands | args tests + packed-CLI smoke (inside `release:check`) |
 | Guide compiler/materialization | profile/catalog/compiler tests + marker/ownership/containment/race/rollback failure matrix + zero-write `guide check` + `pnpm check:guide-data` + `pnpm smoke:guide` + packed-CLI smoke + `CI=true pnpm release:check` |
+| Guide-aware audit | strict loader and no-guide omission tests + good/bad/ignored/invalid-selector live audits + packed fail-before-output cases + `CI=true pnpm release:check` |
 | Dependencies | `pnpm check:deps-policy`; CI runs `--frozen-lockfile` — a new dep requires a lockfile change (this is also the slopsquatting guard: 5–22% of LLM-recommended packages don't exist) |
 | Docs only | Links resolve; every quantitative claim traces to an experiment/benchmark record |
 

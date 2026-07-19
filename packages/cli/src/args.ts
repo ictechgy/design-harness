@@ -2,6 +2,7 @@ export interface AuditCommandArgs {
   command: "audit";
   url: string;
   outDir: string;
+  guidePath?: string;
   copyStylePath?: string;
   timeoutMs?: number;
   allowPartial: boolean;
@@ -33,7 +34,7 @@ export interface HelpCommandArgs {
 
 export type ParsedArgs = AuditCommandArgs | GuideCompileCommandArgs | GuideCheckCommandArgs | HelpCommandArgs;
 
-const AUDIT_VALUE_OPTIONS = new Set(["url", "out", "timeout-ms", "copy"]);
+const AUDIT_VALUE_OPTIONS = new Set(["url", "out", "timeout-ms", "guide", "copy"]);
 const AUDIT_BOOLEAN_OPTIONS = new Set(["allow-partial"]);
 const GUIDE_COMPILE_VALUE_OPTIONS = new Set(["guide", "copy", "target"]);
 const GUIDE_CHECK_VALUE_OPTIONS = new Set(["guide", "copy", "target", "max-tokens"]);
@@ -85,6 +86,7 @@ function parseAuditArgs(rest: string[]): AuditCommandArgs {
     command: "audit",
     url,
     outDir,
+    guidePath: values.get("guide"),
     copyStylePath: values.get("copy"),
     timeoutMs: timeout ? parseTimeout(timeout) : undefined,
     allowPartial: flags.has("allow-partial")
@@ -196,7 +198,7 @@ function rootHelpText(): string {
     "Design Harness",
     "",
     "Usage:",
-    "  design-harness audit --url <local-url> --out <directory> [--copy <copy-style.yaml>] [--timeout-ms <ms>] [--allow-partial]",
+    "  design-harness audit --url <local-url> --out <directory> [--guide <design-guide.yaml>] [--copy <copy-style.yaml>] [--timeout-ms <ms>] [--allow-partial]",
     "  design-harness guide compile --guide <design-guide.yaml> --target <project-dir> [options]",
     "  design-harness guide check --guide <design-guide.yaml> --target <project-dir> [options]",
     "",
@@ -207,6 +209,7 @@ function rootHelpText(): string {
     "",
     "Notes:",
     "  Audit targets must be local http(s) URLs such as http://localhost:3000.",
+    "  Font-family adherence is opt-in, reads only the explicit local --guide file, and performs no auto-discovery.",
     "  Copy analysis is opt-in and reads only the explicit local --copy file.",
     "  Partial audits write artifacts and exit 2 unless --allow-partial is set.",
     "",
@@ -219,10 +222,11 @@ function auditHelpText(): string {
     "Design Harness audit",
     "",
     "Usage:",
-    "  design-harness audit --url <local-url> --out <directory> [--copy <copy-style.yaml>] [--timeout-ms <ms>] [--allow-partial]",
+    "  design-harness audit --url <local-url> --out <directory> [--guide <design-guide.yaml>] [--copy <copy-style.yaml>] [--timeout-ms <ms>] [--allow-partial]",
     "",
     "Notes:",
     "  Audit targets must be local http(s) URLs such as http://localhost:3000.",
+    "  Font-family adherence is opt-in, reads only the explicit local --guide file, and performs no auto-discovery.",
     "  Copy analysis is opt-in and reads only the explicit local --copy file.",
     "  Partial audits write artifacts and exit 2 unless --allow-partial is set."
   ].join("\n");

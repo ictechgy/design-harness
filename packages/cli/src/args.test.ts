@@ -8,6 +8,7 @@ describe("parseArgs", () => {
       command: "audit",
       url: "http://localhost:3000",
       outDir: "runs/demo",
+      guidePath: undefined,
       copyStylePath: undefined,
       timeoutMs: undefined,
       allowPartial: false
@@ -29,6 +30,21 @@ describe("parseArgs", () => {
     });
   });
 
+  it("parses an explicit audit-time design guide path", () => {
+    expect(parseArgs([
+      "audit",
+      "--url",
+      "http://localhost:3000",
+      "--out",
+      "runs/demo",
+      "--guide",
+      "configs/design-guide.yaml"
+    ])).toMatchObject({
+      command: "audit",
+      guidePath: "configs/design-guide.yaml"
+    });
+  });
+
   it("parses allow-partial", () => {
     expect(parseArgs(["audit", "--url", "http://localhost:3000", "--out", "runs/demo", "--allow-partial"])).toMatchObject({
       command: "audit",
@@ -47,6 +63,14 @@ describe("parseArgs", () => {
 
   it("rejects missing values", () => {
     expect(() => parseArgs(["audit", "--url"])).toThrow("Missing value");
+    expect(() => parseArgs([
+      "audit",
+      "--url",
+      "http://localhost:3000",
+      "--out",
+      "runs/demo",
+      "--guide"
+    ])).toThrow("Missing value for --guide");
   });
 
   it("rejects unknown options before they can silently disable copy analysis", () => {
@@ -61,7 +85,7 @@ describe("parseArgs", () => {
     ])).toThrow("Unknown option: --cop");
   });
 
-  it.each(["--url", "--out", "--timeout-ms", "--copy"])("rejects duplicate value option %s", (option) => {
+  it.each(["--url", "--out", "--timeout-ms", "--guide", "--copy"])("rejects duplicate value option %s", (option) => {
     const argv = [
       "audit",
       "--url",
@@ -71,7 +95,7 @@ describe("parseArgs", () => {
     ];
     if (option === "--timeout-ms") {
       argv.push(option, "1000", option, "2000");
-    } else if (option === "--copy") {
+    } else if (option === "--copy" || option === "--guide") {
       argv.push(option, "first.yaml", option, "second.yaml");
     } else {
       argv.push(option, option === "--url" ? "http://localhost:4000" : "duplicate");
@@ -191,9 +215,9 @@ describe("parseArgs", () => {
       "http://localhost:3000",
       "--out",
       "runs/demo",
-      "--guide",
-      "design-guide.yaml"
-    ])).toThrow("Unknown option: --guide");
+      "--target",
+      "."
+    ])).toThrow("Unknown option: --target");
     expect(() => parseArgs([
       "guide",
       "compile",
@@ -241,6 +265,7 @@ describe("parseArgs", () => {
 describe("helpText", () => {
   it("describes the local URL policy without stale version labels", () => {
     expect(helpText()).toContain("Audit targets must be local http(s) URLs");
+    expect(helpText()).toContain("--guide <design-guide.yaml>");
     expect(helpText()).toContain("--copy <copy-style.yaml>");
     expect(helpText()).toContain("opt-in");
     expect(helpText()).not.toContain("v0.3");
@@ -252,6 +277,11 @@ describe("helpText", () => {
     expect(helpText("guide-compile")).not.toContain("--max-tokens");
     expect(helpText("guide-check")).toContain("--max-tokens <1..2000>");
     expect(helpText("guide-check")).toContain("zero writes");
+  });
+
+  it("renders audit-scoped guide help without implying discovery", () => {
+    expect(helpText("audit")).toContain("--guide <design-guide.yaml>");
+    expect(helpText("audit")).toContain("no auto-discovery");
   });
 });
 
