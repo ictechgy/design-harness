@@ -36,7 +36,12 @@ describe("runCli", () => {
 
   it("loads and projects the explicit guide before copy regardless of argv order", async () => {
     const guide = createExampleDesignGuide();
-    guide.audit = { fontFamily: { ignoreSelectors: [".third-party-widget"] } };
+    guide.audit = {
+      fontFamily: {
+        additionalAllowedFamilies: [{ value: "Rogue", kind: "named" }],
+        ignoreSelectors: [".third-party-widget"]
+      }
+    };
     const copyStyle = createMinimalCopyStyle();
     const { dependencies, audit, loadDesignGuide, loadCopyStyle, cwd } = successfulDependencies();
     loadDesignGuide.mockResolvedValue(guide);
@@ -63,6 +68,14 @@ describe("runCli", () => {
 
   it("passes only the projected policy for a guide-only audit", async () => {
     const guide = createExampleDesignGuide();
+    guide.audit = {
+      fontFamily: {
+        additionalAllowedFamilies: [
+          { value: "Rogue", kind: "named" },
+          { value: "system-ui", kind: "named" }
+        ]
+      }
+    };
     const { dependencies, audit, loadDesignGuide, loadCopyStyle } = successfulDependencies();
     loadDesignGuide.mockResolvedValue(guide);
 
@@ -70,8 +83,15 @@ describe("runCli", () => {
 
     expect(loadDesignGuide).toHaveBeenCalledOnce();
     expect(loadCopyStyle).not.toHaveBeenCalled();
-    expect(audit.mock.calls[0]?.[0]).toMatchObject({
-      fontFamilyPolicy: projectFontFamilyAdherencePolicy(guide)
+    expect(audit.mock.calls[0]?.[0].fontFamilyPolicy).toEqual({
+      allowedFamilies: [
+        { value: "Example Sans", kind: "named" },
+        { value: "sans-serif", kind: "generic" },
+        { value: "Rogue", kind: "named" },
+        { value: "system-ui", kind: "named" }
+      ],
+      ignoreSelectors: [],
+      policyId: "font-family-adherence-v1"
     });
     expect(audit.mock.calls[0]?.[0]).not.toHaveProperty("copyStyle");
   });

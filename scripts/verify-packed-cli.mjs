@@ -42,6 +42,7 @@ try {
   ].join("\n"));
 
   await runPnpm(["install", "--prefer-offline", "--ignore-scripts=false"], { cwd: consumerDir });
+  await assertPackedReadme(consumerDir);
   const help = await runPnpm(["exec", "design-harness", "--help"], { cwd: consumerDir, capture: true });
   const auditHelp = await runPnpm(["exec", "design-harness", "audit", "--help"], { cwd: consumerDir, capture: true });
 
@@ -87,6 +88,18 @@ try {
   });
   await assertFailClosedGuideConfig({
     consumerDir,
+    name: "guide-additional-family-missing-kind",
+    source: missingAdditionalFamilyKindGuideYaml(),
+    expectedStage: "schema"
+  });
+  await assertFailClosedGuideConfig({
+    consumerDir,
+    name: "guide-empty-font-family",
+    source: emptyFontFamilyGuideYaml(),
+    expectedStage: "profile"
+  });
+  await assertFailClosedGuideConfig({
+    consumerDir,
     name: "guide-profile-invalid",
     source: packedGuideYaml().replace("generic-card-grid", "unknown-fingerprint"),
     expectedStage: "profile"
@@ -105,6 +118,18 @@ try {
   });
   await assertFailClosedAuditGuideConfig({
     consumerDir,
+    name: "audit-guide-additional-family-missing-kind",
+    source: missingAdditionalFamilyKindGuideYaml(),
+    expectedStage: "schema"
+  });
+  await assertFailClosedAuditGuideConfig({
+    consumerDir,
+    name: "audit-guide-empty-font-family",
+    source: emptyFontFamilyGuideYaml(),
+    expectedStage: "profile"
+  });
+  await assertFailClosedAuditGuideConfig({
+    consumerDir,
     name: "audit-guide-profile-invalid",
     source: packedGuideYaml().replace("generic-card-grid", "unknown-fingerprint"),
     expectedStage: "profile"
@@ -113,6 +138,25 @@ try {
   console.log("Validated packed CLI audit config gates plus guide fail-closed/compile/check/idempotence/drift without root data lookup.");
 } finally {
   await rm(tempRoot, { recursive: true, force: true });
+}
+
+async function assertPackedReadme(consumerDir) {
+  const readme = await readFile(join(
+    consumerDir,
+    "node_modules",
+    "@design-harness",
+    "cli",
+    "README.md"
+  ), "utf8");
+  const words = readme.replace(/[^\p{L}\p{N}_-]+/gu, " ").replace(/\s+/gu, " ").trim();
+  if (
+    !readme.includes("additionalAllowedFamilies")
+    || !readme.includes("ignoreSelectors")
+    || !/Additional values are decoded individual family names/iu.test(words)
+    || !/kind is named or generic/iu.test(words)
+  ) {
+    throw new Error("Packed CLI README omitted the decoded additionalAllowedFamilies value/kind or ignoreSelectors contract.");
+  }
 }
 
 async function assertPackedGuideCommands(consumerDir) {
@@ -140,6 +184,11 @@ async function assertPackedGuideCommands(consumerDir) {
   const ownership = JSON.parse(first.get("design.tokens.json").source).$extensions?.["dev.design-harness"];
   if (!ownership?.sourceHash) {
     throw new Error("Packed guide compile omitted token ownership provenance.");
+  }
+  for (const [path, snapshot] of first) {
+    if (snapshot.source.includes("Rogue") || snapshot.source.includes("additionalAllowedFamilies")) {
+      throw new Error(`Packed guide leaked audit-only font families into generation output: ${path}`);
+    }
   }
 
   await runPnpm(command, { cwd: consumerDir, capture: true });
@@ -328,10 +377,28 @@ function packedGuideYaml() {
     "    $type: dimension",
     "    sm: { $value: { value: 4, unit: px } }",
     "    md: { $value: { value: 8, unit: px } }",
+    "audit:",
+    "  fontFamily:",
+    "    additionalAllowedFamilies:",
+    "      - value: Rogue",
+    "        kind: named",
     "prohibitions: [generic-card-grid]",
     "signatureElement: Use one compact status rail.",
     ""
   ].join("\n");
+}
+
+function missingAdditionalFamilyKindGuideYaml() {
+  return packedGuideYaml().replace("        kind: named\n", "");
+}
+
+function emptyFontFamilyGuideYaml() {
+  return packedGuideYaml().replace([
+    "  fontFamily:",
+    "    additionalAllowedFamilies:",
+    "      - value: Rogue",
+    "        kind: named"
+  ].join("\n"), "  fontFamily: {}");
 }
 
 function fileDependency(fromDir, tarballPath) {

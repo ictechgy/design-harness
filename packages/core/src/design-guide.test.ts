@@ -22,27 +22,73 @@ describe("Design Guide Profile v0.5a-1", () => {
     expect(loadSchema("design-guide")).toMatchObject({
       title: "DesignGuide",
       additionalProperties: false,
-      properties: { schemaVersion: { const: "0.2" } }
+      properties: {
+        schemaVersion: { const: "0.2" },
+        audit: {
+          properties: {
+            fontFamily: {
+              additionalProperties: false,
+              minProperties: 1,
+              properties: {
+                additionalAllowedFamilies: {
+                  minItems: 1,
+                  maxItems: 32,
+                  uniqueItems: true,
+                  items: {
+                    additionalProperties: false,
+                    required: ["value", "kind"],
+                    properties: {
+                      value: { minLength: 1, maxLength: 128 },
+                      kind: { enum: ["named", "generic"] }
+                    }
+                  }
+                },
+                ignoreSelectors: { minItems: 1, maxItems: 32, uniqueItems: true }
+              }
+            }
+          }
+        }
+      }
     });
   });
 
   it("accepts the optional closed audit overlay and enforces its semantic bounds", () => {
-    const guide = createExampleDesignGuide();
-    guide.audit = { fontFamily: { ignoreSelectors: [".third-party-widget", "[data-vendor-shell]"] } };
-    expect(validateSchema("design-guide", guide)).toEqual({ valid: true, issues: [] });
-    expect(() => assertDesignGuideProfile(guide)).not.toThrow();
+    const selectorOnly = createExampleDesignGuide();
+    selectorOnly.audit = {
+      fontFamily: { ignoreSelectors: [".third-party-widget", "[data-vendor-shell]"] }
+    };
+    expect(validateSchema("design-guide", selectorOnly)).toEqual({ valid: true, issues: [] });
+    expect(() => assertDesignGuideProfile(selectorOnly)).not.toThrow();
+
+    const additionalOnly = createExampleDesignGuide();
+    additionalOnly.audit = {
+      fontFamily: {
+        additionalAllowedFamilies: [{ value: "Pretendard Fallback", kind: "named" }]
+      }
+    };
+    expect(validateSchema("design-guide", additionalOnly)).toEqual({ valid: true, issues: [] });
+    expect(() => assertDesignGuideProfile(additionalOnly)).not.toThrow();
 
     const maximum = createExampleDesignGuide();
     maximum.audit = {
       fontFamily: {
+        additionalAllowedFamilies: Array.from(
+          { length: 32 },
+          (_, index) => ({ value: `Runtime Family ${index}`, kind: "named" as const })
+        ),
         ignoreSelectors: Array.from({ length: 32 }, (_, index) => `[data-vendor-${index}]`)
       }
     };
+    expect(validateSchema("design-guide", maximum)).toEqual({ valid: true, issues: [] });
     expect(() => assertDesignGuideProfile(maximum)).not.toThrow();
 
     const invalidCases: Array<[unknown, string]> = [];
     invalidCases.push([{ ...createExampleDesignGuide(), audit: null }, "$.audit"]);
     invalidCases.push([{ ...createExampleDesignGuide(), audit: {} }, "$.audit.fontFamily"]);
+    invalidCases.push([{
+      ...createExampleDesignGuide(),
+      audit: { fontFamily: {} }
+    }, "$.audit.fontFamily"]);
     invalidCases.push([{
       ...createExampleDesignGuide(),
       audit: { fontFamily: { ignoreSelectors: [] } }
@@ -93,11 +139,120 @@ describe("Design Guide Profile v0.5a-1", () => {
     expect(() => assertDesignGuideProfile(browserInvalidSelector)).not.toThrow();
   });
 
+  it("enforces exact bounded additional-family entries with safe decoded values", () => {
+    const boundaryValues = createExampleDesignGuide();
+    boundaryValues.audit = {
+      fontFamily: {
+        additionalAllowedFamilies: [
+          { value: "🧭", kind: "named" },
+          { value: "🧭".repeat(128), kind: "named" },
+          { value: "Font, With Comma", kind: "named" },
+          { value: "system-ui", kind: "named" },
+          { value: "SYSTEM-UI", kind: "generic" },
+          { value: "École", kind: "named" },
+          { value: "école", kind: "named" },
+          { value: "Å", kind: "named" },
+          { value: "A\u030a", kind: "named" }
+        ]
+      }
+    };
+    expect(() => assertDesignGuideProfile(boundaryValues)).not.toThrow();
+
+    const everyGeneric = createExampleDesignGuide();
+    everyGeneric.audit = {
+      fontFamily: {
+        additionalAllowedFamilies: CSS_GENERIC_FONT_FAMILY_VALUES.map((value) => ({
+          value: value.toUpperCase(),
+          kind: "generic" as const
+        }))
+      }
+    };
+    expect(() => assertDesignGuideProfile(everyGeneric)).not.toThrow();
+
+    const inheritedSlot = Array(1) as unknown[];
+    Object.setPrototypeOf(
+      inheritedSlot,
+      Object.assign(Object.create(Array.prototype) as Record<number, unknown>, {
+        0: { value: "Inherited", kind: "named" }
+      })
+    );
+    const inheritedEntry = Object.create({ value: "Inherited", kind: "named" }) as unknown;
+    const prototypeNamedEntry: Record<string, unknown> = { value: "Inter", kind: "named" };
+    Object.defineProperty(prototypeNamedEntry, "constructor", { value: true, enumerable: true });
+
+    const invalidValues = [
+      "",
+      " leading",
+      "trailing ",
+      "x".repeat(129),
+      "unsafe\ud800font",
+      "unsafe\nfont",
+      "unsafe\tfont",
+      "unsafe\u202efont",
+      "https://example.test/font.woff2",
+      "url(https://example.test/font.woff2)",
+      "@import url(font.css)"
+    ];
+    const invalidCases: Array<[unknown, string]> = [
+      [guideWithAdditionalFamilies([]), "$.audit.fontFamily.additionalAllowedFamilies"],
+      [guideWithAdditionalFamilies("Inter"), "$.audit.fontFamily.additionalAllowedFamilies"],
+      [guideWithAdditionalFamilies(Array.from(
+        { length: 33 },
+        (_, index) => ({ value: `Family ${index}`, kind: "named" })
+      )), "$.audit.fontFamily.additionalAllowedFamilies"],
+      [guideWithAdditionalFamilies(Array(1)), "$.audit.fontFamily.additionalAllowedFamilies[0]"],
+      [guideWithAdditionalFamilies(inheritedSlot), "$.audit.fontFamily.additionalAllowedFamilies[0]"],
+      [guideWithAdditionalFamilies([null]), "$.audit.fontFamily.additionalAllowedFamilies[0]"],
+      [guideWithAdditionalFamilies(["Inter"]), "$.audit.fontFamily.additionalAllowedFamilies[0]"],
+      [guideWithAdditionalFamilies([inheritedEntry]), "$.audit.fontFamily.additionalAllowedFamilies[0].value"],
+      [guideWithAdditionalFamilies([prototypeNamedEntry]), "$.audit.fontFamily.additionalAllowedFamilies[0].constructor"],
+      [guideWithAdditionalFamilies([{ kind: "named" }]), "$.audit.fontFamily.additionalAllowedFamilies[0].value"],
+      [guideWithAdditionalFamilies([{ value: "Inter" }]), "$.audit.fontFamily.additionalAllowedFamilies[0].kind"],
+      [guideWithAdditionalFamilies([
+        { value: "Inter", kind: "named", extra: true }
+      ]), "$.audit.fontFamily.additionalAllowedFamilies[0].extra"],
+      [guideWithAdditionalFamilies([
+        { value: "Inter", kind: "other" }
+      ]), "$.audit.fontFamily.additionalAllowedFamilies[0].kind"],
+      [guideWithAdditionalFamilies([
+        { value: "Inter", kind: "generic" }
+      ]), "$.audit.fontFamily.additionalAllowedFamilies[0].value"],
+      [guideWithAdditionalFamilies([
+        { value: "Inter", kind: "named" },
+        { value: "INTER", kind: "named" }
+      ]), "$.audit.fontFamily.additionalAllowedFamilies[1]"],
+      [guideWithAdditionalFamilies([
+        { value: "system-ui", kind: "generic" },
+        { value: "SYSTEM-UI", kind: "generic" }
+      ]), "$.audit.fontFamily.additionalAllowedFamilies[1]"]
+    ];
+    for (const value of invalidValues) {
+      invalidCases.push([
+        guideWithAdditionalFamilies([{ value, kind: "named" }]),
+        "$.audit.fontFamily.additionalAllowedFamilies[0].value"
+      ]);
+    }
+    for (const [value, path] of invalidCases) {
+      expectProfileIssue(value, path, "invalid-profile");
+    }
+  });
+
   it("projects a raw-string font policy with the bounded v1 comparison identity", () => {
     const guide = createExampleDesignGuide();
     guide.tokens.font.family.heading.$value = ["INTER", "sans-serif", "École"];
     guide.tokens.font.family.body.$value = ["inter", "GENERIC(FANGSONG)", "école", "맑은 고딕"];
-    guide.audit = { fontFamily: { ignoreSelectors: [".third-party-widget"] } };
+    guide.audit = {
+      fontFamily: {
+        additionalAllowedFamilies: [
+          { value: "inter", kind: "named" },
+          { value: "Pretendard Fallback", kind: "named" },
+          { value: "SYSTEM-UI", kind: "named" },
+          { value: "system-ui", kind: "generic" },
+          { value: "맑은 고딕", kind: "named" }
+        ],
+        ignoreSelectors: [".third-party-widget"]
+      }
+    };
 
     expect(projectFontFamilyAdherencePolicy(guide)).toEqual({
       allowedFamilies: [
@@ -106,7 +261,10 @@ describe("Design Guide Profile v0.5a-1", () => {
         { value: "École", kind: "named" },
         { value: "GENERIC(FANGSONG)", kind: "generic" },
         { value: "école", kind: "named" },
-        { value: "맑은 고딕", kind: "named" }
+        { value: "맑은 고딕", kind: "named" },
+        { value: "Pretendard Fallback", kind: "named" },
+        { value: "SYSTEM-UI", kind: "named" },
+        { value: "system-ui", kind: "generic" }
       ],
       ignoreSelectors: [".third-party-widget"],
       policyId: "font-family-adherence-v1"
@@ -125,6 +283,18 @@ describe("Design Guide Profile v0.5a-1", () => {
     expect(classifyFontFamily("generic(kai)")).toBe("generic");
     expect(classifyFontFamily("emoji")).toBe("named");
     expect(new Set(CSS_GENERIC_FONT_FAMILY_VALUES).size).toBe(CSS_GENERIC_FONT_FAMILY_VALUES.length);
+
+    const additionalOnly = createExampleDesignGuide();
+    additionalOnly.audit = {
+      fontFamily: {
+        additionalAllowedFamilies: [{ value: "JetBrains Mono", kind: "named" }]
+      }
+    };
+    expect(projectFontFamilyAdherencePolicy(additionalOnly)).toMatchObject({
+      allowedFamilies: expect.arrayContaining([{ value: "JetBrains Mono", kind: "named" }]),
+      ignoreSelectors: [],
+      policyId: "font-family-adherence-v1"
+    });
   });
 
   it("accepts the exact minimum and maximum profile bounds", () => {
@@ -355,4 +525,11 @@ function expectProfileIssue(value: unknown, path: string, code: string): void {
       expect.arrayContaining([expect.objectContaining({ path, code })])
     );
   }
+}
+
+function guideWithAdditionalFamilies(value: unknown): unknown {
+  return {
+    ...createExampleDesignGuide(),
+    audit: { fontFamily: { additionalAllowedFamilies: value } }
+  };
 }

@@ -23,6 +23,31 @@ describe("loadDesignGuideFile", () => {
     });
   });
 
+  it("loads a literal additional-only audit overlay as decoded value/kind entries", async () => {
+    const cwd = await tempDir();
+    await writeFile(join(cwd, "design-guide.yaml"), [
+      validGuideYaml().trimEnd(),
+      "audit:",
+      "  fontFamily:",
+      "    additionalAllowedFamilies:",
+      "      - value: Rogue",
+      "        kind: named",
+      "      - value: system-ui",
+      "        kind: generic",
+      ""
+    ].join("\n"));
+
+    const guide = await loadDesignGuideFile("design-guide.yaml", { cwd });
+
+    expect(guide.audit?.fontFamily).toEqual({
+      additionalAllowedFamilies: [
+        { value: "Rogue", kind: "named" },
+        { value: "system-ui", kind: "generic" }
+      ]
+    });
+    expect(guide.audit?.fontFamily).not.toHaveProperty("ignoreSelectors");
+  });
+
   it("reports closed-envelope failures at the schema stage", async () => {
     const cwd = await tempDir();
     await writeFile(join(cwd, "design-guide.yaml"), `${validGuideYaml()}unknown: true\n`);

@@ -170,7 +170,7 @@ export const CRITERIA: Criterion[] = [
     confidenceDefault: "high",
     runtime: "computed-style",
     checkNames: ["unapproved-font-family"],
-    remediationHint: "Use the declared font-family tokens, update the project guide, or add a deliberate third-party selector exception."
+    remediationHint: "Use the declared generation tokens, add intentional runtime families under audit.fontFamily.additionalAllowedFamilies, or reserve selector exceptions for third-party content."
   },
   {
     id: "a11y.text-contrast.minimum",

@@ -97,6 +97,8 @@ describe("findingsFromMeasurements", () => {
     });
     expect(findings[0]?.problem).toContain("computed font-family list");
     expect(findings[0]?.problem).not.toMatch(/rendered with|font face|uses an actual/iu);
+    expect(findings[0]?.recommendation).toContain("audit.fontFamily.additionalAllowedFamilies");
+    expect(findings[0]?.recommendation).toContain("third-party content");
   });
 
 

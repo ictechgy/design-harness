@@ -210,6 +210,33 @@ describe("unexpectedFontFamilies", () => {
     ]);
   });
 
+  it("accepts explicit runtime stacks but never infers a Fallback companion", () => {
+    const runtimePolicy: FontFamilyAdherencePolicy = {
+      ...policy,
+      allowedFamilies: [
+        ...policy.allowedFamilies,
+        { value: "Pretendard Fallback", kind: "named" },
+        { value: "JetBrains Mono", kind: "named" },
+        { value: "JetBrains Mono Fallback", kind: "named" },
+        { value: "ui-monospace", kind: "generic" },
+        { value: "SFMono-Regular", kind: "named" },
+        { value: "Menlo", kind: "named" },
+        { value: "monospace", kind: "generic" },
+        { value: "system-ui", kind: "named" },
+        { value: "Rogue", kind: "named" }
+      ]
+    };
+
+    expect(unexpectedFontFamilies(
+      '"JetBrains Mono", "JetBrains Mono Fallback", ui-monospace, SFMono-Regular, Menlo, monospace',
+      runtimePolicy
+    )).toEqual([]);
+    expect(unexpectedFontFamilies('"system-ui", system-ui', runtimePolicy)).toEqual([]);
+    expect(unexpectedFontFamilies('"Rogue", "Rogue Fallback", sans-serif', runtimePolicy)).toEqual([
+      { value: "Rogue Fallback", kind: "named" }
+    ]);
+  });
+
   it("retains duplicate unexpected members for caller-owned grouping", () => {
     expect(unexpectedFontFamilies("Papyrus, Papyrus", policy)).toEqual([
       { value: "Papyrus", kind: "named" },

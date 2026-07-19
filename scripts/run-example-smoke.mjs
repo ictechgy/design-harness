@@ -8,8 +8,30 @@ const root = resolve("examples");
 const outRoot = resolve("runs/example-smoke");
 const noConfigOutDir = join(outRoot, "no-config");
 const validGuide = resolve("examples/configs/design-guide.example.yaml");
+const realStackGuide = resolve("examples/configs/design-guide.font-family-real-stack.yaml");
 const invalidSelectorGuide = resolve("examples/configs/design-guide.invalid-font-selector.yaml");
 const port = 4174;
+const expectedRealStackAllowedFamilies = [
+  { value: "Space Grotesk", kind: "named" },
+  { value: "sans-serif", kind: "generic" },
+  { value: "Pretendard", kind: "named" },
+  { value: "Pretendard Fallback", kind: "named" },
+  { value: "-apple-system", kind: "named" },
+  { value: "BlinkMacSystemFont", kind: "named" },
+  { value: "system-ui", kind: "generic" },
+  { value: "Apple SD Gothic Neo", kind: "named" },
+  { value: "Noto Sans KR", kind: "named" },
+  { value: "Malgun Gothic", kind: "named" },
+  { value: "JetBrains Mono", kind: "named" },
+  { value: "JetBrains Mono Fallback", kind: "named" },
+  { value: "ui-monospace", kind: "generic" },
+  { value: "SFMono-Regular", kind: "named" },
+  { value: "Menlo", kind: "named" },
+  { value: "monospace", kind: "generic" },
+  { value: "Space Grotesk Fallback", kind: "named" },
+  { value: "system-ui", kind: "named" },
+  { value: "Rogue", kind: "named" }
+];
 
 rmSync(outRoot, { recursive: true, force: true });
 
@@ -76,6 +98,22 @@ try {
   });
   await runFontFamilyFixture({
     cliPath,
+    name: "font-family-real-stack-good",
+    fixture: "font-family-adherence-real-stack-good.html",
+    guide: realStackGuide,
+    expectedExitCode: 0,
+    assertResult: assertRealStackGoodFontFamilyRun
+  });
+  await runFontFamilyFixture({
+    cliPath,
+    name: "font-family-real-stack-bad",
+    fixture: "font-family-adherence-real-stack-bad.html",
+    guide: realStackGuide,
+    expectedExitCode: 0,
+    assertResult: assertRealStackBadFontFamilyRun
+  });
+  await runFontFamilyFixture({
+    cliPath,
     name: "font-family-ignored",
     fixture: "font-family-adherence-ignored.html",
     guide: validGuide,
@@ -104,7 +142,7 @@ try {
       assertResult: (auditResult) => assertScopedFontErrorRun(auditResult, scenario.reasonCode)
     });
   }
-  console.log("Example smoke passed: no-config regression plus live font-family success, mismatch, exception, and scoped-error audits.");
+  console.log("Example smoke passed: no-config regression plus live real-stack font-family success, exact companion mismatch, exception, and scoped-error audits.");
 } finally {
   await new Promise((resolveClose) => server.close(resolveClose));
 }
@@ -179,7 +217,15 @@ function assertGoodFontFamilyRun(auditResult) {
     throw new Error("Good font-family fixture emitted an adherence finding");
   }
   for (const summary of fontSummaries(auditResult)) {
-    if (summary.evaluatedElementCount < 1 || summary.violatingElementCount !== 0 || summary.stacks.length !== 0) {
+    if (
+      summary.evaluatedElementCount < 1
+      || summary.ignoredElementCount !== 0
+      || summary.violatingElementCount !== 0
+      || summary.distinctViolationStackCount !== 0
+      || summary.emittedStackCount !== 0
+      || summary.truncated
+      || summary.stacks.length !== 0
+    ) {
       throw new Error("Good font-family fixture did not record a clean evaluated summary");
     }
   }
@@ -199,6 +245,83 @@ function assertBadFontFamilyRun(auditResult) {
     || !finding.evidenceRefs.some((reference) => reference.startsWith("measurement-"))
   ))) {
     throw new Error("Bad font-family fixture emitted incorrect finding metadata or evidence refs");
+  }
+}
+
+function assertRealStackGoodFontFamilyRun(auditResult) {
+  assertFontRunIntegrity(auditResult, "success");
+  assertRealStackProjectedAllowedFamilies(auditResult);
+  if (auditResult.findings.length !== 0) {
+    throw new Error("Good real-stack font-family fixture emitted a finding");
+  }
+  for (const summary of fontSummaries(auditResult)) {
+    if (
+      summary.evaluatedElementCount < 1
+      || summary.ignoredElementCount !== 0
+      || summary.violatingElementCount !== 0
+      || summary.distinctViolationStackCount !== 0
+      || summary.emittedStackCount !== 0
+      || summary.truncated
+      || summary.stacks.length !== 0
+    ) {
+      throw new Error("Good real-stack font-family fixture did not record a clean evaluated summary");
+    }
+  }
+}
+
+function assertRealStackBadFontFamilyRun(auditResult) {
+  assertFontRunIntegrity(auditResult, "success");
+  assertRealStackProjectedAllowedFamilies(auditResult);
+  const findings = fontFindings(auditResult);
+  if (findings.length !== auditResult.viewportPresets.length) {
+    throw new Error(`Bad real-stack font-family fixture emitted ${findings.length} findings for ${auditResult.viewportPresets.length} viewports`);
+  }
+  if (auditResult.findings.length !== findings.length) {
+    throw new Error("Bad real-stack font-family fixture emitted an unrelated finding");
+  }
+  if (findings.some((finding) => (
+    finding.determinism !== "deterministic"
+    || finding.resultKind !== "risk"
+    || finding.severity !== "low"
+    || finding.confidence !== "high"
+    || !finding.evidenceRefs.some((reference) => reference.startsWith("measurement-"))
+  ))) {
+    throw new Error("Bad real-stack font-family fixture emitted incorrect finding metadata or evidence refs");
+  }
+  for (const finding of findings) {
+    if (
+      finding.observed?.rawComputedStack !== 'Rogue, "Rogue Fallback", sans-serif'
+      || JSON.stringify(finding.observed?.unexpectedFamilies) !== JSON.stringify([
+        { value: "Rogue Fallback", kind: "named" }
+      ])
+      || finding.observed?.affectedElementCount !== 1
+      || finding.selector !== "main > p"
+      || !Array.isArray(finding.observed?.selectors)
+      || finding.observed.selectors.length !== 1
+      || finding.observed.selectors[0] !== "main > p"
+      || !Array.isArray(finding.observed?.regions)
+      || finding.observed.regions.length !== 1
+      || finding.observed.regions[0]?.width <= 0
+      || finding.observed.regions[0]?.height <= 0
+      || JSON.stringify(finding.expected?.allowedFamilies) !== JSON.stringify(expectedRealStackAllowedFamilies)
+    ) {
+      throw new Error("Bad font-family fixture did not isolate the undeclared Rogue Fallback companion");
+    }
+  }
+  for (const summary of fontSummaries(auditResult)) {
+    if (
+      summary.ignoredElementCount !== 0
+      || summary.violatingElementCount !== 1
+      || summary.distinctViolationStackCount !== 1
+      || summary.emittedStackCount !== 1
+      || summary.truncated
+      || summary.stacks.length !== 1
+      || JSON.stringify(summary.stacks[0]?.unexpectedFamilies) !== JSON.stringify([
+        { value: "Rogue Fallback", kind: "named" }
+      ])
+    ) {
+      throw new Error("Bad font-family fixture summary did not preserve the exact companion mismatch");
+    }
   }
 }
 
@@ -251,9 +374,23 @@ function assertFontRunIntegrity(auditResult, expectedStatus, { expectSummaries =
   if (summaries.length !== expectedCount) {
     throw new Error(`Font-family audit recorded ${summaries.length} summaries, expected ${expectedCount}`);
   }
+  if (
+    expectedStatus === "success"
+    && auditResult.failedChecks.some((check) => check.endsWith(":unapproved-font-family"))
+  ) {
+    throw new Error("Successful font-family audit retained a failed adherence check");
+  }
   const measurementCount = auditResult.evidenceAssets.filter((asset) => asset.id.startsWith("measurement-")).length;
   if (measurementCount < auditResult.viewportPresets.length) {
     throw new Error("Font-family audit lost base measurement assets");
+  }
+}
+
+function assertRealStackProjectedAllowedFamilies(auditResult) {
+  for (const summary of fontSummaries(auditResult)) {
+    if (JSON.stringify(summary.allowedFamilies) !== JSON.stringify(expectedRealStackAllowedFamilies)) {
+      throw new Error("Font-family audit did not preserve the guide-projected family order and kinds");
+    }
   }
 }
 
