@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  CRITERION_SOURCES,
   getCriterion,
   validateCriteriaPolicy,
   validateRegistryCriteriaPolicy,
@@ -111,6 +112,22 @@ describe("criteria policy matrix", () => {
       resultKind: "failure",
       runtime: "static-dom"
     });
+  });
+
+  it("keeps the design-guide font criterion at the project-contract risk ceiling", () => {
+    const criterion = getCriterion("visual.font-family.project-contract");
+    expect(criterion).toMatchObject({
+      sourceRefs: ["design-guide-contract"],
+      sourceStrength: "project-contract",
+      determinism: "deterministic",
+      resultKind: "risk",
+      runtime: "computed-style",
+      confidenceDefault: "high",
+      checkNames: ["unapproved-font-family"]
+    });
+    expect(validateCriteriaPolicy([
+      { ...criterion!, resultKind: "failure" }
+    ], CRITERION_SOURCES).valid).toBe(false);
   });
 
   it("rejects heuristic and subjective failures at the criterion level", () => {

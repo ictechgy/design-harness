@@ -10,15 +10,25 @@ import {
   type CopyStyle,
   type EvidenceAsset,
   type Finding,
+  type FontFamilyAdherencePolicy,
   type RunMetadata,
   type RunStatus,
   type ViewportPreset
 } from "@design-harness/core";
 import { analyzeCopy, copyAuditCapabilityNotices } from "@design-harness/copy-audit";
 import { chromium, errors } from "playwright";
-import { collectViewportMeasurements } from "./browser-measurements.js";
+import {
+  collectViewportMeasurements,
+  type FontFamilyMeasurementError,
+  type ViewportCollectionResult,
+  type ViewportMeasurementConfig
+} from "./browser-measurements.js";
 import { createRenderFailureFinding, findingsFromMeasurements, type ViewportMeasurements } from "./checks.js";
 import { BrowserUnavailableError } from "./errors.js";
+import {
+  analyzeFontFamilyAdherence,
+  type FontFamilyAdherenceAnalysisError
+} from "./font-family-adherence.js";
 
 const MAX_ARIA_SNAPSHOT_LENGTH = 20_000;
 const MAX_TEXT_INVENTORY_FIELD_LENGTH = 2_000;
@@ -30,6 +40,7 @@ export interface AuditUrlOptions {
   timeoutMs?: number;
   viewportPresets?: ViewportPreset[];
   copyStyle?: CopyStyle;
+  fontFamilyPolicy?: FontFamilyAdherencePolicy;
   launchBrowser?: () => Promise<BrowserHandle>;
 }
 
@@ -77,6 +88,7 @@ export async function auditUrl(options: AuditUrlOptions): Promise<AuditUrlResult
   const runId = options.runId ?? createRunId(startedAt);
   const timeoutMs = options.timeoutMs ?? 15_000;
   const viewportPresets = options.viewportPresets ?? DEFAULT_VIEWPORT_PRESETS;
+  const measurementConfig = viewportMeasurementConfig(options.copyStyle, options.fontFamilyPolicy);
   const screenshotsDir = join(options.outDir, "screenshots");
   const evidenceAssets: EvidenceAsset[] = [];
   const measurementRecords: MeasurementRecord[] = [];
@@ -196,9 +208,32 @@ export async function auditUrl(options: AuditUrlOptions): Promise<AuditUrlResult
         }
 
         try {
-          const collection = await collectViewportMeasurements(page, options.copyStyle?.surfaceMapping);
+          const collection = await collectViewportMeasurements(page, measurementConfig);
           const measurement = collection.measurements;
           noticeCandidates.push(...collection.notices);
+          if (options.fontFamilyPolicy) {
+            const fontFamilyFailure = applyFontFamilyAdherence(
+              collection,
+              options.fontFamilyPolicy
+            );
+            if (fontFamilyFailure) {
+              stripFontFamilyEvidence(measurement);
+              failedChecks.push(`${viewport.name}:unapproved-font-family`);
+              const details = fontFamilyFailureDetails(viewport.name, fontFamilyFailure);
+              noticeCandidates.push({
+                code: "font-family-adherence-measurement-failed",
+                message: "Font-family adherence could not be evaluated for this viewport.",
+                viewport: viewport.name,
+                details
+              });
+              viewportEvidenceRefs.push(addFailureEvidence(
+                evidenceAssets,
+                viewport.name,
+                "unapproved-font-family",
+                details
+              ));
+            }
+          }
           const measurementEvidenceId = `measurement-${viewport.name}`;
           evidenceAssets.push({
             id: measurementEvidenceId,
@@ -311,6 +346,82 @@ export async function auditUrl(options: AuditUrlOptions): Promise<AuditUrlResult
   return {
     auditResult,
     metadata
+  };
+}
+
+type FontFamilyScopedFailure =
+  | FontFamilyMeasurementError
+  | FontFamilyAdherenceAnalysisError
+  | { code: "missing-collection-result" };
+
+function applyFontFamilyAdherence(
+  collection: ViewportCollectionResult,
+  policy: FontFamilyAdherencePolicy
+): FontFamilyScopedFailure | undefined {
+  if (collection.fontFamilyError) {
+    return collection.fontFamilyError;
+  }
+  if (!collection.fontFamilyCollection) {
+    return { code: "missing-collection-result" };
+  }
+  const result = analyzeFontFamilyAdherence(
+    collection.measurements.textInventory,
+    policy,
+    collection.fontFamilyCollection
+  );
+  if (!result.ok) {
+    return result.error;
+  }
+  collection.measurements.fontFamilyAdherence = result.summary;
+  return undefined;
+}
+
+function stripFontFamilyEvidence(measurement: ViewportMeasurements): void {
+  delete measurement.fontFamilyAdherence;
+  for (const item of measurement.textInventory) {
+    delete item.fontFamily;
+  }
+}
+
+function fontFamilyFailureDetails(
+  viewport: string,
+  failure: FontFamilyScopedFailure
+): Record<string, unknown> {
+  return {
+    viewport,
+    reasonCode: failure.code,
+    ...("selectorIndex" in failure && failure.selectorIndex !== undefined
+      ? { selectorIndex: failure.selectorIndex }
+      : {}),
+    ...("elementIndex" in failure && failure.elementIndex !== undefined
+      ? { elementIndex: failure.elementIndex }
+      : {}),
+    ...("candidateCount" in failure && failure.candidateCount !== undefined
+      ? { candidateCount: failure.candidateCount }
+      : {}),
+    ...("valueLength" in failure && failure.valueLength !== undefined
+      ? { valueLength: failure.valueLength }
+      : {}),
+    ...("limit" in failure && failure.limit !== undefined ? { limit: failure.limit } : {}),
+    ...("parserCode" in failure && failure.parserCode !== undefined
+      ? { parserCode: failure.parserCode }
+      : {})
+  };
+}
+
+function viewportMeasurementConfig(
+  copyStyle: CopyStyle | undefined,
+  fontFamilyPolicy: FontFamilyAdherencePolicy | undefined
+): ViewportMeasurementConfig | undefined {
+  const surfaceMapping = copyStyle?.surfaceMapping;
+  if (!surfaceMapping && !fontFamilyPolicy) {
+    return undefined;
+  }
+  return {
+    ...(surfaceMapping ? { surfaceMapping } : {}),
+    ...(fontFamilyPolicy ? {
+      fontFamily: { ignoreSelectors: [...fontFamilyPolicy.ignoreSelectors] }
+    } : {})
   };
 }
 

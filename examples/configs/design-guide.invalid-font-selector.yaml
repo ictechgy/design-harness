@@ -4,25 +4,13 @@ tokens:
     semantic:
       $type: color
       background:
-        $value:
-          colorSpace: srgb
-          components: [0.98, 0.98, 0.97]
-          alpha: 1
+        $value: { colorSpace: srgb, components: [0.98, 0.98, 0.97], alpha: 1 }
       surface:
-        $value:
-          colorSpace: srgb
-          components: [1, 1, 1]
-          alpha: 1
+        $value: { colorSpace: srgb, components: [1, 1, 1], alpha: 1 }
       text:
-        $value:
-          colorSpace: srgb
-          components: [0.08, 0.09, 0.11]
-          alpha: 1
+        $value: { colorSpace: srgb, components: [0.08, 0.09, 0.11], alpha: 1 }
       accent:
-        $value:
-          colorSpace: srgb
-          components: [0.12, 0.38, 0.82]
-          alpha: 1
+        $value: { colorSpace: srgb, components: [0.12, 0.38, 0.82], alpha: 1 }
   font:
     family:
       $type: fontFamily
@@ -49,4 +37,4 @@ signatureElement: "Use a compact outlined status rail as the recurring product s
 audit:
   fontFamily:
     ignoreSelectors:
-      - ".third-party-widget"
+      - "["

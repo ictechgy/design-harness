@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Font family adherence bad fixture</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 2rem;
+        color: #171717;
+        background: #ffffff;
+        font-family: "Inter", sans-serif;
+      }
+      main {
+        max-width: 36rem;
+      }
+      .unexpected-stack {
+        font-family: "Unapproved Display", sans-serif;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Account overview</h1>
+      <p class="unexpected-stack">This isolated line adds one family outside the project guide.</p>
+    </main>
+  </body>
+</html>

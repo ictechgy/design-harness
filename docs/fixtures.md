@@ -25,6 +25,11 @@ They are intentionally small, framework-free HTML pages used to calibrate determ
 - `korean/copy-bad.html`: one synthetic defect for each parser-free copy criterion; the single-desktop copy smoke expects five findings and score 63.2.
 - `page-lang-good.html`: html element declares `lang`; must stay silent.
 - `page-lang-bad.html`: html element without a `lang` attribute; expects one `page-lang-missing` deterministic failure per viewport.
+- `font-family-adherence-good.html`: every visible text candidate has only the guide's declared `Inter, sans-serif` list; records clean per-viewport summaries and no font finding.
+- `font-family-adherence-bad.html`: one visible line adds an unapproved named family; expects one `unapproved-font-family` project-contract risk per viewport.
+- `font-family-adherence-ignored.html`: the same kind of mismatch is inside `.third-party-widget`; expects a non-zero ignored count and no font finding while an approved control remains evaluated.
+
+The live example smoke audits these three fixtures with `examples/configs/design-guide.example.yaml`. It also pairs the good fixture with `examples/configs/design-guide.invalid-font-selector.yaml` and uses query-selected scenarios in `font-family-adherence-errors.html` to cover invalid syntax, hostile candidate volume, oversized computed serialization, and selector-evaluation failure. Each case proves that browser-level failure marks only `unapproved-font-family` partial, retains base measurements, and emits no finding from incomplete font evidence. The invalid-selector guide and error-boundary fixture are test-only; structural guide validation deliberately defers CSS syntax to the target browser.
 
 ## Fixture Policy
 

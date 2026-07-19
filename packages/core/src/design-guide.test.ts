@@ -1,9 +1,14 @@
 import { describe, expect, it } from "vitest";
 import {
   assertDesignGuideProfile,
+  classifyFontFamily,
   createExampleDesignGuide,
+  CSS_GENERIC_FONT_FAMILY_VALUES,
   DesignGuideProfileError,
+  foldAsciiCase,
+  fontFamilyComparisonIdentity,
   loadSchema,
+  projectFontFamilyAdherencePolicy,
   SCHEMA_VERSION,
   validateSchema
 } from "./index.js";
@@ -19,6 +24,107 @@ describe("Design Guide Profile v0.5a-1", () => {
       additionalProperties: false,
       properties: { schemaVersion: { const: "0.2" } }
     });
+  });
+
+  it("accepts the optional closed audit overlay and enforces its semantic bounds", () => {
+    const guide = createExampleDesignGuide();
+    guide.audit = { fontFamily: { ignoreSelectors: [".third-party-widget", "[data-vendor-shell]"] } };
+    expect(validateSchema("design-guide", guide)).toEqual({ valid: true, issues: [] });
+    expect(() => assertDesignGuideProfile(guide)).not.toThrow();
+
+    const maximum = createExampleDesignGuide();
+    maximum.audit = {
+      fontFamily: {
+        ignoreSelectors: Array.from({ length: 32 }, (_, index) => `[data-vendor-${index}]`)
+      }
+    };
+    expect(() => assertDesignGuideProfile(maximum)).not.toThrow();
+
+    const invalidCases: Array<[unknown, string]> = [];
+    invalidCases.push([{ ...createExampleDesignGuide(), audit: null }, "$.audit"]);
+    invalidCases.push([{ ...createExampleDesignGuide(), audit: {} }, "$.audit.fontFamily"]);
+    invalidCases.push([{
+      ...createExampleDesignGuide(),
+      audit: { fontFamily: { ignoreSelectors: [] } }
+    }, "$.audit.fontFamily.ignoreSelectors"]);
+    invalidCases.push([{
+      ...createExampleDesignGuide(),
+      audit: { fontFamily: { ignoreSelectors: [".vendor", ".vendor"] } }
+    }, "$.audit.fontFamily.ignoreSelectors[1]"]);
+    invalidCases.push([{
+      ...createExampleDesignGuide(),
+      audit: { fontFamily: { ignoreSelectors: [" x"] } }
+    }, "$.audit.fontFamily.ignoreSelectors[0]"]);
+    invalidCases.push([{
+      ...createExampleDesignGuide(),
+      audit: { fontFamily: { ignoreSelectors: ["x".repeat(257)] } }
+    }, "$.audit.fontFamily.ignoreSelectors[0]"]);
+    invalidCases.push([{
+      ...createExampleDesignGuide(),
+      audit: { fontFamily: { ignoreSelectors: [".safe\nbody"] } }
+    }, "$.audit.fontFamily.ignoreSelectors[0]"]);
+    invalidCases.push([{
+      ...createExampleDesignGuide(),
+      audit: { fontFamily: { ignoreSelectors: [".safe\u202ebody"] } }
+    }, "$.audit.fontFamily.ignoreSelectors[0]"]);
+    invalidCases.push([{
+      ...createExampleDesignGuide(),
+      audit: { fontFamily: { ignoreSelectors: ["\ud800"] } }
+    }, "$.audit.fontFamily.ignoreSelectors[0]"]);
+    invalidCases.push([{
+      ...createExampleDesignGuide(),
+      audit: { fontFamily: { ignoreSelectors: Array(1) as string[] } }
+    }, "$.audit.fontFamily.ignoreSelectors[0]"]);
+    invalidCases.push([{
+      ...createExampleDesignGuide(),
+      audit: { fontFamily: { ignoreSelectors: Array.from({ length: 33 }, (_, index) => `.x-${index}`) } }
+    }, "$.audit.fontFamily.ignoreSelectors"]);
+    invalidCases.push([{
+      ...createExampleDesignGuide(),
+      audit: { fontFamily: { ignoreSelectors: [".vendor"], extra: true } }
+    }, "$.audit.fontFamily.extra"]);
+
+    for (const [value, path] of invalidCases) {
+      expectProfileIssue(value, path, "invalid-profile");
+    }
+
+    const browserInvalidSelector = createExampleDesignGuide();
+    browserInvalidSelector.audit = { fontFamily: { ignoreSelectors: ["["] } };
+    expect(() => assertDesignGuideProfile(browserInvalidSelector)).not.toThrow();
+  });
+
+  it("projects a raw-string font policy with the bounded v1 comparison identity", () => {
+    const guide = createExampleDesignGuide();
+    guide.tokens.font.family.heading.$value = ["INTER", "sans-serif", "École"];
+    guide.tokens.font.family.body.$value = ["inter", "GENERIC(FANGSONG)", "école", "맑은 고딕"];
+    guide.audit = { fontFamily: { ignoreSelectors: [".third-party-widget"] } };
+
+    expect(projectFontFamilyAdherencePolicy(guide)).toEqual({
+      allowedFamilies: [
+        { value: "INTER", kind: "named" },
+        { value: "sans-serif", kind: "generic" },
+        { value: "École", kind: "named" },
+        { value: "GENERIC(FANGSONG)", kind: "generic" },
+        { value: "école", kind: "named" },
+        { value: "맑은 고딕", kind: "named" }
+      ],
+      ignoreSelectors: [".third-party-widget"],
+      policyId: "font-family-adherence-v1"
+    });
+    expect(foldAsciiCase("AÉZé맑")).toBe("aÉzé맑");
+    expect(fontFamilyComparisonIdentity("Inter", "named")).toBe(
+      fontFamilyComparisonIdentity("INTER", "named")
+    );
+    expect(fontFamilyComparisonIdentity("École", "named")).not.toBe(
+      fontFamilyComparisonIdentity("école", "named")
+    );
+    expect(fontFamilyComparisonIdentity("Å", "named")).not.toBe(
+      fontFamilyComparisonIdentity("A\u030a", "named")
+    );
+    expect(classifyFontFamily("UI-SANS-SERIF")).toBe("generic");
+    expect(classifyFontFamily("generic(kai)")).toBe("generic");
+    expect(classifyFontFamily("emoji")).toBe("named");
+    expect(new Set(CSS_GENERIC_FONT_FAMILY_VALUES).size).toBe(CSS_GENERIC_FONT_FAMILY_VALUES.length);
   });
 
   it("accepts the exact minimum and maximum profile bounds", () => {

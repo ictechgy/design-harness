@@ -54,6 +54,51 @@ describe("findingsFromMeasurements", () => {
     expect(findings.some((candidate) => candidate.checkName === "page-lang-missing")).toBe(false);
   });
 
+  it("emits bounded deterministic project-contract risks from font stack summaries", () => {
+    const findings = findingsFromMeasurements({
+      ...baseMeasurements,
+      fontFamilyAdherence: {
+        policyId: "font-family-adherence-v1",
+        allowedFamilies: [
+          { value: "Inter", kind: "named" },
+          { value: "sans-serif", kind: "generic" }
+        ],
+        evaluatedElementCount: 3,
+        ignoredElementCount: 1,
+        violatingElementCount: 2,
+        distinctViolationStackCount: 1,
+        emittedStackCount: 1,
+        truncated: false,
+        stacks: [{
+          rawStack: '"Other", sans-serif',
+          unexpectedFamilies: [{ value: "Other", kind: "named" }],
+          affectedElementCount: 2,
+          selectors: ["#first", "#second"],
+          regions: [
+            { x: 10, y: 20, width: 200, height: 24 },
+            { x: 10, y: 50, width: 200, height: 24 }
+          ]
+        }]
+      }
+    }, ["measurement-desktop", "text-inventory-desktop"]);
+
+    expect(findings).toHaveLength(1);
+    expect(findings[0]).toMatchObject({
+      id: "finding-desktop-unapproved-font-family-1",
+      checkName: "unapproved-font-family",
+      criterionId: "visual.font-family.project-contract",
+      severity: "low",
+      confidence: "high",
+      determinism: "deterministic",
+      resultKind: "risk",
+      humanReviewRecommended: false,
+      selector: "#first",
+      evidenceRefs: ["measurement-desktop", "text-inventory-desktop"]
+    });
+    expect(findings[0]?.problem).toContain("computed font-family list");
+    expect(findings[0]?.problem).not.toMatch(/rendered with|font face|uses an actual/iu);
+  });
+
 
   it("detects likely blank renders", () => {
     const findings = findingsFromMeasurements(

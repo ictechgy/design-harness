@@ -43,15 +43,20 @@ try {
 
   await runPnpm(["install", "--prefer-offline", "--ignore-scripts=false"], { cwd: consumerDir });
   const help = await runPnpm(["exec", "design-harness", "--help"], { cwd: consumerDir, capture: true });
+  const auditHelp = await runPnpm(["exec", "design-harness", "audit", "--help"], { cwd: consumerDir, capture: true });
 
   if (
     !help.includes("Design Harness")
     || !help.includes("design-harness audit")
+    || !help.includes("--guide <design-guide.yaml>")
     || !help.includes("--copy <copy-style.yaml>")
     || !help.includes("guide compile")
     || !help.includes("guide check")
   ) {
     throw new Error(`Packed CLI help output did not include expected usage text:\n${help}`);
+  }
+  if (!auditHelp.includes("--guide <design-guide.yaml>") || !auditHelp.includes("no auto-discovery")) {
+    throw new Error(`Packed audit help omitted explicit --guide/no-discovery behavior:\n${auditHelp}`);
   }
 
   await assertPackedGuideCommands(consumerDir);
@@ -83,6 +88,24 @@ try {
   await assertFailClosedGuideConfig({
     consumerDir,
     name: "guide-profile-invalid",
+    source: packedGuideYaml().replace("generic-card-grid", "unknown-fingerprint"),
+    expectedStage: "profile"
+  });
+  await assertFailClosedAuditGuideConfig({
+    consumerDir,
+    name: "audit-guide-malformed",
+    source: "schemaVersion: [\n",
+    expectedStage: "parse"
+  });
+  await assertFailClosedAuditGuideConfig({
+    consumerDir,
+    name: "audit-guide-schema-invalid",
+    source: `${packedGuideYaml()}unknown: true\n`,
+    expectedStage: "schema"
+  });
+  await assertFailClosedAuditGuideConfig({
+    consumerDir,
+    name: "audit-guide-profile-invalid",
     source: packedGuideYaml().replace("generic-card-grid", "unknown-fingerprint"),
     expectedStage: "profile"
   });
@@ -177,14 +200,7 @@ async function assertFailClosedCopyConfig({ consumerDir, name, source, expectedS
   if (!result.stderr.includes(`Copy style ${expectedStage} error`)) {
     throw new Error(`Packed CLI ${name} config did not report ${expectedStage} stage:\n${result.stderr}`);
   }
-  try {
-    await stat(outDir);
-    throw new Error(`Packed CLI ${name} config created output artifacts`);
-  } catch (error) {
-    if (!(error && typeof error === "object" && "code" in error && error.code === "ENOENT")) {
-      throw error;
-    }
-  }
+  await assertPathMissing(outDir, `Packed CLI ${name} config created output artifacts`);
 }
 
 async function assertFailClosedGuideConfig({ consumerDir, name, source, expectedStage }) {
@@ -216,6 +232,42 @@ async function assertFailClosedGuideConfig({ consumerDir, name, source, expected
       throw new Error(`Packed guide ${action} ${name} created output or transaction residue: ${after.join(", ")}`);
     }
   }
+}
+
+async function assertFailClosedAuditGuideConfig({ consumerDir, name, source, expectedStage }) {
+  const configPath = join(consumerDir, `${name}.yaml`);
+  const outDir = join(consumerDir, `${name}-out`);
+  await writeFile(configPath, source);
+  const result = await runPnpm([
+    "exec",
+    "design-harness",
+    "audit",
+    "--url",
+    "http://localhost:1",
+    "--out",
+    outDir,
+    "--guide",
+    configPath
+  ], { cwd: consumerDir, capture: true, allowFailure: true });
+  if (result.code !== 1) {
+    throw new Error(`Packed audit ${name} exited ${result.code}, expected 1.\n${result.stderr}`);
+  }
+  if (!result.stderr.includes(`Design guide ${expectedStage} error`)) {
+    throw new Error(`Packed audit ${name} did not report ${expectedStage} stage:\n${result.stderr}`);
+  }
+  await assertPathMissing(outDir, `Packed audit ${name} created output artifacts`);
+}
+
+async function assertPathMissing(path, message) {
+  try {
+    await stat(path);
+  } catch (error) {
+    if (error && typeof error === "object" && "code" in error && error.code === "ENOENT") {
+      return;
+    }
+    throw error;
+  }
+  throw new Error(message);
 }
 
 async function packPackage(filter, packDir) {

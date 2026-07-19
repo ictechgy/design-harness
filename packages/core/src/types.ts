@@ -112,11 +112,33 @@ export interface DesignGuideTokens {
   radius: DtcgDimensionGroup;
 }
 
+export interface DesignGuideFontFamilyAudit {
+  ignoreSelectors: string[];
+}
+
+export interface DesignGuideAudit {
+  fontFamily: DesignGuideFontFamilyAudit;
+}
+
 export interface DesignGuide {
   schemaVersion: "0.2";
   tokens: DesignGuideTokens;
   prohibitions: string[];
   signatureElement: string;
+  audit?: DesignGuideAudit;
+}
+
+export type FontFamilyKind = "named" | "generic";
+
+export interface AllowedFontFamily {
+  value: string;
+  kind: FontFamilyKind;
+}
+
+export interface FontFamilyAdherencePolicy {
+  allowedFamilies: AllowedFontFamily[];
+  ignoreSelectors: string[];
+  policyId: "font-family-adherence-v1";
 }
 
 export const COPY_SURFACES = ["button", "error", "marketing", "body"] as const;

@@ -11,6 +11,10 @@ Small pages used to calibrate source-backed criteria and report wording.
 - `responsive-readability-bad.html`: fixed width, sticky obstruction, long lines, and small target risks.
 - `interaction-state-good.html`: associated errors, live status, native controls, and controlled motion.
 - `interaction-state-bad.html`: static signals for interaction-state risks.
+- `font-family-adherence-good.html`: approved computed family lists only.
+- `font-family-adherence-bad.html`: one isolated undeclared family member.
+- `font-family-adherence-ignored.html`: one vendor mismatch under the configured selector exception plus an evaluated control.
+- `font-family-adherence-errors.html`: query-selected hostile candidate, computed-value, and selector-evaluation boundaries for the live smoke.
 - `midjourney-derived/scanability-good.html`: hand-authored dense-dashboard scanability fixture.
 - `midjourney-derived/scanability-bad.html`: hand-authored dense-dashboard scanability stress fixture.
 - `midjourney-derived/state-and-color-good.html`: hand-authored checklist and color hierarchy fixture that should preserve clear state meaning.

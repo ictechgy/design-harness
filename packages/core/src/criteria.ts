@@ -100,6 +100,13 @@ export const CRITERION_SOURCES: CriterionSource[] = [
     note: "Project-declared copy rules are deterministic only against this configured contract."
   },
   {
+    id: "design-guide-contract",
+    title: "Design Harness design guide contract",
+    url: "packages/core/schemas/design-guide.schema.json",
+    strength: "project-contract",
+    note: "Project-declared design tokens are deterministic only against this configured contract."
+  },
+  {
     id: "dyson-haselgrove-2001",
     title: "Dyson & Haselgrove: The influence of reading speed and line length on the effectiveness of reading from screen",
     url: "https://doi.org/10.1006/ijhc.2001.0458",
@@ -150,6 +157,20 @@ export const CRITERIA: Criterion[] = [
     runtime: "computed-style",
     checkNames: ["text-clipping"],
     remediationHint: "Allow the container to grow, wrap text, shorten copy, or adjust overflow styling."
+  },
+  {
+    id: "visual.font-family.project-contract",
+    category: "visual-polish",
+    title: "Computed font families follow the configured guide",
+    description: "Visible text computed font-family lists should contain only family names declared by the project design guide.",
+    sourceRefs: ["design-guide-contract"],
+    sourceStrength: "project-contract",
+    determinism: "deterministic",
+    resultKind: "risk",
+    confidenceDefault: "high",
+    runtime: "computed-style",
+    checkNames: ["unapproved-font-family"],
+    remediationHint: "Use the declared font-family tokens, update the project guide, or add a deliberate third-party selector exception."
   },
   {
     id: "a11y.text-contrast.minimum",

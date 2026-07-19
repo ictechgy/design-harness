@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Font family adherence error-boundary fixture</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 2rem;
+        color: #171717;
+        background: #ffffff;
+        font-family: "Inter", sans-serif;
+      }
+      main {
+        max-width: 36rem;
+      }
+    </style>
+  </head>
+  <body>
+    <main id="fixture-root">
+      <h1>Font evidence boundary</h1>
+      <p data-font-target>This control remains available to unrelated measurements.</p>
+    </main>
+    <script>
+      const scenario = new URLSearchParams(window.location.search).get("scenario");
+      const root = document.querySelector("#fixture-root");
+      const target = document.querySelector("[data-font-target]");
+
+      if (scenario === "candidate-limit" && root) {
+        const fragment = document.createDocumentFragment();
+        for (let index = 0; index < 2001; index += 1) {
+          const paragraph = document.createElement("p");
+          paragraph.textContent = `Bounded candidate ${index + 1}`;
+          fragment.append(paragraph);
+        }
+        root.append(fragment);
+      } else if (scenario === "computed-family-limit" && target instanceof HTMLElement) {
+        target.style.fontFamily = `"${"x".repeat(1100)}", sans-serif`;
+      } else if (scenario === "selector-evaluation") {
+        const closest = Element.prototype.closest;
+        Element.prototype.closest = function (selector) {
+          if (selector === ".third-party-widget") {
+            throw new Error("fixture selector evaluation failure");
+          }
+          return closest.call(this, selector);
+        };
+      }
+    </script>
+  </body>
+</html>

@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Font family adherence ignored fixture</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 2rem;
+        color: #171717;
+        background: #ffffff;
+        font-family: "Inter", sans-serif;
+      }
+      main {
+        max-width: 36rem;
+      }
+      .third-party-widget {
+        font-family: "Vendor Widget Sans", sans-serif;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Account overview</h1>
+      <p>This control line proves the page was evaluated with the approved stack.</p>
+      <div class="third-party-widget">
+        <p>This deliberate vendor subtree is excluded only from font-family adherence.</p>
+      </div>
+    </main>
+  </body>
+</html>

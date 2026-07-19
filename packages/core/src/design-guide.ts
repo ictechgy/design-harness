@@ -1,13 +1,35 @@
 import { SLOP_FINGERPRINT_CATALOG } from "./generated/slop-fingerprints.js";
 import type {
+  AllowedFontFamily,
   DesignGuide,
   DtcgColorSemanticGroup,
   DtcgDimensionGroup,
-  DtcgFontFamilyGroup
+  DtcgFontFamilyGroup,
+  FontFamilyAdherencePolicy,
+  FontFamilyKind
 } from "./types.js";
 
 export const DESIGN_GUIDE_PROFILE_ID = "design-guide-v0.5a-1" as const;
+export const FONT_FAMILY_ADHERENCE_POLICY_ID = "font-family-adherence-v1" as const;
 export const GUIDE_CATALOG_VERSION = SLOP_FINGERPRINT_CATALOG.catalogVersion;
+
+export const CSS_GENERIC_FONT_FAMILY_VALUES = [
+  "serif",
+  "sans-serif",
+  "system-ui",
+  "cursive",
+  "fantasy",
+  "math",
+  "monospace",
+  "ui-serif",
+  "ui-sans-serif",
+  "ui-monospace",
+  "ui-rounded",
+  "generic(fangsong)",
+  "generic(kai)",
+  "generic(khmer-mul)",
+  "generic(nastaliq)"
+] as const;
 
 export type DesignGuideProfileIssueCode = "invalid-profile" | "unsupported-profile" | "sanitize";
 
@@ -40,6 +62,7 @@ const UNSUPPORTED_KEYS = new Set([
   "tokenFile"
 ]);
 const CATALOG_IDS = new Set<string>(SLOP_FINGERPRINT_CATALOG.entries.map((entry) => entry.id));
+const CSS_GENERIC_FONT_FAMILY_VALUE_SET = new Set<string>(CSS_GENERIC_FONT_FAMILY_VALUES);
 
 export function assertDesignGuideProfile(value: unknown): asserts value is DesignGuide {
   const issues: DesignGuideProfileIssue[] = [];
@@ -47,7 +70,13 @@ export function assertDesignGuideProfile(value: unknown): asserts value is Desig
     throw new DesignGuideProfileError([invalid("$", "must be an object")]);
   }
 
-  checkExactKeys(value, ["schemaVersion", "tokens", "prohibitions", "signatureElement"], "$", issues);
+  checkExactKeys(
+    value,
+    ["schemaVersion", "tokens", "prohibitions", "signatureElement", "audit"],
+    "$",
+    issues,
+    ["audit"]
+  );
   if (!hasOwn(value, "schemaVersion") || value.schemaVersion !== "0.2") {
     issues.push(invalid("$.schemaVersion", "must equal 0.2"));
   }
@@ -63,9 +92,96 @@ export function assertDesignGuideProfile(value: unknown): asserts value is Desig
     "$.signatureElement",
     issues
   );
+  if (hasOwn(value, "audit")) {
+    validateAudit(value.audit, "$.audit", issues);
+  }
 
   if (issues.length > 0) {
     throw new DesignGuideProfileError(issues);
+  }
+}
+
+export function projectFontFamilyAdherencePolicy(designGuide: DesignGuide): FontFamilyAdherencePolicy {
+  assertDesignGuideProfile(designGuide);
+  const allowedFamilies: AllowedFontFamily[] = [];
+  const seen = new Set<string>();
+
+  for (const role of ["heading", "body"] as const) {
+    const tokenValue = designGuide.tokens.font.family[role].$value;
+    const families = typeof tokenValue === "string" ? [tokenValue] : tokenValue;
+    for (const value of families) {
+      const kind = classifyFontFamily(value);
+      const identity = fontFamilyComparisonIdentity(value, kind);
+      if (!seen.has(identity)) {
+        seen.add(identity);
+        allowedFamilies.push({ value, kind });
+      }
+    }
+  }
+
+  return {
+    allowedFamilies,
+    ignoreSelectors: [...(designGuide.audit?.fontFamily.ignoreSelectors ?? [])],
+    policyId: FONT_FAMILY_ADHERENCE_POLICY_ID
+  };
+}
+
+export function classifyFontFamily(value: string): FontFamilyKind {
+  return CSS_GENERIC_FONT_FAMILY_VALUE_SET.has(foldAsciiCase(value)) ? "generic" : "named";
+}
+
+export function fontFamilyComparisonIdentity(value: string, kind: FontFamilyKind): string {
+  return `${kind}\u0000${foldAsciiCase(value)}`;
+}
+
+export function foldAsciiCase(value: string): string {
+  return value.replace(/[A-Z]/gu, (character) => String.fromCharCode(character.charCodeAt(0) + 32));
+}
+
+function validateAudit(value: unknown, path: string, issues: DesignGuideProfileIssue[]): void {
+  if (!isRecord(value)) {
+    issues.push(invalid(path, "must be an object"));
+    return;
+  }
+  checkExactKeys(value, ["fontFamily"], path, issues);
+  const fontFamily = hasOwn(value, "fontFamily") ? value.fontFamily : undefined;
+  if (!isRecord(fontFamily)) {
+    issues.push(invalid(`${path}.fontFamily`, "must be an object"));
+    return;
+  }
+  const fontFamilyPath = `${path}.fontFamily`;
+  checkExactKeys(fontFamily, ["ignoreSelectors"], fontFamilyPath, issues);
+  validateIgnoreSelectors(
+    hasOwn(fontFamily, "ignoreSelectors") ? fontFamily.ignoreSelectors : undefined,
+    `${fontFamilyPath}.ignoreSelectors`,
+    issues
+  );
+}
+
+function validateIgnoreSelectors(value: unknown, path: string, issues: DesignGuideProfileIssue[]): void {
+  if (!Array.isArray(value) || value.length < 1 || value.length > 32) {
+    issues.push(invalid(path, "must contain 1..32 unique selectors"));
+    return;
+  }
+  const seen = new Set<string>();
+  for (let index = 0; index < value.length; index += 1) {
+    const selector = value[index];
+    const itemPath = `${path}[${index}]`;
+    if (
+      typeof selector !== "string"
+      || [...selector].length < 1
+      || [...selector].length > 256
+      || selector !== selector.trim()
+      || hasUnpairedSurrogate(selector)
+      || CONTROL_OR_BIDI_PATTERN.test(selector)
+    ) {
+      issues.push(invalid(itemPath, "must be a trim-stable selector of 1..256 safe Unicode scalar values"));
+    } else if (seen.has(selector)) {
+      issues.push(invalid(itemPath, "duplicates an earlier selector"));
+    }
+    if (typeof selector === "string") {
+      seen.add(selector);
+    }
   }
 }
 

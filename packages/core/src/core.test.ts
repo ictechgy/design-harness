@@ -414,6 +414,14 @@ describe("criteria registry", () => {
       resultKind: "needs-review",
       humanReviewRecommended: true
     });
+    expect(findingMetadataForCheck("unapproved-font-family")).toMatchObject({
+      criterionId: "visual.font-family.project-contract",
+      determinism: "deterministic",
+      resultKind: "risk",
+      runtime: "computed-style",
+      confidence: "high",
+      humanReviewRecommended: false
+    });
   });
 
   it("locks the parser-free copy criteria metadata", () => {
