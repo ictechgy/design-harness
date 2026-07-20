@@ -13,8 +13,14 @@ Alpha compositing is `out = α·src + (1−α)·dst`, applied from the innermost
 opaque layer or the document root is reached. The root is opaque in every fixture here, so no fixture
 depends on a fallback background.
 
-Threshold: **4.5:1** for normal-size text (SC 1.4.3). No fixture uses large text, so the 3:1 large-text
-threshold is never in play.
+Thresholds follow SC 1.4.3 as implemented at `browser-measurements.ts`:
+`fontSize >= 24 || (fontSize >= 18.66 && fontWeight >= 700) ? 3 : 4.5`.
+
+**Three of the four pages contain a large-text row**, so the 3:1 branch is in play and each table below
+records the required ratio per element. Headings inherit `font-weight: 700` from the user agent:
+`#surface-heading` is an unstyled `h2` computing to 24px, while `#page-title` and `#tokens-heading` are
+20px bold — all three take the 3:1 threshold. Every element carrying a *deliberate* violation is 15px
+regular body text at 4.5:1.
 
 ---
 
@@ -34,19 +40,23 @@ Composited surface = `rgb(26, 29, 39)`, relative luminance **L = 0.01245**.
 
 **Elements under test**
 
-| selector | declared colour | effective colour | L | ratio vs surface | expected |
-|---|---|---|---|---|---|
-| `#surface-heading` | `#e6edf7` | `#e6edf7` (opaque) | 0.84107 | **14.27:1** | silent |
-| `#surface-body` | `#e6edf7` | `#e6edf7` (opaque) | 0.84107 | **14.27:1** | silent |
-| `#surface-muted` | `rgba(255,255,255,0.72)` | 0.72·255 + 0.28·(26,29,39) = `rgb(191,192,195)` | 0.52716 | **9.24:1** | silent |
+| selector | size/weight | required | declared colour | effective colour | ratio vs surface | expected |
+|---|---|---|---|---|---|---|
+| `#surface-heading` | 24px 700 | 3:1 | `#e6edf7` | `#e6edf7` (opaque) | **14.27:1** | silent |
+| `#surface-body` | 15px 400 | 4.5:1 | `#e6edf7` | `#e6edf7` (opaque) | **14.27:1** | silent |
+| `#surface-muted` | 15px 400 | 4.5:1 | `rgba(255,255,255,0.72)` | 0.72·255 + 0.28·(26,29,39) = `rgb(191,192,195)` | **9.24:1** | silent |
+
+`#page-title` (20px 700, 3:1) sits outside `.surface`, so it is scored against the page root `#0b0f19` and
+clears comfortably. It is correctly absent from the ledger even on the current build.
 
 The muted label is the load-bearing case: its foreground alpha must be composited over the *composited*
 surface, not over the raw `rgba(255,255,255,0.06)` string and not over the page root.
 
 **Why this page fires today.** `findEffectiveBackgroundColor` returns the string
 `rgba(255, 255, 255, 0.06)` and `parseRgb` reads it as `(255, 255, 255)`, i.e. opaque white, L = 1.0. Every
-row above is then scored against white: `#e6edf7` gives (1.05)/(0.89108) = **1.18:1**, far below 4.5, so all
-three rows are reported as violations. The page is correct; the measurement is not.
+row above is then scored against white: `#e6edf7` gives (1.05)/(0.89108) = **1.18:1**, which is below both
+the 3:1 and the 4.5:1 branch, so all three rows are reported as violations regardless of threshold. The page
+is correct; the measurement is not.
 
 ---
 
@@ -54,9 +64,9 @@ three rows are reported as violations. The page is correct; the measurement is n
 
 Identical to the page above plus one element:
 
-| selector | declared colour | effective colour | L | ratio vs surface | expected |
-|---|---|---|---|---|---|
-| `#surface-too-faint` | `rgba(255,255,255,0.25)` | 0.25·255 + 0.75·(26,29,39) = `rgb(83,86,93)` | 0.09285 | **2.29:1** | **fires** |
+| selector | size/weight | required | declared colour | effective colour | ratio vs surface | expected |
+|---|---|---|---|---|---|---|
+| `#surface-too-faint` | 15px 400 | 4.5:1 | `rgba(255,255,255,0.25)` | 0.25·255 + 0.75·(26,29,39) = `rgb(83,86,93)` | **2.29:1** | **fires** |
 
 2.29 < 4.5. This is a genuine SC 1.4.3 failure and must survive every repair. It exercises the foreground
 alpha path specifically: a detector that composites the background but not the foreground scores this
@@ -77,10 +87,10 @@ Conversion is oklch → oklab → linear sRGB → gamma-encoded sRGB.
 `oklch(0.18 0.02 260)` → `rgb(12, 18, 26)`; the `color-mix(in oklab, white 6%, transparent)` surface
 composites over it to `rgb(27, 32, 40)`, **L = 0.01419**.
 
-| selector | declared colour | converted sRGB | ratio vs surface | expected |
-|---|---|---|---|---|
-| `#tokens-heading` | `oklch(0.95 0.01 260)` | `rgb(235,239,245)` | **14.17:1** | silent |
-| `#tokens-body` | `oklch(0.92 0.01 260)` | `rgb(225,229,235)` | **12.94:1** | silent |
+| selector | size/weight | required | declared colour | converted sRGB | ratio vs surface | expected |
+|---|---|---|---|---|---|---|
+| `#tokens-heading` | 20px 700 | 3:1 | `oklch(0.95 0.01 260)` | `rgb(235,239,245)` | **14.17:1** | silent |
+| `#tokens-body` | 15px 400 | 4.5:1 | `oklch(0.92 0.01 260)` | `rgb(225,229,235)` | **12.94:1** | silent |
 
 Converted channel values may differ by ±1 from a given implementation's rounding. The assertion is the
 pass/fail verdict and the ratio to one decimal place, not a byte-exact rounding contract.
@@ -94,9 +104,9 @@ to black, ratio ≈ 1.0, and every row is reported as a violation.
 
 ## `clean-corpus-tokens-defective.html` — one real violation
 
-| selector | declared colour | converted sRGB | ratio vs surface | expected |
-|---|---|---|---|---|
-| `#tokens-too-faint` | `oklch(0.45 0.01 260)` | `rgb(82,85,91)` | **2.19:1** | **fires** |
+| selector | size/weight | required | declared colour | converted sRGB | ratio vs surface | expected |
+|---|---|---|---|---|---|---|
+| `#tokens-too-faint` | 15px 400 | 4.5:1 | `oklch(0.45 0.01 260)` | `rgb(82,85,91)` | **2.19:1** | **fires** |
 
 Below 4.5:1 once the conversion is correct. A detector that skips unparseable colours rather than
 converting them reports nothing here — which is why the tokens pair is a *pair*: silence on the good page

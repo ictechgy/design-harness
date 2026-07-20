@@ -326,10 +326,13 @@ function assertCleanCorpusGood(auditResult, name) {
   for (const preset of auditResult.viewportPresets) {
     const findings = contrastFindings(auditResult, preset.name);
     if (findings.length !== 0) {
-      const selectors = findings.map((finding) => finding.observed?.selector ?? finding.id).join(", ");
+      const detail = findings
+        .map((finding) => `${finding.selector} (${finding.observed?.ratio}:1)`)
+        .join(", ");
       throw new Error(
-        `${name} (good) emitted ${findings.length} dom-contrast-risk findings on ${preset.name}: ${selectors}. `
-        + "Every element on this page clears 4.5:1; see examples/ui-quality-fixtures/clean-corpus-expected.md."
+        `${name} (good) emitted ${findings.length} dom-contrast-risk findings on ${preset.name}: ${detail}. `
+        + "Every element on this page clears its required ratio; "
+        + "see examples/ui-quality-fixtures/clean-corpus-expected.md."
       );
     }
   }
