@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Clean corpus — CSS Color 4 tokens (defective)</title>
+    <style>
+      /* Authored in CSS Color 4. Chromium serialises these in their own colour
+         space rather than normalising to rgb(), which is the point of this page. */
+      html {
+        background: oklch(0.18 0.02 260); /* rgb(12, 18, 26) */
+      }
+      body {
+        margin: 0;
+        padding: 32px;
+        font-family: system-ui, sans-serif;
+        color: oklch(0.95 0.01 260);
+      }
+      main {
+        max-width: 640px;
+      }
+      /* Composites to rgb(27, 32, 40) over the page root. */
+      .surface {
+        background: color-mix(in oklab, white 6%, transparent);
+        border-radius: 12px;
+        padding: 24px;
+      }
+      h2 {
+        font-size: 20px;
+        line-height: 28px;
+        margin: 0 0 12px;
+        color: oklch(0.95 0.01 260);
+      }
+      p {
+        font-size: 15px;
+        line-height: 24px;
+        margin: 0 0 12px;
+        max-width: 60ch;
+        color: oklch(0.92 0.01 260);
+      }
+      /* rgb(82, 85, 91) against the composited surface: 2.19:1, a real SC 1.4.3 failure. */
+      .too-faint {
+        color: oklch(0.45 0.01 260);
+        margin-bottom: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <section class="surface">
+        <h2 id="tokens-heading">Ledger export</h2>
+        <p id="tokens-body">
+          Exports include every settled transaction in the selected range. Pending authorisations are
+          excluded until they clear.
+        </p>
+        <p class="too-faint" id="tokens-too-faint">Reference DH-2291-B.</p>
+      </section>
+    </main>
+  </body>
+</html>

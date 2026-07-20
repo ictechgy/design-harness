@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Clean corpus — translucent surfaces (defective)</title>
+    <style>
+      html {
+        background: #0b0f19;
+      }
+      body {
+        margin: 0;
+        padding: 32px;
+        font-family: system-ui, sans-serif;
+        color: #e6edf7;
+      }
+      main {
+        max-width: 640px;
+      }
+      /* Composites to rgb(26, 29, 39) over the page root. */
+      .surface {
+        background: rgba(255, 255, 255, 0.06);
+        border-radius: 12px;
+        padding: 24px;
+      }
+      h1 {
+        font-size: 20px;
+        line-height: 28px;
+        margin: 0 0 12px;
+      }
+      p {
+        font-size: 15px;
+        line-height: 24px;
+        margin: 0 0 12px;
+        max-width: 60ch;
+      }
+      .muted {
+        color: rgba(255, 255, 255, 0.72);
+        margin-bottom: 0;
+      }
+      /* Composites to rgb(83, 86, 93) over the surface: 2.29:1, a real SC 1.4.3 failure. */
+      .too-faint {
+        color: rgba(255, 255, 255, 0.25);
+        margin-bottom: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1 id="page-title">Payout summary</h1>
+      <section class="surface">
+        <h2 id="surface-heading">Settlement window</h2>
+        <p id="surface-body">
+          Payouts settle on the next business day after the batch closes. Amounts shown here exclude
+          processing fees, which appear on the monthly statement.
+        </p>
+        <p class="muted" id="surface-muted">Last reconciled 14 minutes ago.</p>
+        <p class="too-faint" id="surface-too-faint">Batch reference DH-2291-A.</p>
+      </section>
+    </main>
+  </body>
+</html>

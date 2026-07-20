@@ -33,6 +33,33 @@ const expectedRealStackAllowedFamilies = [
   { value: "Rogue", kind: "named" }
 ];
 
+// v0.5c step 1 — measurement tripwires.
+//
+// `textElements` (browser-measurements.ts) is shared by four consumers: clippedText, contrastRisks,
+// excessiveLineLength, and meaningfulElementCount. Narrowing that array would silently delete unrelated
+// detectors, and the DOM-side clipping collector has no test coverage of any kind. These pins exist so a
+// guard intended for one consumer cannot quietly change the others.
+//
+// meaningfulElementCount is textElements.length, so it moves if and only if the shared array moves.
+const meaningfulElementCountBaseline = { desktop: 71, mobile: 66 };
+const lineLengthTripwireFixture = "responsive-readability-bad.html";
+
+// v0.5c step 2 — clean-corpus false-positive gate for dom-contrast-risk.
+//
+// Each pair is one correct page plus the same page with one genuinely sub-4.5:1 label. The good half
+// proves the detector stays silent on correct modern styling; the defective half proves it has not been
+// disabled to achieve that silence. Hand-computed reference values, written before the detector was ever
+// run against these pages, live in examples/ui-quality-fixtures/clean-corpus-expected.md.
+//
+// This gate is RED on the current build and is meant to be: it is the definition of done for the contrast
+// repair. Set DESIGN_HARNESS_CLEAN_CORPUS=off only to unblock unrelated work on a shared branch.
+const cleanCorpusPairs = [
+  { name: "clean-corpus-surface", good: "clean-corpus-surface.html", defective: "clean-corpus-surface-defective.html" },
+  { name: "clean-corpus-tokens", good: "clean-corpus-tokens.html", defective: "clean-corpus-tokens-defective.html" }
+];
+const cleanCorpusEnabled = process.env.DESIGN_HARNESS_CLEAN_CORPUS !== "off";
+const cleanCorpusFailures = [];
+
 rmSync(outRoot, { recursive: true, force: true });
 
 const server = createServer((request, response) => {
@@ -79,6 +106,53 @@ try {
     throw new Error(`No-config example CLI exited ${exitCode}`);
   }
   assertNoConfigArtifacts(noConfigOutDir);
+
+  const lineLengthOutDir = join(outRoot, "line-length-tripwire");
+  const lineLengthExit = await run(process.execPath, [
+    cliPath,
+    "audit",
+    "--url",
+    `http://127.0.0.1:${port}/ui-quality-fixtures/${lineLengthTripwireFixture}`,
+    "--out",
+    lineLengthOutDir
+  ]);
+  if (lineLengthExit !== 0) {
+    throw new Error(`Line-length tripwire CLI exited ${lineLengthExit}`);
+  }
+  assertLineLengthTripwire(readAuditResult(lineLengthOutDir));
+
+  // Collected rather than thrown: this gate is red until the contrast repair lands, and a throw here
+  // would skip every font-family assertion below it, masking an unrelated regression for the duration of
+  // the milestone. Failures are reported immediately and rethrown after the rest of the suite has run.
+  if (cleanCorpusEnabled) {
+    for (const pair of cleanCorpusPairs) {
+      for (const [half, fixture, assertHalf] of [
+        ["good", pair.good, assertCleanCorpusGood],
+        ["defective", pair.defective, assertCleanCorpusDefective]
+      ]) {
+        const outDir = join(outRoot, `${pair.name}-${half}`);
+        try {
+          const exitCode = await run(process.execPath, [
+            cliPath,
+            "audit",
+            "--url",
+            `http://127.0.0.1:${port}/ui-quality-fixtures/${fixture}`,
+            "--out",
+            outDir
+          ]);
+          if (exitCode !== 0) {
+            throw new Error(`${pair.name} (${half}) CLI exited ${exitCode}`);
+          }
+          assertHalf(readAuditResult(outDir), pair.name);
+        } catch (error) {
+          cleanCorpusFailures.push(error instanceof Error ? error.message : String(error));
+          console.error(`CLEAN CORPUS FAIL: ${error instanceof Error ? error.message : String(error)}`);
+        }
+      }
+    }
+  } else {
+    console.warn("Clean corpus gate SKIPPED via DESIGN_HARNESS_CLEAN_CORPUS=off.");
+  }
 
   await runFontFamilyFixture({
     cliPath,
@@ -142,7 +216,13 @@ try {
       assertResult: (auditResult) => assertScopedFontErrorRun(auditResult, scenario.reasonCode)
     });
   }
-  console.log("Example smoke passed: no-config regression plus live real-stack font-family success, exact companion mismatch, exception, and scoped-error audits.");
+  if (cleanCorpusFailures.length > 0) {
+    throw new Error(
+      `Clean corpus gate failed ${cleanCorpusFailures.length} assertion(s); every other example-smoke `
+      + `assertion above passed.\n  - ${cleanCorpusFailures.join("\n  - ")}`
+    );
+  }
+  console.log("Example smoke passed: no-config regression, measurement tripwires, clean corpus, plus live real-stack font-family success, exact companion mismatch, exception, and scoped-error audits.");
 } finally {
   await new Promise((resolveClose) => server.close(resolveClose));
 }
@@ -183,6 +263,112 @@ function assertNoConfigArtifacts(outDir) {
   }
   if (metadata.toolVersions?.["@design-harness/copy-audit"] !== undefined) {
     throw new Error("No-copy example recorded copy-audit metadata");
+  }
+  assertMeaningfulElementCountBaseline(auditResult);
+}
+
+function assertMeaningfulElementCountBaseline(auditResult) {
+  for (const asset of auditResult.evidenceAssets) {
+    if (asset.type !== "measurement") {
+      continue;
+    }
+    const expected = meaningfulElementCountBaseline[asset.viewport];
+    if (expected === undefined) {
+      throw new Error(`No meaningfulElementCount baseline pinned for viewport ${asset.viewport}`);
+    }
+    if (asset.data?.meaningfulElementCount !== expected) {
+      throw new Error(
+        `merchant-dashboard ${asset.viewport} meaningfulElementCount is ${asset.data?.meaningfulElementCount}, `
+        + `expected ${expected}. The shared textElements array changed; clippedText, contrastRisks, `
+        + `excessiveLineLength, and blank-render all read from it.`
+      );
+    }
+  }
+}
+
+function contrastFindings(auditResult, viewport) {
+  return auditResult.findings.filter(
+    (finding) => finding.checkName === "dom-contrast-risk" && finding.viewport === viewport
+  );
+}
+
+// A zero-findings assertion alone is satisfied by a dead measurement closure, which produces zero findings
+// for every check. These integrity clauses are what separate "the page is correct" from "the harness
+// stopped measuring".
+function assertCleanCorpusIntegrity(auditResult, label) {
+  if (auditResult.status !== "success") {
+    throw new Error(`${label} status is ${auditResult.status}, expected success`);
+  }
+  if (auditResult.failedChecks.length !== 0) {
+    throw new Error(`${label} recorded failed checks: ${auditResult.failedChecks.join(", ")}`);
+  }
+  for (const preset of auditResult.viewportPresets) {
+    const measurement = auditResult.evidenceAssets.find(
+      (asset) => asset.type === "measurement" && asset.viewport === preset.name
+    );
+    if (!measurement) {
+      throw new Error(`${label} produced no measurement evidence for ${preset.name}`);
+    }
+    if (!Array.isArray(measurement.data?.contrastRisks)) {
+      throw new Error(`${label} ${preset.name} measurement carries no contrastRisks array`);
+    }
+    if (!(measurement.data?.meaningfulElementCount > 0)) {
+      throw new Error(
+        `${label} ${preset.name} measured ${measurement.data?.meaningfulElementCount} elements; `
+        + "the page has text, so the measurement closure did not run"
+      );
+    }
+  }
+}
+
+function assertCleanCorpusGood(auditResult, name) {
+  assertCleanCorpusIntegrity(auditResult, `${name} (good)`);
+  for (const preset of auditResult.viewportPresets) {
+    const findings = contrastFindings(auditResult, preset.name);
+    if (findings.length !== 0) {
+      const selectors = findings.map((finding) => finding.observed?.selector ?? finding.id).join(", ");
+      throw new Error(
+        `${name} (good) emitted ${findings.length} dom-contrast-risk findings on ${preset.name}: ${selectors}. `
+        + "Every element on this page clears 4.5:1; see examples/ui-quality-fixtures/clean-corpus-expected.md."
+      );
+    }
+  }
+}
+
+function assertCleanCorpusDefective(auditResult, name) {
+  assertCleanCorpusIntegrity(auditResult, `${name} (defective)`);
+  for (const preset of auditResult.viewportPresets) {
+    const findings = contrastFindings(auditResult, preset.name);
+    if (findings.length !== 1) {
+      throw new Error(
+        `${name} (defective) emitted ${findings.length} dom-contrast-risk findings on ${preset.name}, expected 1. `
+        + "Exactly one label on this page is genuinely below 4.5:1; more means false positives, "
+        + "fewer means the detector was disabled."
+      );
+    }
+  }
+}
+
+function assertLineLengthTripwire(auditResult) {
+  if (auditResult.status !== "success") {
+    throw new Error(`Line-length tripwire run status is ${auditResult.status}, expected success`);
+  }
+  if (auditResult.failedChecks.length !== 0) {
+    throw new Error(`Line-length tripwire run recorded failed checks: ${auditResult.failedChecks.join(", ")}`);
+  }
+  const perViewport = new Map();
+  for (const finding of auditResult.findings) {
+    if (finding.checkName === "excessive-line-length") {
+      perViewport.set(finding.viewport, (perViewport.get(finding.viewport) ?? 0) + 1);
+    }
+  }
+  for (const preset of auditResult.viewportPresets) {
+    if ((perViewport.get(preset.name) ?? 0) < 1) {
+      throw new Error(
+        `${lineLengthTripwireFixture} stopped emitting excessive-line-length on ${preset.name}. `
+        + "A change to the shared textElements array most likely removed its candidates."
+      );
+    }
   }
 }
 
