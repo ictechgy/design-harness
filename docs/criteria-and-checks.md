@@ -70,6 +70,37 @@ Recommended authoring rules, not built-in defaults:
 
 Copy-style-backed criteria use `sourceStrength: "project-contract"` and can emit deterministic `risk` at most. They assert "this captured copy conflicts with your declared contract", not universal language quality.
 
+### Text Contrast Coverage (`dom-contrast-risk`)
+
+`dom-contrast-risk` composites both the foreground and the backdrop before computing a WCAG 2.x ratio. The
+element's own `background-color` is layer zero, ancestors are walked until one carries no alpha component,
+and the base is the UA canvas measured from a `color: Canvas` probe rather than a hardcoded white. Both
+channels are composited: text at `rgba(255,255,255,0.25)` on a dark surface is a real failure, and scoring
+it as opaque white would report roughly 16.8:1 and pass it. `oklch()`, `oklab()`, and `color(srgb …)` are
+converted exactly; `rgb(r g b / a%)` never reaches the parser because Chromium normalises it first.
+
+Only elements that render their **own** direct text are scored, so a wrapper and its child no longer report
+the same text twice. This is not a leaf rule: in `<p style="color:#777">x <strong style="color:#fff">y
+</strong></p>` both elements render text in their own colour and both are evaluated.
+
+**What it does not measure.** When the painted backdrop cannot be determined from computed styles, the check
+emits *no finding* and records the element in `contrastCoverage` on the measurement evidence, plus a
+`contrast-elements-skipped` notice. A skipped element is not a passing element, and `evaluatedElementCount`
+is what distinguishes "looked and found nothing" from "never looked". Skips are:
+
+| Condition | Why it is not measurable here |
+|---|---|
+| `background-image` anywhere in the chain | A gradient or raster has no single colour; sampling only its stops is unsound in both directions. |
+| `backdrop-filter` in the chain | The painted result depends on what is behind the element, which computed style does not expose. |
+| Out-of-flow element whose chain never reaches an opaque layer | DOM ancestry does not describe what paints behind a fixed or portalled overlay. |
+| `color(display-p3 …)`, `lab()`, `lch()`, or any unparsed value | A scope decision, not a limit of the evidence — these are convertible and simply are not yet. |
+| Foreground `alpha: 0` | No glyph is painted, so there is nothing to contrast. |
+
+Additionally, the check is **blind to `opacity`, `mix-blend-mode`, and `filter`** on ancestors: it neither
+composites them nor skips for them, so a ratio under those properties is reported from the unblended
+colours. That is a known recall hole, recorded here rather than hidden, and it is unchanged from earlier
+versions.
+
 ### Font Family Contract
 
 CLI users may pass one explicit `design-guide.yaml` to `audit --guide`. The CLI projects heading, body, then optional `audit.fontFamily.additionalAllowedFamilies` into the allowed union and carries optional `audit.fontFamily.ignoreSelectors` in `font-family-adherence-v1`; neither YAML nor the whole guide crosses into the capture package. Without `--guide`, this check performs no loading, capture, or reporting work.

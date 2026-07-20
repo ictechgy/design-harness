@@ -37,19 +37,24 @@ Layer stack: `html { background: #0b0f19 }` → `.surface { background: rgba(255
 
 | channel | computation | result |
 |---|---|---|
-| R | 0.06·255 + 0.94·11 = 15.30 + 10.34 | 25.64 → **26** |
-| G | 0.06·255 + 0.94·15 = 15.30 + 14.10 | 29.40 → **29** |
-| B | 0.06·255 + 0.94·25 = 15.30 + 23.50 | 38.80 → **39** |
+| R | 0.06·255 + 0.94·11 = 15.30 + 10.34 | **25.64** |
+| G | 0.06·255 + 0.94·15 = 15.30 + 14.10 | **29.40** |
+| B | 0.06·255 + 0.94·25 = 15.30 + 23.50 | **38.80** |
 
-Composited surface = `rgb(26, 29, 39)`, relative luminance **L = 0.01245**.
+Composited surface = `rgb(25.64, 29.40, 38.80)`, relative luminance **L = 0.01258526**.
+
+Channels are **not** rounded before the luminance step. Rounding to `rgb(26, 29, 39)` first reintroduces up
+to 0.5/255 of error per channel and moves these ratios by up to 0.03 — enough to flip a verdict next to the
+4.5 threshold. Rounding is presentational only: the `backgroundColor` recorded in evidence is the rounded
+`rgb(26, 29, 39)`, while the arithmetic runs on the fractional value.
 
 **Elements under test**
 
 | selector | size/weight | required | declared colour | effective colour | ratio vs surface | expected |
 |---|---|---|---|---|---|---|
-| `#surface-heading` | 24px 700 | 3:1 | `#e6edf7` | `#e6edf7` (opaque) | **14.27:1** | silent |
-| `#surface-body` | 15px 400 | 4.5:1 | `#e6edf7` | `#e6edf7` (opaque) | **14.27:1** | silent |
-| `#surface-muted` | 15px 400 | 4.5:1 | `rgba(255,255,255,0.72)` | 0.72·255 + 0.28·(26,29,39) = `rgb(191,192,195)` | **9.24:1** | silent |
+| `#surface-heading` | 24px 700 | 3:1 | `#e6edf7` | `#e6edf7` (opaque) | **14.2377:1** | silent |
+| `#surface-body` | 15px 400 | 4.5:1 | `#e6edf7` | `#e6edf7` (opaque) | **14.2377:1** | silent |
+| `#surface-muted` | 15px 400 | 4.5:1 | `rgba(255,255,255,0.72)` | composited over the surface | **9.2017:1** | silent |
 
 `#page-title` (20px 700, 3:1) sits outside `.surface`, so it is scored against the page root `#0b0f19` and
 clears comfortably. It is correctly absent from the ledger even on the current build.
@@ -57,7 +62,7 @@ clears comfortably. It is correctly absent from the ledger even on the current b
 The muted label is the load-bearing case: its foreground alpha must be composited over the *composited*
 surface, not over the raw `rgba(255,255,255,0.06)` string and not over the page root.
 
-**Why this page fires today.** `findEffectiveBackgroundColor` returns the string
+**Why this page fired before the repair.** `findEffectiveBackgroundColor` returned the string
 `rgba(255, 255, 255, 0.06)` and `parseRgb` reads it as `(255, 255, 255)`, i.e. opaque white, L = 1.0. Every
 row above is then scored against white: `#e6edf7` gives (1.05)/(0.89108) = **1.18:1**, which is below both
 the 3:1 and the 4.5:1 branch, so all three rows are reported as violations regardless of threshold. The page
@@ -71,12 +76,13 @@ Identical to the page above plus one element:
 
 | selector | size/weight | required | declared colour | effective colour | ratio vs surface | expected |
 |---|---|---|---|---|---|---|
-| `#surface-too-faint` | 15px 400 | 4.5:1 | `rgba(255,255,255,0.25)` | 0.25·255 + 0.75·(26,29,39) = `rgb(83,86,93)` | **2.29:1** | **fires** |
+| `#surface-too-faint` | 15px 400 | 4.5:1 | `rgba(255,255,255,0.25)` | composited over the surface | **2.2768:1** | **fires** |
 
-2.29 < 4.5. This is a genuine SC 1.4.3 failure and must survive every repair. It exercises the foreground
+2.2768 < 4.5. This is a genuine SC 1.4.3 failure and must survive every repair. It exercises the foreground
 alpha path specifically: a detector that composites the background but not the foreground scores this
-element as opaque `#ffffff` on `rgb(26,29,39)` = **16.81:1** and lets it pass. That 16.81-vs-2.29 gap is
-the entire reason this row exists.
+element as opaque `#ffffff` on the composited surface = **16.81:1** and lets it pass. That
+16.81-vs-2.2768 gap is the entire reason this row exists, and the smoke gate asserts the ratio band so a
+partial fix cannot pass by emitting the right count.
 
 ---
 
@@ -90,17 +96,17 @@ Layer stack: `html { background: oklch(0.18 0.02 260) }` → `.surface { backgro
 
 Conversion is oklch → oklab → linear sRGB → gamma-encoded sRGB.
 `oklch(0.18 0.02 260)` → `rgb(12, 18, 26)`; the `color-mix(in oklab, white 6%, transparent)` surface
-composites over it to `rgb(27, 32, 40)`, **L = 0.01419**.
+composites over it to `rgb(26.943457, 31.987741, 40.200084)`, **L = 0.014191716**.
 
 | selector | size/weight | required | declared colour | converted sRGB | ratio vs surface | expected |
 |---|---|---|---|---|---|---|
-| `#tokens-heading` | 20px 700 | 3:1 | `oklch(0.95 0.01 260)` | `rgb(235,239,245)` | **14.17:1** | silent |
-| `#tokens-body` | 15px 400 | 4.5:1 | `oklch(0.92 0.01 260)` | `rgb(225,229,235)` | **12.94:1** | silent |
+| `#tokens-heading` | 20px 700 | 3:1 | `oklch(0.95 0.01 260)` | `rgb(235,239,245)` | **14.1389:1** | silent |
+| `#tokens-body` | 15px 400 | 4.5:1 | `oklch(0.92 0.01 260)` | `rgb(225,229,235)` | **12.9128:1** | silent |
 
 Converted channel values may differ by ±1 from a given implementation's rounding. The assertion is the
 pass/fail verdict and the ratio to one decimal place, not a byte-exact rounding contract.
 
-**Why this page fires today.** `parseRgb` matches only `rgba?(...)`. `oklch(...)` and `oklab(...)` return
+**Why this page fired before the repair.** `parseRgb` matched only `rgba?(...)`. `oklch(...)` and `oklab(...)` return
 the no-match fallback `{red: 0, green: 0, blue: 0, alpha: 1}` — opaque black — which also satisfies the
 `alpha > 0` test, halting the ancestor walk at the first such layer. Foreground and background both resolve
 to black, ratio ≈ 1.0, and every row is reported as a violation.
@@ -111,7 +117,7 @@ to black, ratio ≈ 1.0, and every row is reported as a violation.
 
 | selector | size/weight | required | declared colour | converted sRGB | ratio vs surface | expected |
 |---|---|---|---|---|---|---|
-| `#tokens-too-faint` | 15px 400 | 4.5:1 | `oklch(0.45 0.01 260)` | `rgb(82,85,91)` | **2.19:1** | **fires** |
+| `#tokens-too-faint` | 15px 400 | 4.5:1 | `oklch(0.45 0.01 260)` | `rgb(82,85,91)` | **2.1991:1** | **fires** |
 
 Below 4.5:1 once the conversion is correct. A detector that skips unparseable colours rather than
 converting them reports nothing here — which is why the tokens pair is a *pair*: silence on the good page
@@ -122,7 +128,7 @@ is only meaningful if the defective page still speaks.
 ## Wrapper rows — expected to disappear, not to be re-scored
 
 The detector selects `body *` with non-empty `innerText`, so ancestors that contain text but render none of
-their own are evaluated as if they did. Observed on the current build:
+their own would be evaluated as if they did. The *renders its own direct text* guard removes them:
 
 | page | wrapper row | why it appears |
 |---|---|---|

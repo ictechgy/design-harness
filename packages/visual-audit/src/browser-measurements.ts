@@ -1,6 +1,10 @@
 import type { AuditNotice, CopyStyleSurfaceRule } from "@design-harness/core";
 import type { ViewportMeasurements } from "./checks.js";
-import { computeContrastRisks, type ContrastCandidate } from "./measurement-primitives.js";
+import {
+  computeContrastRisks,
+  type ContrastCandidate,
+  type ContrastSkipReason
+} from "./measurement-primitives.js";
 
 export interface ViewportCollectionResult {
   measurements: ViewportMeasurements;
@@ -176,16 +180,28 @@ export async function collectViewportMeasurements(page: {
     // Collection only — parsing, ratio, and threshold happen in Node. See measurement-primitives.ts for
     // why this boundary exists: an imported helper would throw ReferenceError inside this serialised
     // closure, and audit-url.ts would swallow it as a failed check.
-    const contrastCandidates = textElements.map((element) => {
-      const style = window.getComputedStyle(element);
-      return {
-        ...sampleElement(element),
-        color: style.color,
-        backgroundColor: findEffectiveBackgroundColor(element),
-        fontSizePx: Number.parseFloat(style.fontSize || "16"),
-        fontWeight: Number.parseInt(style.fontWeight || "400", 10)
-      };
-    });
+    //
+    // `.filter(rendersOwnText)` is applied here and NOWHERE else. It must never touch `textElements`,
+    // which clippedText, excessiveLineLength, and meaningfulElementCount also read.
+    const canvasColor = measureCanvasColor();
+    const contrastCandidates = textElements
+      .filter(rendersOwnText)
+      .map((element) => {
+        const style = window.getComputedStyle(element);
+        const backdrop = collectBackdrop(element);
+        const sample = sampleElement(element);
+        return {
+          ...sample,
+          text: directTextOf(element) || sample.text,
+          // -webkit-text-fill-color paints the glyphs when set and defaults to `color` otherwise.
+          color: style.webkitTextFillColor || style.color,
+          backgroundLayers: backdrop.layers,
+          canvasColor,
+          fontSizePx: Number.parseFloat(style.fontSize || "16"),
+          fontWeight: Number.parseInt(style.fontWeight || "400", 10),
+          ...(backdrop.skipReason ? { skipReason: backdrop.skipReason } : {})
+        };
+      });
 
     const interactiveElements = Array.from(document.body.querySelectorAll<HTMLElement>([
       "a[href]",
@@ -257,6 +273,7 @@ export async function collectViewportMeasurements(page: {
       meaningfulElementCount: textElements.length,
       clippedText,
       contrastRisks: [],
+      contrastCoverage: { evaluatedElementCount: 0, skippedElementCount: 0, skippedByReason: {} },
       missingAccessibleNames,
       missingFormLabels,
       missingImageAlt,
@@ -1255,17 +1272,102 @@ export async function collectViewportMeasurements(page: {
       return 0;
     }
 
-    function findEffectiveBackgroundColor(element: HTMLElement): string {
+    function rendersOwnText(element: HTMLElement): boolean {
+      // Literal 3 rather than Node.TEXT_NODE: this closure is serialised via Function.prototype.toString,
+      // and a literal removes any question about identifier resolution in the page.
+      //
+      // This is deliberately not a leaf test. In `<p style="color:#777">x <strong style="color:#fff">y
+      // </strong></p>` both elements render their own text in their own colour and both must be scored;
+      // a leaf test would drop the `p` and lose its risk entirely.
+      return Array.from(element.childNodes)
+        .some((node) => node.nodeType === 3 && (node.textContent ?? "").trim() !== "");
+    }
+
+    function directTextOf(element: HTMLElement): string {
+      return Array.from(element.childNodes)
+        .filter((node) => node.nodeType === 3)
+        .map((node) => node.textContent ?? "")
+        .join("")
+        .trim()
+        .slice(0, 120);
+    }
+
+    /**
+     * A computed colour is opaque unless it carries an explicit alpha component. Chromium omits alpha
+     * entirely when opaque (`rgb(11, 15, 25)`, `oklch(0.7 0.35 150)`) and always emits it otherwise
+     * (`rgba(…, 0.06)`, `oklab(… / 0.06)`, `color(srgb 1 1 1 / 0.06)`). This is purely syntactic, so the
+     * closure needs no colour maths — conversion stays in Node where it is unit-testable.
+     *
+     * Conservative in the safe direction: an unrecognised string reads as opaque and stops the walk, and
+     * Node then returns null for it and skips. It can never fabricate a backdrop.
+     */
+    function layerIsOpaque(value: string): boolean {
+      if (typeof value !== "string") {
+        return true;
+      }
+      if (value.indexOf("/") !== -1) {
+        return false;
+      }
+      const legacy = value.match(/^rgba?\(([^)]*)\)$/);
+      if (legacy) {
+        const parts = legacy[1].split(",");
+        return parts.length >= 4 ? Number.parseFloat(parts[3]) === 1 : true;
+      }
+      return true;
+    }
+
+    /**
+     * Measures the UA canvas instead of inferring it from `color-scheme`.
+     *
+     * Testing `/dark/` against `color-scheme` is wrong: `color-scheme: light dark` — what Tailwind v4 and
+     * shadcn emit — computes to the literal string "light dark" and would mass-skip light pages. A
+     * `color: Canvas` probe reads rgb(255, 255, 255) for normal/light/"light dark"-in-light and
+     * rgb(18, 18, 18) for dark, deriving the value rather than hardcoding a Chromium constant.
+     */
+    function measureCanvasColor(): string {
+      const probe = document.createElement("div");
+      probe.style.color = "Canvas";
+      probe.style.display = "none";
+      document.documentElement.appendChild(probe);
+      const measured = window.getComputedStyle(probe).color;
+      probe.remove();
+      return measured || "rgb(255, 255, 255)";
+    }
+
+    function collectBackdrop(element: HTMLElement): { layers: string[]; skipReason?: ContrastSkipReason } {
+      const layers: string[] = [];
+      let outOfFlowVisited = false;
       let current: HTMLElement | null = element;
+
       while (current) {
-        const backgroundColor = window.getComputedStyle(current).backgroundColor;
-        const parsed = parseRgb(backgroundColor);
-        if (parsed.alpha > 0) {
-          return backgroundColor;
+        const style = window.getComputedStyle(current);
+
+        // Bail flags are tested BEFORE the opacity test on the same element: a background-image paints on
+        // top of that element's background-color, so an opaque colour does not make the image irrelevant.
+        if (style.backgroundImage !== "none") {
+          return { layers, skipReason: "background-image" };
+        }
+        const backdropFilter = style.backdropFilter
+          || (style as unknown as Record<string, string>).webkitBackdropFilter;
+        if (backdropFilter && backdropFilter !== "none") {
+          return { layers, skipReason: "backdrop-filter" };
+        }
+        if (style.position === "fixed" || style.position === "absolute") {
+          outOfFlowVisited = true;
+        }
+
+        layers.push(style.backgroundColor);
+        if (layerIsOpaque(style.backgroundColor)) {
+          return { layers };
         }
         current = current.parentElement;
       }
-      return "rgb(255, 255, 255)";
+
+      // The chain reached past <html> without an opaque layer. For an in-flow element that genuinely means
+      // the canvas paints behind it, and the measured canvas colour is correct. For an out-of-flow element
+      // — a portalled scrim, a fixed overlay — the DOM ancestry does not describe what paints behind it,
+      // and using the canvas would manufacture a false positive on dark app shells painted by a wrapper.
+      return outOfFlowVisited ? { layers, skipReason: "detached-backdrop" } : { layers };
     }
 
     function parseRgb(value: string) {
@@ -1319,13 +1421,29 @@ export async function collectViewportMeasurements(page: {
   }, config);
 
   const { contrastCandidates, ...collection } = raw;
+  const { risks, coverage } = computeContrastRisks(contrastCandidates);
+  const notices = coverage.skippedElementCount > 0
+    ? [...collection.notices, {
+        code: "contrast-elements-skipped",
+        message: `Skipped ${coverage.skippedElementCount} element(s) whose painted backdrop could not be `
+          + "determined from computed styles; no contrast finding was emitted for them.",
+        viewport: collection.measurements.viewport,
+        details: {
+          skippedElementCount: coverage.skippedElementCount,
+          skippedByReason: coverage.skippedByReason
+        }
+      } satisfies AuditNotice]
+    : collection.notices;
+
   return {
     ...collection,
+    notices,
     measurements: {
       ...collection.measurements,
-      // Overrides the placeholder emitted by the closure. `contrastRisks` already exists as a key there,
-      // so this assignment keeps its original position and audit.json serialisation is unchanged.
-      contrastRisks: computeContrastRisks(contrastCandidates)
+      // Overrides the placeholders emitted by the closure. Both keys already exist there, so these
+      // assignments keep their original positions and audit.json serialisation order is unchanged.
+      contrastRisks: risks,
+      contrastCoverage: coverage
     }
   };
 }

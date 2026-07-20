@@ -53,10 +53,32 @@ const lineLengthTripwireFixture = "responsive-readability-bad.html";
 //
 // This gate is RED on the current build and is meant to be: it is the definition of done for the contrast
 // repair. Set DESIGN_HARNESS_CLEAN_CORPUS=off only to unblock unrelated work on a shared branch.
+// `expected` pins the defective element and its ratio. A bare count is satisfiable by implementations that
+// are still wrong — assuming a black backdrop scores these 2.02/2.57, ignoring translucent layers 2.19/2.53,
+// compositing only the background 16.78 — so the band rejects each of those while tolerating the
+// rounded-versus-fractional channel ambiguity. `evaluated` pins how many elements were actually scored,
+// because a bail-out that skips everything also emits zero findings.
 const cleanCorpusPairs = [
-  { name: "clean-corpus-surface", good: "clean-corpus-surface.html", defective: "clean-corpus-surface-defective.html" },
-  { name: "clean-corpus-tokens", good: "clean-corpus-tokens.html", defective: "clean-corpus-tokens-defective.html" }
+  {
+    name: "clean-corpus-surface",
+    good: "clean-corpus-surface.html",
+    defective: "clean-corpus-surface-defective.html",
+    goodEvaluated: 4,
+    defectiveEvaluated: 5,
+    selector: "#surface-too-faint",
+    ratio: 2.28
+  },
+  {
+    name: "clean-corpus-tokens",
+    good: "clean-corpus-tokens.html",
+    defective: "clean-corpus-tokens-defective.html",
+    goodEvaluated: 2,
+    defectiveEvaluated: 3,
+    selector: "#tokens-too-faint",
+    ratio: 2.2
+  }
 ];
+const cleanCorpusRatioTolerance = 0.05;
 const cleanCorpusEnabled = process.env.DESIGN_HARNESS_CLEAN_CORPUS !== "off";
 const cleanCorpusFailures = [];
 
@@ -143,7 +165,7 @@ try {
           if (exitCode !== 0) {
             throw new Error(`${pair.name} (${half}) CLI exited ${exitCode}`);
           }
-          assertHalf(readAuditResult(outDir), pair.name);
+          assertHalf(readAuditResult(outDir), pair);
         } catch (error) {
           cleanCorpusFailures.push(error instanceof Error ? error.message : String(error));
           console.error(`CLEAN CORPUS FAIL: ${error instanceof Error ? error.message : String(error)}`);
@@ -295,7 +317,7 @@ function contrastFindings(auditResult, viewport) {
 // A zero-findings assertion alone is satisfied by a dead measurement closure, which produces zero findings
 // for every check. These integrity clauses are what separate "the page is correct" from "the harness
 // stopped measuring".
-function assertCleanCorpusIntegrity(auditResult, label) {
+function assertCleanCorpusIntegrity(auditResult, label, expectedEvaluated) {
   if (auditResult.status !== "success") {
     throw new Error(`${label} status is ${auditResult.status}, expected success`);
   }
@@ -318,11 +340,24 @@ function assertCleanCorpusIntegrity(auditResult, label) {
         + "the page has text, so the measurement closure did not run"
       );
     }
+    // Silence is only meaningful alongside coverage: a bail-out that skips every element emits zero
+    // findings too. This is what separates "the detector looked and found nothing" from "it never looked".
+    const coverage = measurement.data?.contrastCoverage;
+    if (!coverage) {
+      throw new Error(`${label} ${preset.name} measurement carries no contrastCoverage block`);
+    }
+    if (coverage.evaluatedElementCount !== expectedEvaluated) {
+      throw new Error(
+        `${label} ${preset.name} scored ${coverage.evaluatedElementCount} elements, expected ${expectedEvaluated}. `
+        + `Skipped ${coverage.skippedElementCount}: ${JSON.stringify(coverage.skippedByReason)}.`
+      );
+    }
   }
 }
 
-function assertCleanCorpusGood(auditResult, name) {
-  assertCleanCorpusIntegrity(auditResult, `${name} (good)`);
+function assertCleanCorpusGood(auditResult, pair) {
+  const name = pair.name;
+  assertCleanCorpusIntegrity(auditResult, `${name} (good)`, pair.goodEvaluated);
   for (const preset of auditResult.viewportPresets) {
     const findings = contrastFindings(auditResult, preset.name);
     if (findings.length !== 0) {
@@ -338,8 +373,9 @@ function assertCleanCorpusGood(auditResult, name) {
   }
 }
 
-function assertCleanCorpusDefective(auditResult, name) {
-  assertCleanCorpusIntegrity(auditResult, `${name} (defective)`);
+function assertCleanCorpusDefective(auditResult, pair) {
+  const name = pair.name;
+  assertCleanCorpusIntegrity(auditResult, `${name} (defective)`, pair.defectiveEvaluated);
   for (const preset of auditResult.viewportPresets) {
     const findings = contrastFindings(auditResult, preset.name);
     if (findings.length !== 1) {
@@ -347,6 +383,21 @@ function assertCleanCorpusDefective(auditResult, name) {
         `${name} (defective) emitted ${findings.length} dom-contrast-risk findings on ${preset.name}, expected 1. `
         + "Exactly one label on this page is genuinely below 4.5:1; more means false positives, "
         + "fewer means the detector was disabled."
+      );
+    }
+    const [finding] = findings;
+    if (finding.selector !== pair.selector) {
+      throw new Error(
+        `${name} (defective) flagged ${finding.selector} on ${preset.name}, expected ${pair.selector}. `
+        + "The right count on the wrong element is not the right answer."
+      );
+    }
+    const observed = finding.observed?.ratio;
+    if (Math.abs(observed - pair.ratio) > cleanCorpusRatioTolerance) {
+      throw new Error(
+        `${name} (defective) computed ${observed}:1 for ${pair.selector} on ${preset.name}, expected `
+        + `${pair.ratio}:1 +/- ${cleanCorpusRatioTolerance}. See examples/ui-quality-fixtures/`
+        + "clean-corpus-expected.md — a right/wrong verdict from wrong arithmetic still fails."
       );
     }
   }
