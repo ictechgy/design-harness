@@ -5,9 +5,14 @@ was run against them. The tool is asserted to reproduce these numbers; where it 
 is right until arithmetic says otherwise.
 
 Method is WCAG 2.x as implemented in `relativeLuminance` / `contrastRatio`
-(`packages/visual-audit/src/browser-measurements.ts`): sRGB channel → `c/255` → linearize
-(`c ≤ 0.04045 ? c/12.92 : ((c+0.055)/1.055)^2.4`) → `L = 0.2126R + 0.7152G + 0.0722B` →
+(`packages/visual-audit/src/measurement-primitives.ts`): sRGB channel → `c/255` → linearize
+(`c ≤ 0.03928 ? c/12.92 : ((c+0.055)/1.055)^2.4`) → `L = 0.2126R + 0.7152G + 0.0722B` →
 `(L_light + 0.05) / (L_dark + 0.05)`.
+
+The threshold is WCAG 2.x's `0.03928`, not the sRGB specification's `0.04045`. The two are equivalent for
+8-bit channels — no integer `v` satisfies `0.03928 ≤ v/255 ≤ 0.04045` — so every ratio in this document is
+the same under either. They can diverge around the sixth decimal once alpha compositing produces fractional
+channels, which is why the shipped constant is stated explicitly here.
 
 Alpha compositing is `out = α·src + (1−α)·dst`, applied from the innermost declared layer outward until an
 opaque layer or the document root is reached. The root is opaque in every fixture here, so no fixture

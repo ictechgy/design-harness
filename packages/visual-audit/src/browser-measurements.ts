@@ -1,11 +1,23 @@
 import type { AuditNotice, CopyStyleSurfaceRule } from "@design-harness/core";
 import type { ViewportMeasurements } from "./checks.js";
+import { computeContrastRisks, type ContrastCandidate } from "./measurement-primitives.js";
 
 export interface ViewportCollectionResult {
   measurements: ViewportMeasurements;
   notices: AuditNotice[];
   fontFamilyCollection?: FontFamilyCollectionCounts;
   fontFamilyError?: FontFamilyMeasurementError;
+}
+
+/**
+ * What the page hands back: measurements with contrast left unscored.
+ *
+ * The closure is serialised to source text and evaluated in the page, so it cannot call imported helpers.
+ * It therefore collects raw colour values and `collectViewportMeasurements` scores them in Node, where the
+ * arithmetic is unit-testable.
+ */
+interface RawViewportCollectionResult extends ViewportCollectionResult {
+  contrastCandidates: ContrastCandidate[];
 }
 
 export interface ViewportMeasurementConfig {
@@ -32,7 +44,7 @@ export interface FontFamilyMeasurementError {
 export async function collectViewportMeasurements(page: {
   evaluate: <T>(pageFunction: ((arg?: unknown) => T | Promise<T>), arg?: unknown) => Promise<T>;
 }, config?: ViewportMeasurementConfig): Promise<ViewportCollectionResult> {
-  return page.evaluate((rawConfig): ViewportCollectionResult => {
+  const raw = await page.evaluate((rawConfig): RawViewportCollectionResult => {
     const MAX_TEXT_INVENTORY_TEXT_LENGTH = 2_000;
     const MAX_FONT_FAMILY_CANDIDATES = 2_000;
     const MAX_COMPUTED_FONT_FAMILY_LENGTH = 1_024;
@@ -161,25 +173,19 @@ export async function collectViewportMeasurements(page: {
       .slice(0, 10)
       .map((element) => sampleElement(element));
 
-    const contrastRisks = textElements
-      .map((element) => {
-        const style = window.getComputedStyle(element);
-        const color = style.color;
-        const backgroundColor = findEffectiveBackgroundColor(element);
-        const ratio = contrastRatio(parseRgb(color), parseRgb(backgroundColor));
-        const fontSize = Number.parseFloat(style.fontSize || "16");
-        const fontWeight = Number.parseInt(style.fontWeight || "400", 10);
-        const requiredRatio = fontSize >= 24 || (fontSize >= 18.66 && fontWeight >= 700) ? 3 : 4.5;
-        return {
-          ...sampleElement(element),
-          ratio,
-          requiredRatio,
-          color,
-          backgroundColor
-        };
-      })
-      .filter((sample) => Number.isFinite(sample.ratio) && sample.ratio < sample.requiredRatio)
-      .slice(0, 10);
+    // Collection only — parsing, ratio, and threshold happen in Node. See measurement-primitives.ts for
+    // why this boundary exists: an imported helper would throw ReferenceError inside this serialised
+    // closure, and audit-url.ts would swallow it as a failed check.
+    const contrastCandidates = textElements.map((element) => {
+      const style = window.getComputedStyle(element);
+      return {
+        ...sampleElement(element),
+        color: style.color,
+        backgroundColor: findEffectiveBackgroundColor(element),
+        fontSizePx: Number.parseFloat(style.fontSize || "16"),
+        fontWeight: Number.parseInt(style.fontWeight || "400", 10)
+      };
+    });
 
     const interactiveElements = Array.from(document.body.querySelectorAll<HTMLElement>([
       "a[href]",
@@ -250,7 +256,7 @@ export async function collectViewportMeasurements(page: {
       textLength: document.body.innerText.trim().length,
       meaningfulElementCount: textElements.length,
       clippedText,
-      contrastRisks,
+      contrastRisks: [],
       missingAccessibleNames,
       missingFormLabels,
       missingImageAlt,
@@ -277,6 +283,7 @@ export async function collectViewportMeasurements(page: {
 
     return {
       measurements,
+      contrastCandidates,
       notices,
       ...(fontFamilyEnabled && fontFamilyError === undefined ? {
         fontFamilyCollection: {
@@ -1304,29 +1311,21 @@ export async function collectViewportMeasurements(page: {
       };
     }
 
-    function contrastRatio(
-      foreground: { red: number; green: number; blue: number },
-      background: { red: number; green: number; blue: number }
-    ): number {
-      const foregroundLuminance = relativeLuminance(foreground);
-      const backgroundLuminance = relativeLuminance(background);
-      const lighter = Math.max(foregroundLuminance, backgroundLuminance);
-      const darker = Math.min(foregroundLuminance, backgroundLuminance);
-      return (lighter + 0.05) / (darker + 0.05);
-    }
-
-    function relativeLuminance(color: { red: number; green: number; blue: number }): number {
-      const [red, green, blue] = [color.red, color.green, color.blue].map((channel) => {
-        const value = channel / 255;
-        return value <= 0.03928 ? value / 12.92 : Math.pow((value + 0.055) / 1.055, 2.4);
-      });
-      return 0.2126 * red + 0.7152 * green + 0.0722 * blue;
-    }
-
     function standardDeviation(values: number[]): number {
       const average = values.reduce((sum, value) => sum + value, 0) / Math.max(values.length, 1);
       const variance = values.reduce((sum, value) => sum + (value - average) ** 2, 0) / Math.max(values.length, 1);
       return Math.sqrt(variance);
     }
   }, config);
+
+  const { contrastCandidates, ...collection } = raw;
+  return {
+    ...collection,
+    measurements: {
+      ...collection.measurements,
+      // Overrides the placeholder emitted by the closure. `contrastRisks` already exists as a key there,
+      // so this assignment keeps its original position and audit.json serialisation is unchanged.
+      contrastRisks: computeContrastRisks(contrastCandidates)
+    }
+  };
 }
