@@ -617,7 +617,7 @@ function formatColorLiteral(value: unknown): string {
     value.colorSpace === "srgb" &&
     Array.isArray(value.components) &&
     value.components.length === 3 &&
-    value.components.every((component): component is number => typeof component === "number")
+    value.components.every((component): component is number => Number.isFinite(component))
   ) {
     const [red, green, blue] = value.components;
     const hex = `#${toHexByte(red)}${toHexByte(green)}${toHexByte(blue)}`;
