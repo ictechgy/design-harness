@@ -302,6 +302,42 @@ export interface AuditResult {
   status: RunStatus;
   failedChecks: string[];
   notices?: AuditNotice[];
+  layoutMetrics?: LayoutMetrics[];
+}
+
+/**
+ * Raw layout-value distributions for one viewport. Measurement only: no criterion, no finding, no verdict.
+ *
+ * The point is the consistency signal — whether a page draws its spacing, radii, and line heights from a
+ * small scale or a sprawl of ad-hoc values. `distinctValueCount` is that headline; `values` shows the
+ * distribution behind it. Nothing here judges whether a count is good, and there is no threshold: this
+ * block exists so a future consistency check can be calibrated against real distributions rather than a
+ * guessed number.
+ *
+ * Values are the raw computed strings Chromium reports (`"8px"`, `"0px"`, `"normal"`), including the
+ * ubiquitous `0px`/`normal` — filtering them would be a judgement, and this is measurement.
+ */
+export interface LayoutMetrics {
+  viewport: string;
+  properties: LayoutMetricDistribution[];
+}
+
+export interface LayoutMetricDistribution {
+  /** The property group, e.g. `margin`, `padding`, `gap`, `border-radius`, `line-height`, `letter-spacing`. */
+  property: string;
+  /** How many elements contributed at least one value to this distribution. */
+  sampledElementCount: number;
+  /** Total distinct values observed, before the `values` list is capped. */
+  distinctValueCount: number;
+  /** The most frequent distinct values, highest count first, capped. */
+  values: LayoutMetricValue[];
+  /** Distinct values omitted from `values` by the cap. `distinctValueCount - values.length`. */
+  truncatedValueCount: number;
+}
+
+export interface LayoutMetricValue {
+  value: string;
+  count: number;
 }
 
 export interface Critique {

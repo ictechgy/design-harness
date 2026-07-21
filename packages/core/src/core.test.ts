@@ -326,6 +326,37 @@ describe("core schemas", () => {
     expect(validateSchema("audit-result", auditResult).valid).toBe(true);
   });
 
+  it("treats layoutMetrics as optional and closes its distribution subobject", () => {
+    const withoutBlock = createExampleAuditResult();
+    expect(validateSchema("audit-result", withoutBlock).valid).toBe(true);
+
+    const withBlock = {
+      ...createExampleAuditResult(),
+      layoutMetrics: [
+        {
+          viewport: "desktop",
+          properties: [
+            {
+              property: "border-radius",
+              sampledElementCount: 12,
+              distinctValueCount: 2,
+              values: [
+                { value: "8px", count: 9 },
+                { value: "0px", count: 3 }
+              ],
+              truncatedValueCount: 0
+            }
+          ]
+        }
+      ]
+    };
+    expect(validateSchema("audit-result", withBlock).valid).toBe(true);
+
+    const withUnknownKey = JSON.parse(JSON.stringify(withBlock));
+    withUnknownKey.layoutMetrics[0].properties[0].bogus = 1;
+    expect(validateSchema("audit-result", withUnknownKey).valid).toBe(false);
+  });
+
   it("accepts text inventory and aria snapshot evidence assets", () => {
     const auditResult = createExampleAuditResult();
     auditResult.evidenceAssets.push(

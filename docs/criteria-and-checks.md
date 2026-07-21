@@ -101,6 +101,25 @@ composites them nor skips for them, so a ratio under those properties is reporte
 colours. That is a known recall hole, recorded here rather than hidden, and it is unchanged from earlier
 versions.
 
+### Raw layout metrics (measurement only)
+
+`audit.json` carries an optional top-level `layoutMetrics` array — one entry per viewport — recording the
+distribution of computed values a page uses for six property groups: `margin`, `padding`, `gap`,
+`border-radius`, `line-height`, and `letter-spacing`. Margin/padding merge their four sides, gap merges row
+and column, and border-radius merges its four corners, so each distribution answers "how many distinct
+values does this page use for this property".
+
+**This is measurement, not a check.** There is no criterion, no finding, no score effect, and no threshold.
+It exists so a future consistency check can be calibrated against real distributions rather than a guessed
+number, and so a human or agent can see at a glance whether a page draws from a small scale or a sprawl of
+ad-hoc values. Each `LayoutMetricDistribution` reports `sampledElementCount`, `distinctValueCount`, the most
+frequent `values` (capped at 20, highest count first), and `truncatedValueCount` for the remainder. Raw
+computed strings are recorded verbatim, including the ubiquitous `0px` and `normal` — filtering them would
+be a judgement, and this block makes none. Collection is bounded to 5000 elements per viewport.
+
+`layoutMetrics` is optional and additive, so `SCHEMA_VERSION` is unchanged and audit artifacts written
+before it (which omit the key) still validate. Its subobjects are closed (`additionalProperties: false`).
+
 ### Target Size (`tap-target-risk`)
 
 `tap-target-risk` maps to `a11y.target-size.minimum` (WCAG 2.2 SC 2.5.8, deterministic/risk). An

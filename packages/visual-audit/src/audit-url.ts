@@ -13,7 +13,8 @@ import {
   type FontFamilyAdherencePolicy,
   type RunMetadata,
   type RunStatus,
-  type ViewportPreset
+  type ViewportPreset,
+  type LayoutMetrics
 } from "@design-harness/core";
 import { analyzeCopy, copyAuditCapabilityNotices } from "@design-harness/copy-audit";
 import { chromium, errors } from "playwright";
@@ -94,6 +95,7 @@ export async function auditUrl(options: AuditUrlOptions): Promise<AuditUrlResult
   const measurementRecords: MeasurementRecord[] = [];
   const findings: Finding[] = [];
   const failedChecks: string[] = [];
+  const layoutMetrics: LayoutMetrics[] = [];
   const noticeCandidates: AuditNotice[] = options.copyStyle
     ? copyAuditCapabilityNotices(options.copyStyle)
     : [];
@@ -211,6 +213,9 @@ export async function auditUrl(options: AuditUrlOptions): Promise<AuditUrlResult
           const collection = await collectViewportMeasurements(page, measurementConfig);
           const measurement = collection.measurements;
           noticeCandidates.push(...collection.notices);
+          if (collection.layoutMetrics) {
+            layoutMetrics.push(collection.layoutMetrics);
+          }
           if (options.fontFamilyPolicy) {
             const fontFamilyFailure = applyFontFamilyAdherence(
               collection,
@@ -311,7 +316,8 @@ export async function auditUrl(options: AuditUrlOptions): Promise<AuditUrlResult
     },
     status,
     failedChecks,
-    ...(notices.length > 0 ? { notices } : {})
+    ...(notices.length > 0 ? { notices } : {}),
+    ...(layoutMetrics.length > 0 ? { layoutMetrics } : {})
   };
   const outputFiles = [
     "metadata.json",

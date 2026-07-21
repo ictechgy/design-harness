@@ -1,4 +1,4 @@
-import type { AuditNotice, CopyStyleSurfaceRule } from "@design-harness/core";
+import type { AuditNotice, CopyStyleSurfaceRule, LayoutMetrics } from "@design-harness/core";
 import type { ViewportMeasurements } from "./checks.js";
 import {
   computeContrastRisks,
@@ -11,6 +11,7 @@ import {
 export interface ViewportCollectionResult {
   measurements: ViewportMeasurements;
   notices: AuditNotice[];
+  layoutMetrics?: LayoutMetrics;
   fontFamilyCollection?: FontFamilyCollectionCounts;
   fontFamilyError?: FontFamilyMeasurementError;
 }
@@ -301,10 +302,13 @@ export async function collectViewportMeasurements(page: {
       textInventory
     };
 
+    const layoutMetrics = collectLayoutMetrics();
+
     return {
       measurements,
       contrastCandidates,
       tapTargetCandidates,
+      layoutMetrics,
       notices,
       ...(fontFamilyEnabled && fontFamilyError === undefined ? {
         fontFamilyCollection: {
@@ -314,6 +318,57 @@ export async function collectViewportMeasurements(page: {
       } : {}),
       ...(fontFamilyError ? { fontFamilyError } : {})
     };
+
+    // Raw layout-value distributions. Measurement only — no criterion, no finding, no threshold. Collects
+    // the values a page actually uses for each property group so a future consistency check can be
+    // calibrated against real distributions. 0px/normal are included deliberately: filtering would be a
+    // judgement, and this is measurement.
+    function collectLayoutMetrics(): LayoutMetrics {
+      const MAX_LAYOUT_METRIC_ELEMENTS = 5_000;
+      const MAX_LAYOUT_METRIC_VALUES = 20;
+      const groups: Array<{ property: string; sources: string[] }> = [
+        { property: "margin", sources: ["marginTop", "marginRight", "marginBottom", "marginLeft"] },
+        { property: "padding", sources: ["paddingTop", "paddingRight", "paddingBottom", "paddingLeft"] },
+        { property: "gap", sources: ["rowGap", "columnGap"] },
+        { property: "border-radius", sources: ["borderTopLeftRadius", "borderTopRightRadius", "borderBottomRightRadius", "borderBottomLeftRadius"] },
+        { property: "line-height", sources: ["lineHeight"] },
+        { property: "letter-spacing", sources: ["letterSpacing"] }
+      ];
+      const counts = groups.map(() => ({ frequency: new Map<string, number>(), sampledElements: 0 }));
+      const elements = Array.from(document.body.querySelectorAll<HTMLElement>("*")).slice(0, MAX_LAYOUT_METRIC_ELEMENTS);
+      for (const element of elements) {
+        const style = window.getComputedStyle(element);
+        groups.forEach((group, index) => {
+          let contributed = false;
+          for (const source of group.sources) {
+            const value = (style as unknown as Record<string, string>)[source];
+            if (typeof value !== "string" || value === "") {
+              continue;
+            }
+            counts[index].frequency.set(value, (counts[index].frequency.get(value) ?? 0) + 1);
+            contributed = true;
+          }
+          if (contributed) {
+            counts[index].sampledElements += 1;
+          }
+        });
+      }
+      return {
+        viewport: viewportName,
+        properties: groups.map((group, index) => {
+          const entries = Array.from(counts[index].frequency.entries())
+            .sort((a, b) => (b[1] - a[1]) || (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0));
+          const values = entries.slice(0, MAX_LAYOUT_METRIC_VALUES).map(([value, count]) => ({ value, count }));
+          return {
+            property: group.property,
+            sampledElementCount: counts[index].sampledElements,
+            distinctValueCount: entries.length,
+            values,
+            truncatedValueCount: entries.length - values.length
+          };
+        })
+      };
+    }
 
     function sampleElement(element: HTMLElement) {
       const rect = element.getBoundingClientRect();

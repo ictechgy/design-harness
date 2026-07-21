@@ -304,6 +304,29 @@ function assertNoConfigArtifacts(outDir) {
     throw new Error("No-copy example recorded copy-audit metadata");
   }
   assertMeaningfulElementCountBaseline(auditResult);
+  assertLayoutMetricsPresent(auditResult);
+}
+
+// A measurement-only block has no finding to protect it, so this smoke assertion is its only guard: a bug
+// that silently stops populating it would otherwise pass every test. merchant-dashboard uses a bounded set
+// of radii, which is exactly the consistency signal the block exists to record.
+function assertLayoutMetricsPresent(auditResult) {
+  const layoutMetrics = auditResult.layoutMetrics;
+  if (!Array.isArray(layoutMetrics) || layoutMetrics.length !== auditResult.viewportPresets.length) {
+    throw new Error(
+      `merchant-dashboard layoutMetrics has ${layoutMetrics?.length ?? 0} viewport entries, `
+      + `expected ${auditResult.viewportPresets.length}.`
+    );
+  }
+  for (const entry of layoutMetrics) {
+    const radius = entry.properties?.find((property) => property.property === "border-radius");
+    if (!radius || !(radius.sampledElementCount > 0) || !(radius.distinctValueCount > 0)) {
+      throw new Error(
+        `merchant-dashboard ${entry.viewport} layoutMetrics border-radius is empty; `
+        + "the raw metric block stopped collecting."
+      );
+    }
+  }
 }
 
 function assertMeaningfulElementCountBaseline(auditResult) {
