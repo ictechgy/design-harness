@@ -79,6 +79,9 @@ const cleanCorpusPairs = [
   }
 ];
 const cleanCorpusRatioTolerance = 0.05;
+// #disc is the CONJ-vs-ASYM discriminator: it fires only under the conjunctive reading of the Spacing
+// exception, so pinning it rejects the asymmetric misreading, and the exact set rejects a disabled check.
+const expectedTapTargetBadSelectors = ["#cramp-a", "#cramp-b", "#disc"];
 const cleanCorpusEnabled = process.env.DESIGN_HARNESS_CLEAN_CORPUS !== "off";
 const cleanCorpusFailures = [];
 
@@ -142,6 +145,20 @@ try {
     throw new Error(`Line-length tripwire CLI exited ${lineLengthExit}`);
   }
   assertLineLengthTripwire(readAuditResult(lineLengthOutDir));
+
+  const tapTargetGoodOut = join(outRoot, "tap-target-good");
+  if (await run(process.execPath, [cliPath, "audit", "--url",
+    `http://127.0.0.1:${port}/ui-quality-fixtures/tap-target-good.html`, "--out", tapTargetGoodOut]) !== 0) {
+    throw new Error("tap-target-good CLI exited non-zero");
+  }
+  assertTapTargetGood(readAuditResult(tapTargetGoodOut));
+
+  const tapTargetBadOut = join(outRoot, "tap-target-bad");
+  if (await run(process.execPath, [cliPath, "audit", "--url",
+    `http://127.0.0.1:${port}/ui-quality-fixtures/tap-target-bad.html`, "--out", tapTargetBadOut]) !== 0) {
+    throw new Error("tap-target-bad CLI exited non-zero");
+  }
+  assertTapTargetBad(readAuditResult(tapTargetBadOut));
 
   // Collected rather than thrown: this gate is red until the contrast repair lands, and a throw here
   // would skip every font-family assertion below it, masking an unrelated regression for the duration of
@@ -244,7 +261,7 @@ try {
       + `assertion above passed.\n  - ${cleanCorpusFailures.join("\n  - ")}`
     );
   }
-  console.log("Example smoke passed: no-config regression, measurement tripwires, clean corpus, plus live real-stack font-family success, exact companion mismatch, exception, and scoped-error audits.");
+  console.log("Example smoke passed: no-config regression, measurement tripwires, clean corpus, tap-target spacing, plus live real-stack font-family success, exact companion mismatch, exception, and scoped-error audits.");
 } finally {
   await new Promise((resolveClose) => server.close(resolveClose));
 }
@@ -398,6 +415,48 @@ function assertCleanCorpusDefective(auditResult, pair) {
         `${name} (defective) computed ${observed}:1 for ${pair.selector} on ${preset.name}, expected `
         + `${pair.ratio}:1 +/- ${cleanCorpusRatioTolerance}. See examples/ui-quality-fixtures/`
         + "clean-corpus-expected.md — a right/wrong verdict from wrong arithmetic still fails."
+      );
+    }
+  }
+}
+
+function tapTargetSelectors(auditResult, viewport) {
+  return auditResult.findings
+    .filter((finding) => finding.checkName === "tap-target-risk" && finding.viewport === viewport)
+    .map((finding) => finding.selector)
+    .sort();
+}
+
+function assertTapTargetGood(auditResult) {
+  if (auditResult.status !== "success") {
+    throw new Error(`tap-target-good status is ${auditResult.status}, expected success`);
+  }
+  for (const preset of auditResult.viewportPresets) {
+    const selectors = tapTargetSelectors(auditResult, preset.name);
+    if (selectors.length !== 0) {
+      throw new Error(
+        `tap-target-good emitted ${selectors.length} tap-target-risk findings on ${preset.name}: `
+        + `${selectors.join(", ")}. Every target clears 24px spacing; see `
+        + "examples/ui-quality-fixtures/tap-target-expected.md."
+      );
+    }
+  }
+}
+
+// Pinning the exact selector set means a disabled check (0 findings) fails via the count, and the
+// asymmetric misreading (which would drop #disc) fails here.
+function assertTapTargetBad(auditResult) {
+  if (auditResult.status !== "success") {
+    throw new Error(`tap-target-bad status is ${auditResult.status}, expected success`);
+  }
+  for (const preset of auditResult.viewportPresets) {
+    const selectors = tapTargetSelectors(auditResult, preset.name);
+    const expected = [...expectedTapTargetBadSelectors].sort();
+    if (selectors.length !== expected.length || selectors.some((selector, index) => selector !== expected[index])) {
+      throw new Error(
+        `tap-target-bad flagged [${selectors.join(", ")}] on ${preset.name}, expected [${expected.join(", ")}]. `
+        + "#disc fires only under the conjunctive Spacing predicate; its absence means the wrong reading, "
+        + "and a different count means over- or under-exemption. See tap-target-expected.md."
       );
     }
   }

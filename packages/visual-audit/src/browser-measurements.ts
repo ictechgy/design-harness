@@ -2,8 +2,10 @@ import type { AuditNotice, CopyStyleSurfaceRule } from "@design-harness/core";
 import type { ViewportMeasurements } from "./checks.js";
 import {
   computeContrastRisks,
+  computeTapTargetRisks,
   type ContrastCandidate,
-  type ContrastSkipReason
+  type ContrastSkipReason,
+  type TapTargetCandidate
 } from "./measurement-primitives.js";
 
 export interface ViewportCollectionResult {
@@ -22,6 +24,7 @@ export interface ViewportCollectionResult {
  */
 interface RawViewportCollectionResult extends ViewportCollectionResult {
   contrastCandidates: ContrastCandidate[];
+  tapTargetCandidates: TapTargetCandidate[];
 }
 
 export interface ViewportMeasurementConfig {
@@ -253,7 +256,7 @@ export async function collectViewportMeasurements(page: {
     const fixedWidthRisks = collectFixedWidthRisks();
     const stickyObstructionRisks = collectStickyObstructionRisks();
     const excessiveLineLength = collectExcessiveLineLength(textElements);
-    const tapTargetRisks = collectTapTargetRisks(interactiveElements);
+    const tapTargetCandidates = collectTapTargetCandidates(interactiveElements);
     const formErrorAssociationRisks = collectFormErrorAssociationRisks(formControls);
     const colorOnlyStateRisks = collectColorOnlyStateRisks();
     const disabledWithoutExplanation = collectDisabledWithoutExplanation();
@@ -287,7 +290,7 @@ export async function collectViewportMeasurements(page: {
       fixedWidthRisks,
       stickyObstructionRisks,
       excessiveLineLength,
-      tapTargetRisks,
+      tapTargetRisks: [],
       formErrorAssociationRisks,
       colorOnlyStateRisks,
       disabledWithoutExplanation,
@@ -301,6 +304,7 @@ export async function collectViewportMeasurements(page: {
     return {
       measurements,
       contrastCandidates,
+      tapTargetCandidates,
       notices,
       ...(fontFamilyEnabled && fontFamilyError === undefined ? {
         fontFamilyCollection: {
@@ -1122,18 +1126,25 @@ export async function collectViewportMeasurements(page: {
       return element.querySelector("p,li,td,th,article,section,main") === null;
     }
 
-    function collectTapTargetRisks(elements: HTMLElement[]) {
+    // Collection only — the Spacing-exception geometry (WCAG 2.5.8) runs in Node, over the full set, so it
+    // is table-testable and cannot be truncated by a slice before exemption is decided. Inline controls are
+    // exempt here (text-flow targets sized by their line): a link or button rendered inline in a sentence.
+    function collectTapTargetCandidates(elements: HTMLElement[]) {
       return elements
-        .filter((element) => {
-          const style = window.getComputedStyle(element);
-          if (element.tagName === "A" && style.display === "inline") {
-            return false;
-          }
+        .filter((element) => window.getComputedStyle(element).display !== "inline")
+        .map((element) => {
           const rect = element.getBoundingClientRect();
-          return rect.width > 0 && rect.height > 0 && (rect.width < 24 || rect.height < 24);
-        })
-        .slice(0, 10)
-        .map((element) => sampleElement(element));
+          const sample = sampleElement(element);
+          return {
+            ...sample,
+            rect: {
+              x: rect.x,
+              y: rect.y,
+              width: rect.width,
+              height: rect.height
+            }
+          };
+        });
     }
 
     function collectFormErrorAssociationRisks(elements: HTMLElement[]) {
@@ -1420,8 +1431,9 @@ export async function collectViewportMeasurements(page: {
     }
   }, config);
 
-  const { contrastCandidates, ...collection } = raw;
+  const { contrastCandidates, tapTargetCandidates, ...collection } = raw;
   const { risks, coverage } = computeContrastRisks(contrastCandidates);
+  const tapTargetRisks = computeTapTargetRisks(tapTargetCandidates);
   const notices = coverage.skippedElementCount > 0
     ? [...collection.notices, {
         code: "contrast-elements-skipped",
@@ -1440,10 +1452,11 @@ export async function collectViewportMeasurements(page: {
     notices,
     measurements: {
       ...collection.measurements,
-      // Overrides the placeholders emitted by the closure. Both keys already exist there, so these
+      // Overrides the placeholders emitted by the closure. Every key already exists there, so these
       // assignments keep their original positions and audit.json serialisation order is unchanged.
       contrastRisks: risks,
-      contrastCoverage: coverage
+      contrastCoverage: coverage,
+      tapTargetRisks
     }
   };
 }

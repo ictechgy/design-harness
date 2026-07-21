@@ -22,6 +22,8 @@ Small pages used to calibrate source-backed criteria and report wording.
 - `midjourney-derived/state-and-color-good.html`: hand-authored checklist and color hierarchy fixture that should preserve clear state meaning.
 - `midjourney-derived/state-and-color-bad.html`: hand-authored checklist and color hierarchy stress fixture for saturated color and state-visibility review prompts.
 
+- `tap-target-good.html`: interactive controls spaced beyond the 24px Spacing exception; must stay silent.
+- `tap-target-bad.html`: two cramped icons plus a wide-neighbour discriminator; three genuine violations.
 - `clean-corpus-surface.html`: correct dark-theme translucent surfaces in legacy `rgba()`; must stay silent.
 - `clean-corpus-surface-defective.html`: the same page with one genuinely sub-threshold translucent label.
 - `clean-corpus-tokens.html`: correct dark theme authored in `oklch()` and `color-mix()`; must stay silent.

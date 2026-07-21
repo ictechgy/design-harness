@@ -101,6 +101,29 @@ composites them nor skips for them, so a ratio under those properties is reporte
 colours. That is a known recall hole, recorded here rather than hidden, and it is unchanged from earlier
 versions.
 
+### Target Size (`tap-target-risk`)
+
+`tap-target-risk` maps to `a11y.target-size.minimum` (WCAG 2.2 SC 2.5.8, deterministic/risk). An
+interactive target under 24×24 CSS pixels is flagged **unless** the Spacing exception applies.
+
+The Spacing exception is implemented in its conjunctive form, matching the normative text ("the circles do
+not intersect another target or the circle for another undersized target"): an undersized target is exempt
+when its 24px-diameter circle — radius 12, centred on the bounding box — intersects neither the bounding
+box of any other target (the rect test) nor the 24px circle of any other *undersized* target (the circle
+test). Intersection is strict, so a tangent circle is exempt. Both tests are needed: the rect test alone
+under-exempts two small targets whose circles overlap while their boxes are far, and the circle test alone
+over-exempts a small target hugging a large one. The geometry runs over the full interactive set before any
+sample cap, so a genuine violation cannot be pushed out of the window by exempt neighbours. Inline controls
+(text-flow targets sized by their line) are exempt, unchanged from earlier versions.
+
+**Not implemented, by decision.** The *User-agent control* exception ("size determined by the user agent
+and not modified by the author") is undecidable from the DOM: cloning tag+type into the same parent reports
+an author `width: 13px` as "unmodified" when it coincides with the UA's 13px, and reports an empty button's
+content-derived 16×6 as UA-default. It is also unnecessary — the Spacing exception already exempts every
+adequately spaced UA-sized control. The *Equivalent* and *Essential* exceptions ("a conforming alternative
+exists elsewhere" / "this exact size is required") are author intent, not readable from the DOM. Each is a
+documented recall hole, not a silent one.
+
 ### Font Family Contract
 
 CLI users may pass one explicit `design-guide.yaml` to `audit --guide`. The CLI projects heading, body, then optional `audit.fontFamily.additionalAllowedFamilies` into the allowed union and carries optional `audit.fontFamily.ignoreSelectors` in `font-family-adherence-v1`; neither YAML nor the whole guide crosses into the capture package. Without `--guide`, this check performs no loading, capture, or reporting work.

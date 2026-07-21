@@ -1,11 +1,16 @@
 import { describe, expect, it } from "vitest";
 import {
+  centreDistance,
   compositeOver,
   computeContrastRisks,
+  computeTapTargetRisks,
   contrastRatio,
+  isUndersizedTarget,
   parseCssColor,
+  pointToRectDistance,
   relativeLuminance,
   requiredContrastRatio,
+  tapTargetSpacingExempt,
   type ContrastCandidate
 } from "./measurement-primitives.js";
 
@@ -276,6 +281,129 @@ describe("computeContrastRisks", () => {
       evaluatedElementCount: 2,
       skippedElementCount: 1,
       skippedByReason: { "detached-backdrop": 1 }
+    });
+  });
+});
+
+describe("tap-target Spacing exception", () => {
+  const box = (x, y, width, height) => ({ x, y, width, height });
+
+  describe("pointToRectDistance", () => {
+    it("is zero when the point is inside the rectangle", () => {
+      expect(pointToRectDistance({ x: 10, y: 10 }, box(0, 0, 20, 20))).toBe(0);
+    });
+    it("measures the nearest edge orthogonally and the nearest corner diagonally", () => {
+      expect(pointToRectDistance({ x: 30, y: 10 }, box(0, 0, 20, 20))).toBe(10);
+      expect(pointToRectDistance({ x: 23, y: 24 }, box(0, 0, 20, 20))).toBeCloseTo(5, 10);
+    });
+  });
+
+  describe("centreDistance", () => {
+    it("is symmetric", () => {
+      expect(centreDistance(box(0, 0, 16, 16), box(20, 0, 16, 16)))
+        .toBeCloseTo(centreDistance(box(20, 0, 16, 16), box(0, 0, 16, 16)), 12);
+    });
+  });
+
+  describe("isUndersizedTarget", () => {
+    it.each([
+      [box(0, 0, 24, 24), false],
+      [box(0, 0, 23, 24), true],
+      [box(0, 0, 24, 23), true],
+      [box(0, 0, 60, 16), true],
+      [box(0, 0, 0, 40), false]
+    ])("%o -> %s", (rect, expected) => {
+      expect(isUndersizedTarget(rect)).toBe(expected);
+    });
+  });
+
+  describe("tapTargetSpacingExempt", () => {
+    it("exempts an isolated undersized target", () => {
+      const target = box(300, 300, 16, 16);
+      expect(tapTargetSpacingExempt(target, [target])).toBe(true);
+    });
+
+    it("flags two 16x16 icons whose circles overlap (centres 20px apart)", () => {
+      const a = box(20, 20, 16, 16);
+      const b = box(40, 20, 16, 16);
+      expect(tapTargetSpacingExempt(a, [a, b])).toBe(false);
+      expect(tapTargetSpacingExempt(b, [a, b])).toBe(false);
+    });
+
+    it("exempts the same icons once spaced 24px centre-to-centre", () => {
+      const a = box(20, 20, 16, 16);
+      const b = box(44, 20, 16, 16); // centres 24 apart — tangent, strict inequality exempts
+      expect(tapTargetSpacingExempt(a, [a, b])).toBe(true);
+    });
+
+    // The discriminator: #disc's circle intersects #wide's box (rect test fires) while their centres are
+    // 34px apart (circle test alone would exempt). The conjunctive reading must flag it.
+    it("flags a small target whose circle intersects a wide neighbour's box, though their centres are far", () => {
+      const disc = box(88, 120, 16, 16); // centre (96,128)
+      const wide = box(100, 120, 60, 16); // box x[100,160]; centre→box = 4 < 12; centre dist 34
+      expect(centreDistance(disc, wide)).toBeCloseTo(34, 10);
+      expect(pointToRectDistance({ x: 96, y: 128 }, wide)).toBeCloseTo(4, 10);
+      expect(tapTargetSpacingExempt(disc, [disc, wide])).toBe(false);
+    });
+
+    it("exempts a target tangent to a sized neighbour's box at exactly 12px", () => {
+      // Sized neighbour, so only the rect test applies. Centre→box is exactly 12, and the strict
+      // inequality exempts. (Two undersized boxes here would still trip the circle test at 20 < 24.)
+      const target = box(0, 0, 16, 16); // centre (8,8)
+      const neighbour = box(20, 0, 40, 40); // sized; box x[20,60]; centre→box = 12 exactly
+      expect(pointToRectDistance({ x: 8, y: 8 }, neighbour)).toBe(12);
+      expect(tapTargetSpacingExempt(target, [target, neighbour])).toBe(true);
+    });
+
+    it("exempts two undersized circles tangent at exactly 24px centre distance", () => {
+      const a = box(0, 0, 16, 16); // centre (8,8)
+      const b = box(24, 0, 16, 16); // centre (32,8); distance 24 exactly, and boxes 8px apart so rect ok
+      expect(centreDistance(a, b)).toBe(24);
+      expect(pointToRectDistance({ x: 8, y: 8 }, b)).toBeGreaterThanOrEqual(12);
+      expect(tapTargetSpacingExempt(a, [a, b])).toBe(true);
+    });
+  });
+
+  describe("computeTapTargetRisks", () => {
+    const candidate = (selector, rect) => ({ selector, text: selector, region: rect, rect });
+
+    it("flags only the cramped and discriminator targets on the bad-fixture geometry", () => {
+      const candidates = [
+        candidate("#cramp-a", box(20, 20, 16, 16)),
+        candidate("#cramp-b", box(40, 20, 16, 16)),
+        candidate("#wide", box(100, 120, 60, 16)),
+        candidate("#disc", box(88, 120, 16, 16)),
+        candidate("#lonely", box(300, 300, 16, 16)),
+        candidate("#big", box(300, 20, 44, 44))
+      ];
+      expect(computeTapTargetRisks(candidates).map((risk) => risk.selector).sort())
+        .toEqual(["#cramp-a", "#cramp-b", "#disc"]);
+    });
+
+    it("is silent on the good-fixture geometry", () => {
+      const candidates = [
+        candidate("#icon-a", box(20, 20, 16, 16)),
+        candidate("#icon-b", box(20, 60, 16, 16)),
+        candidate("#wide", box(20, 100, 60, 16)),
+        candidate("#small", box(120, 100, 16, 16)),
+        candidate("#ua-check", box(20, 200, 13, 13))
+      ];
+      expect(computeTapTargetRisks(candidates)).toEqual([]);
+    });
+
+    it("drops the rect field and keeps the sample shape", () => {
+      const [risk] = computeTapTargetRisks([
+        candidate("#a", box(20, 20, 16, 16)),
+        candidate("#b", box(40, 20, 16, 16))
+      ]);
+      expect(Object.keys(risk)).toEqual(["selector", "text", "region"]);
+    });
+
+    it("caps the emitted samples", () => {
+      const many = Array.from({ length: 25 }, (_unused, index) =>
+        candidate(`#x-${index}`, box(index * 20, 0, 16, 16))
+      );
+      expect(computeTapTargetRisks(many).length).toBeLessThanOrEqual(10);
     });
   });
 });

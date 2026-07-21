@@ -843,6 +843,7 @@ function fakePage(options: FakeBrowserOptions, pageIndex: number): PageHandle {
         return {
           ...collectionResult,
           contrastCandidates: [],
+          tapTargetCandidates: [],
           measurements: {
             ...collectionResult.measurements,
             contrastCoverage: { evaluatedElementCount: 0, skippedElementCount: 0, skippedByReason: {} }

@@ -407,3 +407,100 @@ export function computeContrastRisks(candidates: ContrastCandidate[]): ContrastR
     coverage: { evaluatedElementCount, skippedElementCount, skippedByReason }
   };
 }
+/* -------------------------------------------------------------------------------------------------- */
+/* Tap-target Spacing exception (WCAG 2.2 SC 2.5.8)                                                      */
+/* -------------------------------------------------------------------------------------------------- */
+
+/** A rectangle in CSS pixels, as read from getBoundingClientRect. */
+export interface TargetRect {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+/** One interactive element observed for tap-target evaluation. Geometry only; no DOM. */
+export interface TapTargetCandidate extends ElementSample {
+  rect: TargetRect;
+}
+
+/** Maximum tap-target samples carried in a viewport's measurement payload. */
+export const MAX_TAP_TARGET_SAMPLES = 10;
+
+/** SC 2.5.8's minimum, and the derived circle radius. */
+export const TAP_TARGET_MINIMUM_PX = 24;
+const TAP_TARGET_RADIUS_PX = TAP_TARGET_MINIMUM_PX / 2;
+
+function centre(rect: TargetRect): { x: number; y: number } {
+  return { x: rect.x + rect.width / 2, y: rect.y + rect.height / 2 };
+}
+
+/** A target is undersized when either dimension is under 24px (and it has non-zero area). */
+export function isUndersizedTarget(rect: TargetRect): boolean {
+  return rect.width > 0 && rect.height > 0 && (rect.width < TAP_TARGET_MINIMUM_PX || rect.height < TAP_TARGET_MINIMUM_PX);
+}
+
+/** Euclidean distance from a point to the nearest edge of a rectangle; 0 when the point is inside. */
+export function pointToRectDistance(point: { x: number; y: number }, rect: TargetRect): number {
+  const dx = Math.max(rect.x - point.x, 0, point.x - (rect.x + rect.width));
+  const dy = Math.max(rect.y - point.y, 0, point.y - (rect.y + rect.height));
+  return Math.hypot(dx, dy);
+}
+
+/** Distance between the centres of two rectangles. */
+export function centreDistance(a: TargetRect, b: TargetRect): number {
+  const ca = centre(a);
+  const cb = centre(b);
+  return Math.hypot(ca.x - cb.x, ca.y - cb.y);
+}
+
+/**
+ * WCAG 2.5.8 Spacing exception, conjunctive reading of the normative text: an undersized target is exempt
+ * when its 24px-diameter circle intersects *neither* the bounding box of any other target, *nor* the 24px
+ * circle of any other undersized target.
+ *
+ * Intersection is strict, so a circle tangent to a neighbour (distance exactly 12, or exactly 24 between
+ * two undersized circles) is exempt — matching "do not intersect".
+ *
+ * The two tests are not redundant. The rect test alone would under-exempt two small targets whose boxes
+ * are far but whose circles overlap; the circle test alone would over-exempt a small target hugging a
+ * large one. The literal spec is their conjunction.
+ */
+export function tapTargetSpacingExempt(target: TargetRect, neighbours: TargetRect[]): boolean {
+  const targetCentre = centre(target);
+  for (const neighbour of neighbours) {
+    if (neighbour === target) {
+      continue;
+    }
+    if (pointToRectDistance(targetCentre, neighbour) < TAP_TARGET_RADIUS_PX) {
+      return false;
+    }
+    if (isUndersizedTarget(neighbour) && centreDistance(target, neighbour) < TAP_TARGET_MINIMUM_PX) {
+      return false;
+    }
+  }
+  return true;
+}
+
+/**
+ * Flags undersized interactive targets that are not exempt under the Spacing exception.
+ *
+ * Every interactive element participates as a *neighbour* (the rect test runs against sized targets too),
+ * but only undersized elements can be *flagged*. Runs over the full set before any slice, so a genuine
+ * violation cannot be pushed out of the sample window by exempt neighbours.
+ */
+export function computeTapTargetRisks(candidates: TapTargetCandidate[]): ElementSample[] {
+  const rects = candidates.map((candidate) => candidate.rect);
+  const risks: ElementSample[] = [];
+  for (const candidate of candidates) {
+    const { rect, ...sample } = candidate;
+    if (!isUndersizedTarget(rect)) {
+      continue;
+    }
+    if (tapTargetSpacingExempt(rect, rects)) {
+      continue;
+    }
+    risks.push(sample);
+  }
+  return risks.slice(0, MAX_TAP_TARGET_SAMPLES);
+}

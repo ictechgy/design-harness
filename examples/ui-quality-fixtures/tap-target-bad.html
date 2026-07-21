@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Tap target — bad</title>
+    <style>
+      /* Absolute coordinates so the geometry is exact and viewport-independent. Each control has an
+         accessible name so only the tap-target check fires. See tap-target-expected.md. */
+      button {
+        position: absolute;
+        margin: 0;
+        padding: 0;
+        border: 0;
+        font: 12px system-ui;
+      }
+      /* Cramped pair: two 16x16 icons whose centres are 20px apart (< 24), so each circle intersects the
+         other's circle. Both fire under any correct predicate. */
+      #cramp-a { left: 20px; top: 20px; width: 16px; height: 16px; }
+      #cramp-b { left: 40px; top: 20px; width: 16px; height: 16px; }
+      /* CONJ-only discriminator: #disc (16x16, centre 96,128) sits 4px from the box of #wide (60x16),
+         so its circle intersects that box (rect test fires), while their centres are 34px apart (circle
+         test exempts). The conjunctive reading flags #disc; the asymmetric misreading — circle test only
+         against undersized neighbours — exempts it. #wide is undersized (16px tall) but adequately clear
+         of every other target, so it does not fire itself. */
+      #wide { left: 100px; top: 120px; width: 60px; height: 16px; }
+      #disc { left: 88px; top: 120px; width: 16px; height: 16px; }
+      /* Isolated undersized control: exempt (nothing within reach). Proves the check does not flag small
+         targets per se, only cramped ones. */
+      #lonely { left: 300px; top: 300px; width: 16px; height: 16px; }
+      /* A comfortably sized target: not undersized, participates only as a neighbour. */
+      #big { left: 300px; top: 20px; width: 44px; height: 44px; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Toolbar</h1>
+      <button id="cramp-a" type="button" aria-label="Bold">B</button>
+      <button id="cramp-b" type="button" aria-label="Italic">I</button>
+      <button id="wide" type="button">Duplicate</button>
+      <button id="disc" type="button" aria-label="Delete">x</button>
+      <button id="lonely" type="button" aria-label="Help">?</button>
+      <button id="big" type="button">Save</button>
+    </main>
+  </body>
+</html>
