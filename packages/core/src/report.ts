@@ -29,7 +29,7 @@ export function buildMarkdownReport(input: RenderReportInput): MarkdownReport {
     reportSection("Evidence Links", renderEvidence(auditResult)),
     reportSection("Recommendations", renderRecommendations(auditResult.findings)),
     reportSection("Iteration Prompt Scaffold", renderIterationPrompt(auditResult)),
-    reportSection("Optional Subjective Critique", renderOptionalCritique(critique))
+    reportSection("Optional Subjective Critique", renderOptionalCritique(critique, auditResult.findings))
   ].filter(isReportSection);
 
   return {
@@ -157,7 +157,7 @@ function renderScore(auditResult: AuditResult): string {
   return [
     `**${auditResult.advisoryScore.value}/${auditResult.advisoryScore.max}** (${auditResult.advisoryScore.band})`,
     "",
-    `Verdict: ${verdictForScore(auditResult.advisoryScore)}`,
+    `Verdict: ${verdictForScore(auditResult.advisoryScore, auditResult.findings)}`,
     "",
     `Note: ${auditResult.advisoryScore.explanation}`
   ].join("\n");
@@ -271,9 +271,17 @@ function renderIterationPrompt(auditResult: AuditResult): string {
   ].join("\n");
 }
 
-function renderOptionalCritique(critique?: Critique): string {
+function renderOptionalCritique(critique: Critique | undefined, findings: Finding[]): string {
   if (!critique) {
-    return "No subjective critique was supplied. This report only contains deterministic audit findings.";
+    // Only claim "deterministic only" when it is true. A heuristic, subjective, or legacy finding makes
+    // that claim false, and the report renders those in their own sections — so the critique note must not
+    // contradict them (HARD RULE 1).
+    const hasNonDeterministic = findings.some(
+      (finding) => finding.determinism === "heuristic" || finding.determinism === "subjective" || !finding.determinism
+    );
+    return hasNonDeterministic
+      ? "No subjective critique was supplied. The findings above are shown with their recorded classifications."
+      : "No subjective critique was supplied. This report only contains deterministic audit findings.";
   }
 
   return [

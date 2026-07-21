@@ -14,7 +14,7 @@ Design Harness is an open-source, model-agnostic UI/UX QA loop for AI coding age
 6. **Calibration-data licensing (prose-only, legal)**: never commit fixtures derived from gated or non-commercial corpora — NIKL 모두의 말뭉치 / 말평 data (no redistribution, no LLM augmentation), SmileStyle (CC-BY-NC-4.0), K-NCT (unlicensed). Redistributable: IWSLT2023 EN-KO (CDLA-Sharing-1.0) and synthetic generation. When in doubt, generate synthetic Korean data.
 7. **No hosted LLM in any required path.** Judge features are opt-in (injectable callback / explicit flag), emit `needs-review` findings only, are score-exempt, and record model ID + prompt hash in `audit.json`.
 8. **Audit targets stay local HTTP(S)** (`assertLocalHttpUrl`, `packages/core/src/input-policy.ts`). Do not widen.
-9. **Report copy guardrails**: never claim "WCAG compliant", "accessible", "good design" etc. unqualified (`validateReportCopyGuardrails` in `packages/core/src/report.ts`). Scoped phrasing only — in reports AND public docs.
+9. **Report copy guardrails**: never claim "WCAG compliant", "accessible", "good design" etc. unqualified (`validateReportCopyGuardrails` in `packages/core/src/report.ts`). Scoped phrasing only — in reports AND public docs. *Enforced: `check:report-copy-guardrails` runs the guardrails over tracked `report.md` outputs + `README.md` (docs excluded — they quote the phrases to define the rule).* Report verdict/critique copy must also match the actual finding composition, never asserting a determinism class the findings lack (report/scoring unit tests).
 10. **Enum lockstep**: `RubricCategory` is duplicated across `types.ts`, 3 JSON schemas, `rubric.yaml`, and `implementationAreaFor`. *Enforced: `check:enum-lockstep` — if the script and this sentence disagree, the script wins.* New source-strength kinds or check runtimes need a short ADR in `docs/adr/` first (ADR-001 added runtime `model-judged` and source strength `project-contract`; its policy matrix is enforced by `check:criteria-policy`).
 11. **Do not build cut-list items** (see Roadmap section below) without the owner explicitly reopening them.
 12. **Historical example runs preserve producer provenance.** Never mechanically bump their `harnessVersion` or `toolVersions`; regenerate the complete artifact set or retain the version that actually produced it. *Prose-only; detailed procedure: `docs/recipes/release-checklist.md`.*
@@ -38,6 +38,7 @@ pnpm check:core-purity              # core stays capture-agnostic (ADR-002)
 pnpm check:package-boundaries       # graph + explicit runtime deps; YAML stays CLI-only
 pnpm check:deps-policy              # ToS/GPL dependency policy
 pnpm check:tracked-hygiene          # local-only files untracked; AGENTS.md line budget
+pnpm check:report-copy-guardrails   # HARD RULE 9: no unqualified overclaims in tracked reports/README
 pnpm check:guide-data               # guide fingerprint source/generated mirror parity
 pnpm calibrate:fixtures             # six Korean fixtures → parser-free copy TP/FP/FN drift gate
 pnpm example:serve                  # merchant-dashboard fixture on :4173

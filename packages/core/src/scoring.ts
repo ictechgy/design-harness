@@ -39,17 +39,48 @@ export function scoreFindings(findings: Finding[]): AdvisoryScore {
   };
 }
 
-export function verdictForScore(score: AdvisoryScore): string {
-  switch (score.band) {
-    case "strong":
-      return "No blocking deterministic findings.";
-    case "usable":
-      return "Usable with issues worth addressing.";
-    case "needs-work":
-      return "Needs revision before relying on this UI.";
-    case "blocked":
-      return "Blocked by high-risk deterministic findings.";
+/**
+ * A one-line verdict for the advisory score.
+ *
+ * Keyed on the actual finding composition, not the band alone: the band is a score threshold that
+ * heuristic risks also pull down (weight 0.25), so inferring "deterministic" from the band would let a
+ * heuristic-only audit claim "deterministic findings" it does not have. This function never names a
+ * determinism class or result kind the findings do not contain — that is HARD RULE 1 applied to report copy.
+ */
+export function verdictForScore(score: AdvisoryScore, findings: Finding[] = []): string {
+  const deterministicFailures = findings.filter(
+    (finding) => finding.determinism === "deterministic" && finding.resultKind === "failure"
+  ).length;
+  const deterministicRisks = findings.filter(
+    (finding) => finding.determinism === "deterministic" && finding.resultKind === "risk"
+  ).length;
+  const heuristicRisks = findings.filter(
+    (finding) => finding.determinism === "heuristic" && finding.resultKind === "risk"
+  ).length;
+
+  if (deterministicFailures > 0) {
+    return `Blocked by ${deterministicFailures} deterministic ${pluralize(deterministicFailures, "failure")}.`;
   }
+  if (score.band === "strong") {
+    return "No deterministic failures in the captured scope.";
+  }
+
+  // usable / needs-work / blocked with no deterministic failures: name what actually drove the score,
+  // never asserting a class that is absent.
+  const drivers: string[] = [];
+  if (deterministicRisks > 0) {
+    drivers.push(`${deterministicRisks} deterministic ${pluralize(deterministicRisks, "risk")}`);
+  }
+  if (heuristicRisks > 0) {
+    drivers.push(`${heuristicRisks} heuristic ${pluralize(heuristicRisks, "risk")}`);
+  }
+  const driverText = drivers.length > 0 ? drivers.join(" and ") : "advisory deductions";
+  const prefix = score.band === "usable" ? "Usable with" : "Below the advisory threshold on";
+  return `${prefix} ${driverText}.`;
+}
+
+function pluralize(count: number, noun: string): string {
+  return count === 1 ? noun : `${noun}s`;
 }
 
 function scoreBand(value: number): AdvisoryScore["band"] {
