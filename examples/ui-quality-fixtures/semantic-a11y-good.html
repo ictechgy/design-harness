@@ -4,6 +4,17 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Semantic Accessibility Good Fixture</title>
+    <style>
+      /* Interactive controls meet the WCAG 2.5.8 minimum. Without this the UA renders them 21px tall, and
+         the search field sits flush against the buttons below it — a real target-size defect orthogonal to
+         the semantic names/labels this fixture exists to exercise. A "-good" fixture should be genuinely
+         good on every check. */
+      input,
+      button {
+        min-height: 24px;
+        margin-bottom: 8px;
+      }
+    </style>
   </head>
   <body>
     <header>

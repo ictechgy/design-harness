@@ -20,6 +20,13 @@ export interface ElementSample {
   };
 }
 
+/** How many elements the contrast check actually scored, and why the rest were skipped. */
+export interface ContrastCoverage {
+  evaluatedElementCount: number;
+  skippedElementCount: number;
+  skippedByReason: Record<string, number>;
+}
+
 export interface ContrastRiskSample extends ElementSample {
   ratio: number;
   requiredRatio: number;
@@ -118,6 +125,8 @@ export interface ViewportMeasurements {
   meaningfulElementCount: number;
   clippedText: ElementSample[];
   contrastRisks: ContrastRiskSample[];
+  /** Per-viewport contrast evaluation coverage. Absent on measurements built before v0.5c. */
+  contrastCoverage?: ContrastCoverage;
   missingAccessibleNames: ElementSample[];
   missingFormLabels: ElementSample[];
   missingImageAlt: ElementSample[];

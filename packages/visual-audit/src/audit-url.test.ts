@@ -837,7 +837,18 @@ function fakePage(options: FakeBrowserOptions, pageIndex: number): PageHandle {
       if (source.includes("MAX_TEXT_INVENTORY_TEXT_LENGTH")) {
         calls.measurement += 1;
         options.measurementArgs?.push(arg);
-        return collectionResult as never;
+        // The closure returns raw candidates and collectViewportMeasurements scores them in Node, so the
+        // double has to supply that channel too. No test here exercises contrast, and every fixture
+        // measurement declares `contrastRisks: []`, so an empty candidate list reproduces them exactly.
+        return {
+          ...collectionResult,
+          contrastCandidates: [],
+          tapTargetCandidates: [],
+          measurements: {
+            ...collectionResult.measurements,
+            contrastCoverage: { evaluatedElementCount: 0, skippedElementCount: 0, skippedByReason: {} }
+          }
+        } as never;
       }
       if (arg !== undefined) {
         calls.marker += 1;

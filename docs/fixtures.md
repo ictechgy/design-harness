@@ -12,7 +12,7 @@ They are intentionally small, framework-free HTML pages used to calibrate determ
 - `semantic-a11y-good.html`: good semantic structure and labels.
 - `semantic-a11y-bad.html`: missing names, labels, alt text, heading order, landmark, and repeated label risks.
 - `responsive-readability-good.html`: responsive layout, readable measure, and adequate targets.
-- `responsive-readability-bad.html`: wide content, sticky obstruction, long lines, and small target risks.
+- `responsive-readability-bad.html`: wide content, sticky obstruction, and long lines. (Its lone small button is spacing-exempt under WCAG 2.5.8, so it no longer emits a tap-target finding; `tap-target-bad.html` is the dedicated target-size fixture.)
 - `interaction-state-good.html`: associated errors, live status, native controls, and controlled motion.
 - `interaction-state-bad.html`: static signals for interaction-state risks.
 - `midjourney-derived/scanability-good.html`: hand-authored dense-dashboard scanability fixture distilled from generic reference observations.

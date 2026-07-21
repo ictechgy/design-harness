@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Tap target — good</title>
+    <style>
+      /* The same kinds of control as the bad fixture, adequately spaced so every 24px circle clears its
+         neighbours. See tap-target-expected.md. */
+      button,
+      input {
+        position: absolute;
+        margin: 0;
+        padding: 0;
+        border: 0;
+        font: 12px system-ui;
+      }
+      /* Two 16x16 icons 40px apart centre-to-centre (>= 24): exempt under the Spacing exception. */
+      #icon-a { left: 20px; top: 20px; width: 16px; height: 16px; }
+      #icon-b { left: 20px; top: 60px; width: 16px; height: 16px; }
+      /* Wide-short control and a small neighbour, both clear of everything by >= 24px. */
+      #wide { left: 20px; top: 100px; width: 60px; height: 16px; }
+      #small { left: 120px; top: 100px; width: 16px; height: 16px; }
+      /* A 13x13 user-agent-default-sized checkbox, adequately spaced. It is exempt under Spacing without
+         any user-agent-control detection — which is why that undecidable exception is not implemented. */
+      #ua-check { left: 20px; top: 200px; width: 13px; height: 13px; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Toolbar</h1>
+      <button id="icon-a" type="button" aria-label="Bold">B</button>
+      <button id="icon-b" type="button" aria-label="Italic">I</button>
+      <button id="wide" type="button">Duplicate</button>
+      <button id="small" type="button" aria-label="Delete">x</button>
+      <input id="ua-check" type="checkbox" aria-label="Select all" />
+    </main>
+  </body>
+</html>

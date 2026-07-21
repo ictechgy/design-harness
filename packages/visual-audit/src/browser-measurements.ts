@@ -1,11 +1,31 @@
-import type { AuditNotice, CopyStyleSurfaceRule } from "@design-harness/core";
+import type { AuditNotice, CopyStyleSurfaceRule, LayoutMetrics } from "@design-harness/core";
 import type { ViewportMeasurements } from "./checks.js";
+import {
+  computeContrastRisks,
+  computeTapTargetRisks,
+  type ContrastCandidate,
+  type ContrastSkipReason,
+  type TapTargetCandidate
+} from "./measurement-primitives.js";
 
 export interface ViewportCollectionResult {
   measurements: ViewportMeasurements;
   notices: AuditNotice[];
+  layoutMetrics?: LayoutMetrics;
   fontFamilyCollection?: FontFamilyCollectionCounts;
   fontFamilyError?: FontFamilyMeasurementError;
+}
+
+/**
+ * What the page hands back: measurements with contrast left unscored.
+ *
+ * The closure is serialised to source text and evaluated in the page, so it cannot call imported helpers.
+ * It therefore collects raw colour values and `collectViewportMeasurements` scores them in Node, where the
+ * arithmetic is unit-testable.
+ */
+interface RawViewportCollectionResult extends ViewportCollectionResult {
+  contrastCandidates: ContrastCandidate[];
+  tapTargetCandidates: TapTargetCandidate[];
 }
 
 export interface ViewportMeasurementConfig {
@@ -32,7 +52,7 @@ export interface FontFamilyMeasurementError {
 export async function collectViewportMeasurements(page: {
   evaluate: <T>(pageFunction: ((arg?: unknown) => T | Promise<T>), arg?: unknown) => Promise<T>;
 }, config?: ViewportMeasurementConfig): Promise<ViewportCollectionResult> {
-  return page.evaluate((rawConfig): ViewportCollectionResult => {
+  const raw = await page.evaluate((rawConfig): RawViewportCollectionResult => {
     const MAX_TEXT_INVENTORY_TEXT_LENGTH = 2_000;
     const MAX_FONT_FAMILY_CANDIDATES = 2_000;
     const MAX_COMPUTED_FONT_FAMILY_LENGTH = 1_024;
@@ -161,25 +181,31 @@ export async function collectViewportMeasurements(page: {
       .slice(0, 10)
       .map((element) => sampleElement(element));
 
-    const contrastRisks = textElements
+    // Collection only — parsing, ratio, and threshold happen in Node. See measurement-primitives.ts for
+    // why this boundary exists: an imported helper would throw ReferenceError inside this serialised
+    // closure, and audit-url.ts would swallow it as a failed check.
+    //
+    // `.filter(rendersOwnText)` is applied here and NOWHERE else. It must never touch `textElements`,
+    // which clippedText, excessiveLineLength, and meaningfulElementCount also read.
+    const canvasColor = measureCanvasColor();
+    const contrastCandidates = textElements
+      .filter(rendersOwnText)
       .map((element) => {
         const style = window.getComputedStyle(element);
-        const color = style.color;
-        const backgroundColor = findEffectiveBackgroundColor(element);
-        const ratio = contrastRatio(parseRgb(color), parseRgb(backgroundColor));
-        const fontSize = Number.parseFloat(style.fontSize || "16");
-        const fontWeight = Number.parseInt(style.fontWeight || "400", 10);
-        const requiredRatio = fontSize >= 24 || (fontSize >= 18.66 && fontWeight >= 700) ? 3 : 4.5;
+        const backdrop = collectBackdrop(element);
+        const sample = sampleElement(element);
         return {
-          ...sampleElement(element),
-          ratio,
-          requiredRatio,
-          color,
-          backgroundColor
+          ...sample,
+          text: directTextOf(element) || sample.text,
+          // -webkit-text-fill-color paints the glyphs when set and defaults to `color` otherwise.
+          color: style.webkitTextFillColor || style.color,
+          backgroundLayers: backdrop.layers,
+          canvasColor,
+          fontSizePx: Number.parseFloat(style.fontSize || "16"),
+          fontWeight: Number.parseInt(style.fontWeight || "400", 10),
+          ...(backdrop.skipReason ? { skipReason: backdrop.skipReason } : {})
         };
-      })
-      .filter((sample) => Number.isFinite(sample.ratio) && sample.ratio < sample.requiredRatio)
-      .slice(0, 10);
+      });
 
     const interactiveElements = Array.from(document.body.querySelectorAll<HTMLElement>([
       "a[href]",
@@ -231,7 +257,7 @@ export async function collectViewportMeasurements(page: {
     const fixedWidthRisks = collectFixedWidthRisks();
     const stickyObstructionRisks = collectStickyObstructionRisks();
     const excessiveLineLength = collectExcessiveLineLength(textElements);
-    const tapTargetRisks = collectTapTargetRisks(interactiveElements);
+    const tapTargetCandidates = collectTapTargetCandidates(interactiveElements);
     const formErrorAssociationRisks = collectFormErrorAssociationRisks(formControls);
     const colorOnlyStateRisks = collectColorOnlyStateRisks();
     const disabledWithoutExplanation = collectDisabledWithoutExplanation();
@@ -250,7 +276,8 @@ export async function collectViewportMeasurements(page: {
       textLength: document.body.innerText.trim().length,
       meaningfulElementCount: textElements.length,
       clippedText,
-      contrastRisks,
+      contrastRisks: [],
+      contrastCoverage: { evaluatedElementCount: 0, skippedElementCount: 0, skippedByReason: {} },
       missingAccessibleNames,
       missingFormLabels,
       missingImageAlt,
@@ -264,7 +291,7 @@ export async function collectViewportMeasurements(page: {
       fixedWidthRisks,
       stickyObstructionRisks,
       excessiveLineLength,
-      tapTargetRisks,
+      tapTargetRisks: [],
       formErrorAssociationRisks,
       colorOnlyStateRisks,
       disabledWithoutExplanation,
@@ -275,8 +302,13 @@ export async function collectViewportMeasurements(page: {
       textInventory
     };
 
+    const layoutMetrics = collectLayoutMetrics();
+
     return {
       measurements,
+      contrastCandidates,
+      tapTargetCandidates,
+      layoutMetrics,
       notices,
       ...(fontFamilyEnabled && fontFamilyError === undefined ? {
         fontFamilyCollection: {
@@ -286,6 +318,57 @@ export async function collectViewportMeasurements(page: {
       } : {}),
       ...(fontFamilyError ? { fontFamilyError } : {})
     };
+
+    // Raw layout-value distributions. Measurement only — no criterion, no finding, no threshold. Collects
+    // the values a page actually uses for each property group so a future consistency check can be
+    // calibrated against real distributions. 0px/normal are included deliberately: filtering would be a
+    // judgement, and this is measurement.
+    function collectLayoutMetrics(): LayoutMetrics {
+      const MAX_LAYOUT_METRIC_ELEMENTS = 5_000;
+      const MAX_LAYOUT_METRIC_VALUES = 20;
+      const groups: Array<{ property: string; sources: string[] }> = [
+        { property: "margin", sources: ["marginTop", "marginRight", "marginBottom", "marginLeft"] },
+        { property: "padding", sources: ["paddingTop", "paddingRight", "paddingBottom", "paddingLeft"] },
+        { property: "gap", sources: ["rowGap", "columnGap"] },
+        { property: "border-radius", sources: ["borderTopLeftRadius", "borderTopRightRadius", "borderBottomRightRadius", "borderBottomLeftRadius"] },
+        { property: "line-height", sources: ["lineHeight"] },
+        { property: "letter-spacing", sources: ["letterSpacing"] }
+      ];
+      const counts = groups.map(() => ({ frequency: new Map<string, number>(), sampledElements: 0 }));
+      const elements = Array.from(document.body.querySelectorAll<HTMLElement>("*")).slice(0, MAX_LAYOUT_METRIC_ELEMENTS);
+      for (const element of elements) {
+        const style = window.getComputedStyle(element);
+        groups.forEach((group, index) => {
+          let contributed = false;
+          for (const source of group.sources) {
+            const value = (style as unknown as Record<string, string>)[source];
+            if (typeof value !== "string" || value === "") {
+              continue;
+            }
+            counts[index].frequency.set(value, (counts[index].frequency.get(value) ?? 0) + 1);
+            contributed = true;
+          }
+          if (contributed) {
+            counts[index].sampledElements += 1;
+          }
+        });
+      }
+      return {
+        viewport: viewportName,
+        properties: groups.map((group, index) => {
+          const entries = Array.from(counts[index].frequency.entries())
+            .sort((a, b) => (b[1] - a[1]) || (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0));
+          const values = entries.slice(0, MAX_LAYOUT_METRIC_VALUES).map(([value, count]) => ({ value, count }));
+          return {
+            property: group.property,
+            sampledElementCount: counts[index].sampledElements,
+            distinctValueCount: entries.length,
+            values,
+            truncatedValueCount: entries.length - values.length
+          };
+        })
+      };
+    }
 
     function sampleElement(element: HTMLElement) {
       const rect = element.getBoundingClientRect();
@@ -1098,18 +1181,25 @@ export async function collectViewportMeasurements(page: {
       return element.querySelector("p,li,td,th,article,section,main") === null;
     }
 
-    function collectTapTargetRisks(elements: HTMLElement[]) {
+    // Collection only — the Spacing-exception geometry (WCAG 2.5.8) runs in Node, over the full set, so it
+    // is table-testable and cannot be truncated by a slice before exemption is decided. Inline controls are
+    // exempt here (text-flow targets sized by their line): a link or button rendered inline in a sentence.
+    function collectTapTargetCandidates(elements: HTMLElement[]) {
       return elements
-        .filter((element) => {
-          const style = window.getComputedStyle(element);
-          if (element.tagName === "A" && style.display === "inline") {
-            return false;
-          }
+        .filter((element) => window.getComputedStyle(element).display !== "inline")
+        .map((element) => {
           const rect = element.getBoundingClientRect();
-          return rect.width > 0 && rect.height > 0 && (rect.width < 24 || rect.height < 24);
-        })
-        .slice(0, 10)
-        .map((element) => sampleElement(element));
+          const sample = sampleElement(element);
+          return {
+            ...sample,
+            rect: {
+              x: rect.x,
+              y: rect.y,
+              width: rect.width,
+              height: rect.height
+            }
+          };
+        });
     }
 
     function collectFormErrorAssociationRisks(elements: HTMLElement[]) {
@@ -1248,17 +1338,102 @@ export async function collectViewportMeasurements(page: {
       return 0;
     }
 
-    function findEffectiveBackgroundColor(element: HTMLElement): string {
+    function rendersOwnText(element: HTMLElement): boolean {
+      // Literal 3 rather than Node.TEXT_NODE: this closure is serialised via Function.prototype.toString,
+      // and a literal removes any question about identifier resolution in the page.
+      //
+      // This is deliberately not a leaf test. In `<p style="color:#777">x <strong style="color:#fff">y
+      // </strong></p>` both elements render their own text in their own colour and both must be scored;
+      // a leaf test would drop the `p` and lose its risk entirely.
+      return Array.from(element.childNodes)
+        .some((node) => node.nodeType === 3 && (node.textContent ?? "").trim() !== "");
+    }
+
+    function directTextOf(element: HTMLElement): string {
+      return Array.from(element.childNodes)
+        .filter((node) => node.nodeType === 3)
+        .map((node) => node.textContent ?? "")
+        .join("")
+        .trim()
+        .slice(0, 120);
+    }
+
+    /**
+     * A computed colour is opaque unless it carries an explicit alpha component. Chromium omits alpha
+     * entirely when opaque (`rgb(11, 15, 25)`, `oklch(0.7 0.35 150)`) and always emits it otherwise
+     * (`rgba(…, 0.06)`, `oklab(… / 0.06)`, `color(srgb 1 1 1 / 0.06)`). This is purely syntactic, so the
+     * closure needs no colour maths — conversion stays in Node where it is unit-testable.
+     *
+     * Conservative in the safe direction: an unrecognised string reads as opaque and stops the walk, and
+     * Node then returns null for it and skips. It can never fabricate a backdrop.
+     */
+    function layerIsOpaque(value: string): boolean {
+      if (typeof value !== "string") {
+        return true;
+      }
+      if (value.indexOf("/") !== -1) {
+        return false;
+      }
+      const legacy = value.match(/^rgba?\(([^)]*)\)$/);
+      if (legacy) {
+        const parts = legacy[1].split(",");
+        return parts.length >= 4 ? Number.parseFloat(parts[3]) === 1 : true;
+      }
+      return true;
+    }
+
+    /**
+     * Measures the UA canvas instead of inferring it from `color-scheme`.
+     *
+     * Testing `/dark/` against `color-scheme` is wrong: `color-scheme: light dark` — what Tailwind v4 and
+     * shadcn emit — computes to the literal string "light dark" and would mass-skip light pages. A
+     * `color: Canvas` probe reads rgb(255, 255, 255) for normal/light/"light dark"-in-light and
+     * rgb(18, 18, 18) for dark, deriving the value rather than hardcoding a Chromium constant.
+     */
+    function measureCanvasColor(): string {
+      const probe = document.createElement("div");
+      probe.style.color = "Canvas";
+      probe.style.display = "none";
+      document.documentElement.appendChild(probe);
+      const measured = window.getComputedStyle(probe).color;
+      probe.remove();
+      return measured || "rgb(255, 255, 255)";
+    }
+
+    function collectBackdrop(element: HTMLElement): { layers: string[]; skipReason?: ContrastSkipReason } {
+      const layers: string[] = [];
+      let outOfFlowVisited = false;
       let current: HTMLElement | null = element;
+
       while (current) {
-        const backgroundColor = window.getComputedStyle(current).backgroundColor;
-        const parsed = parseRgb(backgroundColor);
-        if (parsed.alpha > 0) {
-          return backgroundColor;
+        const style = window.getComputedStyle(current);
+
+        // Bail flags are tested BEFORE the opacity test on the same element: a background-image paints on
+        // top of that element's background-color, so an opaque colour does not make the image irrelevant.
+        if (style.backgroundImage !== "none") {
+          return { layers, skipReason: "background-image" };
+        }
+        const backdropFilter = style.backdropFilter
+          || (style as unknown as Record<string, string>).webkitBackdropFilter;
+        if (backdropFilter && backdropFilter !== "none") {
+          return { layers, skipReason: "backdrop-filter" };
+        }
+        if (style.position === "fixed" || style.position === "absolute") {
+          outOfFlowVisited = true;
+        }
+
+        layers.push(style.backgroundColor);
+        if (layerIsOpaque(style.backgroundColor)) {
+          return { layers };
         }
         current = current.parentElement;
       }
-      return "rgb(255, 255, 255)";
+
+      // The chain reached past <html> without an opaque layer. For an in-flow element that genuinely means
+      // the canvas paints behind it, and the measured canvas colour is correct. For an out-of-flow element
+      // — a portalled scrim, a fixed overlay — the DOM ancestry does not describe what paints behind it,
+      // and using the canvas would manufacture a false positive on dark app shells painted by a wrapper.
+      return outOfFlowVisited ? { layers, skipReason: "detached-backdrop" } : { layers };
     }
 
     function parseRgb(value: string) {
@@ -1304,29 +1479,39 @@ export async function collectViewportMeasurements(page: {
       };
     }
 
-    function contrastRatio(
-      foreground: { red: number; green: number; blue: number },
-      background: { red: number; green: number; blue: number }
-    ): number {
-      const foregroundLuminance = relativeLuminance(foreground);
-      const backgroundLuminance = relativeLuminance(background);
-      const lighter = Math.max(foregroundLuminance, backgroundLuminance);
-      const darker = Math.min(foregroundLuminance, backgroundLuminance);
-      return (lighter + 0.05) / (darker + 0.05);
-    }
-
-    function relativeLuminance(color: { red: number; green: number; blue: number }): number {
-      const [red, green, blue] = [color.red, color.green, color.blue].map((channel) => {
-        const value = channel / 255;
-        return value <= 0.03928 ? value / 12.92 : Math.pow((value + 0.055) / 1.055, 2.4);
-      });
-      return 0.2126 * red + 0.7152 * green + 0.0722 * blue;
-    }
-
     function standardDeviation(values: number[]): number {
       const average = values.reduce((sum, value) => sum + value, 0) / Math.max(values.length, 1);
       const variance = values.reduce((sum, value) => sum + (value - average) ** 2, 0) / Math.max(values.length, 1);
       return Math.sqrt(variance);
     }
   }, config);
+
+  const { contrastCandidates, tapTargetCandidates, ...collection } = raw;
+  const { risks, coverage } = computeContrastRisks(contrastCandidates);
+  const tapTargetRisks = computeTapTargetRisks(tapTargetCandidates);
+  const notices = coverage.skippedElementCount > 0
+    ? [...collection.notices, {
+        code: "contrast-elements-skipped",
+        message: `Skipped ${coverage.skippedElementCount} element(s) whose painted backdrop could not be `
+          + "determined from computed styles; no contrast finding was emitted for them.",
+        viewport: collection.measurements.viewport,
+        details: {
+          skippedElementCount: coverage.skippedElementCount,
+          skippedByReason: coverage.skippedByReason
+        }
+      } satisfies AuditNotice]
+    : collection.notices;
+
+  return {
+    ...collection,
+    notices,
+    measurements: {
+      ...collection.measurements,
+      // Overrides the placeholders emitted by the closure. Every key already exists there, so these
+      // assignments keep their original positions and audit.json serialisation order is unchanged.
+      contrastRisks: risks,
+      contrastCoverage: coverage,
+      tapTargetRisks
+    }
+  };
 }

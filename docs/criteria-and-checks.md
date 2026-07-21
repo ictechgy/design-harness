@@ -70,6 +70,79 @@ Recommended authoring rules, not built-in defaults:
 
 Copy-style-backed criteria use `sourceStrength: "project-contract"` and can emit deterministic `risk` at most. They assert "this captured copy conflicts with your declared contract", not universal language quality.
 
+### Text Contrast Coverage (`dom-contrast-risk`)
+
+`dom-contrast-risk` composites both the foreground and the backdrop before computing a WCAG 2.x ratio. The
+element's own `background-color` is layer zero, ancestors are walked until one carries no alpha component,
+and the base is the UA canvas measured from a `color: Canvas` probe rather than a hardcoded white. Both
+channels are composited: text at `rgba(255,255,255,0.25)` on a dark surface is a real failure, and scoring
+it as opaque white would report roughly 16.8:1 and pass it. `oklch()`, `oklab()`, and `color(srgb …)` are
+converted exactly; `rgb(r g b / a%)` never reaches the parser because Chromium normalises it first.
+
+Only elements that render their **own** direct text are scored, so a wrapper and its child no longer report
+the same text twice. This is not a leaf rule: in `<p style="color:#777">x <strong style="color:#fff">y
+</strong></p>` both elements render text in their own colour and both are evaluated.
+
+**What it does not measure.** When the painted backdrop cannot be determined from computed styles, the check
+emits *no finding* and records the element in `contrastCoverage` on the measurement evidence, plus a
+`contrast-elements-skipped` notice. A skipped element is not a passing element, and `evaluatedElementCount`
+is what distinguishes "looked and found nothing" from "never looked". Skips are:
+
+| Condition | Why it is not measurable here |
+|---|---|
+| `background-image` anywhere in the chain | A gradient or raster has no single colour; sampling only its stops is unsound in both directions. |
+| `backdrop-filter` in the chain | The painted result depends on what is behind the element, which computed style does not expose. |
+| Out-of-flow element whose chain never reaches an opaque layer | DOM ancestry does not describe what paints behind a fixed or portalled overlay. |
+| `color(display-p3 …)`, `lab()`, `lch()`, or any unparsed value | A scope decision, not a limit of the evidence — these are convertible and simply are not yet. |
+| Foreground `alpha: 0` | No glyph is painted, so there is nothing to contrast. |
+
+Additionally, the check is **blind to `opacity`, `mix-blend-mode`, and `filter`** on ancestors: it neither
+composites them nor skips for them, so a ratio under those properties is reported from the unblended
+colours. That is a known recall hole, recorded here rather than hidden, and it is unchanged from earlier
+versions.
+
+### Raw layout metrics (measurement only)
+
+`audit.json` carries an optional top-level `layoutMetrics` array — one entry per viewport — recording the
+distribution of computed values a page uses for six property groups: `margin`, `padding`, `gap`,
+`border-radius`, `line-height`, and `letter-spacing`. Margin/padding merge their four sides, gap merges row
+and column, and border-radius merges its four corners, so each distribution answers "how many distinct
+values does this page use for this property".
+
+**This is measurement, not a check.** There is no criterion, no finding, no score effect, and no threshold.
+It exists so a future consistency check can be calibrated against real distributions rather than a guessed
+number, and so a human or agent can see at a glance whether a page draws from a small scale or a sprawl of
+ad-hoc values. Each `LayoutMetricDistribution` reports `sampledElementCount`, `distinctValueCount`, the most
+frequent `values` (capped at 20, highest count first), and `truncatedValueCount` for the remainder. Raw
+computed strings are recorded verbatim, including the ubiquitous `0px` and `normal` — filtering them would
+be a judgement, and this block makes none. Collection is bounded to 5000 elements per viewport.
+
+`layoutMetrics` is optional and additive, so `SCHEMA_VERSION` is unchanged and audit artifacts written
+before it (which omit the key) still validate. Its subobjects are closed (`additionalProperties: false`).
+
+### Target Size (`tap-target-risk`)
+
+`tap-target-risk` maps to `a11y.target-size.minimum` (WCAG 2.2 SC 2.5.8, deterministic/risk). An
+interactive target under 24×24 CSS pixels is flagged **unless** the Spacing exception applies.
+
+The Spacing exception is implemented in its conjunctive form, matching the normative text ("the circles do
+not intersect another target or the circle for another undersized target"): an undersized target is exempt
+when its 24px-diameter circle — radius 12, centred on the bounding box — intersects neither the bounding
+box of any other target (the rect test) nor the 24px circle of any other *undersized* target (the circle
+test). Intersection is strict, so a tangent circle is exempt. Both tests are needed: the rect test alone
+under-exempts two small targets whose circles overlap while their boxes are far, and the circle test alone
+over-exempts a small target hugging a large one. The geometry runs over the full interactive set before any
+sample cap, so a genuine violation cannot be pushed out of the window by exempt neighbours. Inline controls
+(text-flow targets sized by their line) are exempt, unchanged from earlier versions.
+
+**Not implemented, by decision.** The *User-agent control* exception ("size determined by the user agent
+and not modified by the author") is undecidable from the DOM: cloning tag+type into the same parent reports
+an author `width: 13px` as "unmodified" when it coincides with the UA's 13px, and reports an empty button's
+content-derived 16×6 as UA-default. It is also unnecessary — the Spacing exception already exempts every
+adequately spaced UA-sized control. The *Equivalent* and *Essential* exceptions ("a conforming alternative
+exists elsewhere" / "this exact size is required") are author intent, not readable from the DOM. Each is a
+documented recall hole, not a silent one.
+
 ### Font Family Contract
 
 CLI users may pass one explicit `design-guide.yaml` to `audit --guide`. The CLI projects heading, body, then optional `audit.fontFamily.additionalAllowedFamilies` into the allowed union and carries optional `audit.fontFamily.ignoreSelectors` in `font-family-adherence-v1`; neither YAML nor the whole guide crosses into the capture package. Without `--guide`, this check performs no loading, capture, or reporting work.
