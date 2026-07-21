@@ -269,7 +269,7 @@ function normalizeBannedPhrase(
 
 function buildTokenRules(tokens: DesignGuideTokens): GuideRule[] {
   const summary = [
-    `color(${summarizeTokenGroup(tokens.color.semantic)})`,
+    `color(${summarizeTokenGroup(tokens.color.semantic, formatColorLiteral)})`,
     `font(${summarizeTokenGroup(tokens.font.family)})`,
     `spacing(${summarizeTokenGroup(tokens.spacing)})`,
     `radius(${summarizeTokenGroup(tokens.radius)})`
@@ -589,7 +589,10 @@ function normalizeStrings(value: unknown): unknown {
   return value;
 }
 
-function summarizeTokenGroup(group: object): string {
+function summarizeTokenGroup(
+  group: object,
+  formatValue: (value: unknown) => string = compactJson
+): string {
   const record = group as Record<string, unknown>;
   return Object.keys(record)
     .filter((key) => key !== "$type")
@@ -599,9 +602,34 @@ function summarizeTokenGroup(group: object): string {
       const value = isRecord(token) && Object.prototype.hasOwnProperty.call(token, "$value")
         ? token.$value
         : token;
-      return `${key}=${compactJson(value)}`;
+      return `${key}=${formatValue(value)}`;
     })
     .join("; ");
+}
+
+// Emit srgb DTCG colors to the model as CSS-usable hex literals (#RRGGBB / #RRGGBBAA) rather than
+// the normalized float triplet the DTCG token file stores. Only the generation guide is rewritten;
+// the token file (designTokensJson) and sourceHash keep the raw components. Falls back to compact
+// JSON for any non-srgb or malformed shape so the formatter stays total.
+function formatColorLiteral(value: unknown): string {
+  if (
+    isRecord(value) &&
+    value.colorSpace === "srgb" &&
+    Array.isArray(value.components) &&
+    value.components.length === 3 &&
+    value.components.every((component): component is number => typeof component === "number")
+  ) {
+    const [red, green, blue] = value.components;
+    const hex = `#${toHexByte(red)}${toHexByte(green)}${toHexByte(blue)}`;
+    const { alpha } = value;
+    return typeof alpha === "number" && alpha < 1 ? `${hex}${toHexByte(alpha)}` : hex;
+  }
+  return compactJson(value);
+}
+
+function toHexByte(component: number): string {
+  const clamped = Math.min(1, Math.max(0, component));
+  return Math.round(clamped * 255).toString(16).padStart(2, "0").toUpperCase();
 }
 
 function summarizeLocaleAndRegisters(copy: SafeCopyProjection): string {

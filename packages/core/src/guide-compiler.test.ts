@@ -120,6 +120,33 @@ describe("pure guide compiler", () => {
     expect(compileDesignGuide(changedToken).markdown).not.toBe(compiledBase.markdown);
   });
 
+  it("renders semantic colors as hex literals in the model guide but keeps DTCG floats in the token file", () => {
+    const guide = createExampleDesignGuide();
+    guide.tokens.color.semantic.accent = {
+      $value: { colorSpace: "srgb", components: [0.12, 0.38, 0.82], alpha: 1 }
+    };
+    guide.tokens.color.semantic.text = {
+      $value: { colorSpace: "srgb", components: [0, 0, 0], alpha: 0.5 }
+    };
+    const result = compileDesignGuide(guide);
+
+    // Model-facing generation guide: CSS-usable hex, never the normalized float triplet.
+    expect(result.markdown).toContain("accent=#1F61D1");
+    expect(result.markdown).toContain("text=#00000080");
+    expect(result.markdown).not.toContain('"components"');
+    expect(result.markdown).not.toContain("0.12,0.38,0.82");
+    expect(result.markdown).not.toContain("colorSpace");
+
+    // DTCG token file is the machine format and must keep the raw float components untouched.
+    expect(result.designTokensJson).toContain('"components"');
+    expect(result.designTokensJson).toContain("0.12");
+
+    // Hexing the guide is presentation only: it must not move the source hash.
+    expect(compileDesignGuide(createExampleDesignGuide()).sourceHash).toBe(
+      "e775c105733d39aa086f2e5aa9bc189bb4ba2850cc163e0762f4b86b14893243"
+    );
+  });
+
   it("is byte deterministic across scoped copy declaration order and sorts by Unicode scalar value", () => {
     const copy = createExampleCopyStyle();
     copy.glossary = [
