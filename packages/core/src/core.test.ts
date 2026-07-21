@@ -31,7 +31,8 @@ import {
   validateReportCopyGuardrails,
   validateAgainstSchema,
   validateAuditResultIntegrity,
-  validateSchema
+  validateSchema,
+  verdictForScore
 } from "./index.js";
 
 function createContentFinding(overrides: Partial<ReturnType<typeof createExampleFinding>> = {}) {
@@ -324,6 +325,55 @@ describe("core schemas", () => {
     const auditPath = new URL("../../../examples/reports/semantic-a11y-bad/audit.json", import.meta.url);
     const auditResult = JSON.parse(readFileSync(auditPath, "utf8"));
     expect(validateSchema("audit-result", auditResult).valid).toBe(true);
+  });
+
+  it("does not claim deterministic findings in the verdict when none are present", () => {
+    // A heuristic-only audit can still score into a low band, because heuristic risks deduct too. The
+    // verdict must not then assert "deterministic" findings the audit does not have.
+    const heuristicFindings = Array.from({ length: 12 }, (_unused, index) => ({
+      ...createExampleFinding(),
+      id: `heuristic-${index}`,
+      determinism: "heuristic" as const,
+      resultKind: "risk" as const,
+      severity: "high" as const
+    }));
+    const score = scoreFindings(heuristicFindings);
+    const verdict = verdictForScore(score, heuristicFindings);
+
+    expect(score.band).toBe("blocked");
+    expect(verdict).not.toMatch(/deterministic/);
+    expect(verdict).toContain("heuristic");
+  });
+
+  it("names deterministic failures in the verdict only when they are present", () => {
+    const failure = {
+      ...createExampleFinding(),
+      id: "det-failure",
+      determinism: "deterministic" as const,
+      resultKind: "failure" as const
+    };
+    const verdict = verdictForScore(scoreFindings([failure]), [failure]);
+    expect(verdict).toMatch(/deterministic failure/);
+  });
+
+  it("does not claim 'only deterministic findings' when a heuristic finding is present", () => {
+    const auditResult = createExampleAuditResult();
+    auditResult.findings = [
+      { ...createExampleFinding(), id: "det", determinism: "deterministic", resultKind: "risk" },
+      { ...createExampleFinding(), id: "heur", determinism: "heuristic", resultKind: "risk" }
+    ];
+    const report = renderMarkdownReport({ auditResult });
+    expect(report).not.toContain("only contains deterministic");
+    expect(report).toContain("retain their recorded deterministic and heuristic classifications");
+  });
+
+  it("still says 'only deterministic findings' when that is actually true", () => {
+    const auditResult = createExampleAuditResult();
+    auditResult.findings = [
+      { ...createExampleFinding(), id: "det", determinism: "deterministic", resultKind: "risk" }
+    ];
+    const report = renderMarkdownReport({ auditResult });
+    expect(report).toContain("only contains deterministic audit findings");
   });
 
   it("treats layoutMetrics as optional and closes its distribution subobject", () => {

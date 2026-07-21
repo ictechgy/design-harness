@@ -31,7 +31,7 @@
     "build": "pnpm -r build",
     "typecheck": "pnpm -r typecheck",
     "test": "pnpm -r test",
-    "validate": "pnpm --filter @design-harness/core validate && pnpm check:guide-data && pnpm validate:calibration-datasets && pnpm check:github-actions && pnpm check:agent-recipes && pnpm check:v0.3-integrations && pnpm check:enum-lockstep && pnpm check:criteria-policy && pnpm check:version-consistency && pnpm check:release-hook-policy && pnpm check:core-purity && pnpm check:package-boundaries && pnpm check:deps-policy && pnpm check:tracked-hygiene",
+    "validate": "pnpm --filter @design-harness/core validate && pnpm check:guide-data && pnpm validate:calibration-datasets && pnpm check:github-actions && pnpm check:agent-recipes && pnpm check:v0.3-integrations && pnpm check:enum-lockstep && pnpm check:criteria-policy && pnpm check:version-consistency && pnpm check:release-hook-policy && pnpm check:core-purity && pnpm check:package-boundaries && pnpm check:deps-policy && pnpm check:tracked-hygiene && pnpm check:report-copy-guardrails",
     "check:guide-data": "node scripts/check-guide-data.mjs && node scripts/check-guide-data-regressions.mjs",
     "check:enum-lockstep": "node scripts/check-enum-lockstep.mjs",
     "check:criteria-policy": "node scripts/check-criteria-policy.mjs",
@@ -60,7 +60,8 @@
     "calibrate:fixtures": "pnpm validate:korean-copy && node scripts/run-calibration.mjs",
     "smoke:packed-cli": "node scripts/verify-packed-cli.mjs",
     "pack:dry-run": "pnpm --filter @design-harness/core pack --dry-run && pnpm --filter @design-harness/copy-audit pack --dry-run && pnpm --filter @design-harness/visual-audit pack --dry-run && pnpm --filter @design-harness/cli pack --dry-run",
-    "release:check": "pnpm build && pnpm typecheck && pnpm test && pnpm validate && pnpm pack:dry-run && pnpm smoke:guide && pnpm smoke:packed-cli"
+    "release:check": "pnpm build && pnpm typecheck && pnpm test && pnpm validate && pnpm pack:dry-run && pnpm smoke:guide && pnpm smoke:packed-cli",
+    "check:report-copy-guardrails": "node scripts/check-report-copy-guardrails.mjs"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",
