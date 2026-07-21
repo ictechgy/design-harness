@@ -391,11 +391,12 @@ export function computeContrastRisks(candidates: ContrastCandidate[]): ContrastR
     }
 
     evaluatedElementCount += 1;
-    if (ratio < requiredContrastRatio(fontSizePx, fontWeight)) {
+    const requiredRatio = requiredContrastRatio(fontSizePx, fontWeight);
+    if (ratio < requiredRatio) {
       risks.push({
         ...sample,
         ratio,
-        requiredRatio: requiredContrastRatio(fontSizePx, fontWeight),
+        requiredRatio,
         color,
         backgroundColor: serializeColor(background)
       });

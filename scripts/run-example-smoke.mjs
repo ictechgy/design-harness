@@ -318,13 +318,26 @@ function assertLayoutMetricsPresent(auditResult) {
       + `expected ${auditResult.viewportPresets.length}.`
     );
   }
+  // Every group must be populated, not just one: a single-group regression (e.g. a mistyped source key on
+  // letter-spacing) would otherwise pass while that group silently stops collecting. On merchant-dashboard
+  // every element reports a value for all six groups (0px / normal by default), so each is non-empty.
+  const expectedGroups = ["margin", "padding", "gap", "border-radius", "line-height", "letter-spacing"];
+  const presetNames = new Set(auditResult.viewportPresets.map((preset) => preset.name));
   for (const entry of layoutMetrics) {
-    const radius = entry.properties?.find((property) => property.property === "border-radius");
-    if (!radius || !(radius.sampledElementCount > 0) || !(radius.distinctValueCount > 0)) {
+    if (!presetNames.has(entry.viewport)) {
       throw new Error(
-        `merchant-dashboard ${entry.viewport} layoutMetrics border-radius is empty; `
-        + "the raw metric block stopped collecting."
+        `merchant-dashboard layoutMetrics has an entry for viewport "${entry.viewport}", `
+        + `which is not one of ${[...presetNames].join(", ")}.`
       );
+    }
+    for (const group of expectedGroups) {
+      const distribution = entry.properties?.find((property) => property.property === group);
+      if (!distribution || !(distribution.sampledElementCount > 0) || !(distribution.distinctValueCount > 0)) {
+        throw new Error(
+          `merchant-dashboard ${entry.viewport} layoutMetrics ${group} is empty; `
+          + "the raw metric block stopped collecting for that property group."
+        );
+      }
     }
   }
 }
@@ -498,11 +511,17 @@ function assertLineLengthTripwire(auditResult) {
       perViewport.set(finding.viewport, (perViewport.get(finding.viewport) ?? 0) + 1);
     }
   }
+  // Exactly one per viewport, not "at least one": the lower bound alone would let a detector that flags
+  // every P/LI/TD/TH pass while flooding, and no other gate catches excessive-line-length (it is a risk,
+  // not a failedCheck). Pinning the count makes this two-sided — a shrink drops it to 0, an over-fire
+  // raises it above 1, and both fail.
   for (const preset of auditResult.viewportPresets) {
-    if ((perViewport.get(preset.name) ?? 0) < 1) {
+    const count = perViewport.get(preset.name) ?? 0;
+    if (count !== 1) {
       throw new Error(
-        `${lineLengthTripwireFixture} stopped emitting excessive-line-length on ${preset.name}. `
-        + "A change to the shared textElements array most likely removed its candidates."
+        `${lineLengthTripwireFixture} emitted ${count} excessive-line-length findings on ${preset.name}, `
+        + "expected exactly 1. A shrink of the shared textElements array drops it to 0; an over-firing "
+        + "line-length detector raises it above 1."
       );
     }
   }
