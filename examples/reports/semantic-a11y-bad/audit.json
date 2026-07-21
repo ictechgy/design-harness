@@ -1,11 +1,11 @@
 {
   "schemaVersion": "0.2",
-  "harnessVersion": "0.4.0",
-  "runId": "2026-07-09-141826875Z",
+  "harnessVersion": "0.5.0",
+  "runId": "2026-07-21-134206826Z",
   "target": {
     "schemaVersion": "0.2",
     "kind": "url",
-    "url": "http://localhost:4174/semantic-a11y-bad.html"
+    "url": "http://127.0.0.1:4174/semantic-a11y-bad.html"
   },
   "viewportPresets": [
     {
@@ -29,7 +29,7 @@
       "type": "screenshot",
       "path": "screenshots/desktop.png",
       "viewport": "desktop",
-      "createdAt": "2026-07-09T14:18:27.037Z"
+      "createdAt": "2026-07-21T13:42:06.995Z"
     },
     {
       "id": "measurement-desktop",
@@ -45,6 +45,11 @@
         "meaningfulElementCount": 7,
         "clippedText": [],
         "contrastRisks": [],
+        "contrastCoverage": {
+          "evaluatedElementCount": 6,
+          "skippedElementCount": 0,
+          "skippedByReason": {}
+        },
         "missingAccessibleNames": [
           {
             "selector": "div > button:nth-of-type(1)",
@@ -127,58 +132,7 @@
         "fixedWidthRisks": [],
         "stickyObstructionRisks": [],
         "excessiveLineLength": [],
-        "tapTargetRisks": [
-          {
-            "selector": "div > button:nth-of-type(1)",
-            "text": "",
-            "region": {
-              "x": 8,
-              "y": 194,
-              "width": 16,
-              "height": 6
-            }
-          },
-          {
-            "selector": "#query",
-            "text": "",
-            "region": {
-              "x": 28,
-              "y": 182,
-              "width": 153,
-              "height": 21
-            }
-          },
-          {
-            "selector": "div > button:nth-of-type(2)",
-            "text": "View",
-            "region": {
-              "x": 190,
-              "y": 182,
-              "width": 45,
-              "height": 21
-            }
-          },
-          {
-            "selector": "div > button:nth-of-type(3)",
-            "text": "View",
-            "region": {
-              "x": 239,
-              "y": 182,
-              "width": 45,
-              "height": 21
-            }
-          },
-          {
-            "selector": "div > button:nth-of-type(4)",
-            "text": "View",
-            "region": {
-              "x": 287,
-              "y": 182,
-              "width": 45,
-              "height": 21
-            }
-          }
-        ],
+        "tapTargetRisks": [],
         "formErrorAssociationRisks": [],
         "colorOnlyStateRisks": [],
         "disabledWithoutExplanation": [],
@@ -187,7 +141,7 @@
         "customControlSemanticsRisks": [],
         "movingContentControlRisks": []
       },
-      "createdAt": "2026-07-09T14:18:27.043Z"
+      "createdAt": "2026-07-21T13:42:07.003Z"
     },
     {
       "id": "text-inventory-desktop",
@@ -296,7 +250,7 @@
           }
         ]
       },
-      "createdAt": "2026-07-09T14:18:27.043Z"
+      "createdAt": "2026-07-21T13:42:07.003Z"
     },
     {
       "id": "aria-snapshot-desktop",
@@ -307,14 +261,14 @@
         "format": "playwright-aria-yaml",
         "snapshot": "- heading \"Orders\" [level=1]\n- heading \"Late orders\" [level=3]\n- heading \"Exports\" [level=1]\n- button\n- searchbox\n- img\n- button \"View\"\n- button \"View\"\n- button \"View\""
       },
-      "createdAt": "2026-07-09T14:18:27.054Z"
+      "createdAt": "2026-07-21T13:42:07.013Z"
     },
     {
       "id": "screenshot-mobile",
       "type": "screenshot",
       "path": "screenshots/mobile.png",
       "viewport": "mobile",
-      "createdAt": "2026-07-09T14:18:27.138Z"
+      "createdAt": "2026-07-21T13:42:07.101Z"
     },
     {
       "id": "measurement-mobile",
@@ -330,6 +284,11 @@
         "meaningfulElementCount": 7,
         "clippedText": [],
         "contrastRisks": [],
+        "contrastCoverage": {
+          "evaluatedElementCount": 6,
+          "skippedElementCount": 0,
+          "skippedByReason": {}
+        },
         "missingAccessibleNames": [
           {
             "selector": "div > button:nth-of-type(1)",
@@ -412,58 +371,7 @@
         "fixedWidthRisks": [],
         "stickyObstructionRisks": [],
         "excessiveLineLength": [],
-        "tapTargetRisks": [
-          {
-            "selector": "div > button:nth-of-type(1)",
-            "text": "",
-            "region": {
-              "x": 8,
-              "y": 194,
-              "width": 16,
-              "height": 6
-            }
-          },
-          {
-            "selector": "#query",
-            "text": "",
-            "region": {
-              "x": 28,
-              "y": 182,
-              "width": 153,
-              "height": 21
-            }
-          },
-          {
-            "selector": "div > button:nth-of-type(2)",
-            "text": "View",
-            "region": {
-              "x": 190,
-              "y": 182,
-              "width": 45,
-              "height": 21
-            }
-          },
-          {
-            "selector": "div > button:nth-of-type(3)",
-            "text": "View",
-            "region": {
-              "x": 239,
-              "y": 182,
-              "width": 45,
-              "height": 21
-            }
-          },
-          {
-            "selector": "div > button:nth-of-type(4)",
-            "text": "View",
-            "region": {
-              "x": 287,
-              "y": 182,
-              "width": 45,
-              "height": 21
-            }
-          }
-        ],
+        "tapTargetRisks": [],
         "formErrorAssociationRisks": [],
         "colorOnlyStateRisks": [],
         "disabledWithoutExplanation": [],
@@ -472,7 +380,7 @@
         "customControlSemanticsRisks": [],
         "movingContentControlRisks": []
       },
-      "createdAt": "2026-07-09T14:18:27.144Z"
+      "createdAt": "2026-07-21T13:42:07.109Z"
     },
     {
       "id": "text-inventory-mobile",
@@ -581,7 +489,7 @@
           }
         ]
       },
-      "createdAt": "2026-07-09T14:18:27.144Z"
+      "createdAt": "2026-07-21T13:42:07.109Z"
     },
     {
       "id": "aria-snapshot-mobile",
@@ -592,7 +500,7 @@
         "format": "playwright-aria-yaml",
         "snapshot": "- heading \"Orders\" [level=1]\n- heading \"Late orders\" [level=3]\n- heading \"Exports\" [level=1]\n- button\n- searchbox\n- img\n- button \"View\"\n- button \"View\"\n- button \"View\""
       },
-      "createdAt": "2026-07-09T14:18:27.154Z"
+      "createdAt": "2026-07-21T13:42:07.117Z"
     }
   ],
   "findings": [
@@ -856,206 +764,6 @@
       "humanReviewRecommended": true
     },
     {
-      "id": "finding-desktop-tap-target-risk-1",
-      "category": "accessibility",
-      "severity": "medium",
-      "viewport": "desktop",
-      "selector": "div > button:nth-of-type(1)",
-      "region": {
-        "x": 8,
-        "y": 194,
-        "width": 16,
-        "height": 6
-      },
-      "evidenceRefs": [
-        "screenshot-desktop",
-        "measurement-desktop",
-        "text-inventory-desktop",
-        "aria-snapshot-desktop"
-      ],
-      "problem": "Interactive target div > button:nth-of-type(1) appears smaller than the configured minimum target size.",
-      "recommendation": "Increase the control hit area or spacing so the target is easier to activate.",
-      "checkName": "tap-target-risk",
-      "observed": {
-        "x": 8,
-        "y": 194,
-        "width": 16,
-        "height": 6
-      },
-      "expected": "Interactive targets are at least 24 by 24 CSS pixels unless an exception applies.",
-      "criterionId": "a11y.target-size.minimum",
-      "sourceRefs": [
-        "wcag-2-2",
-        "carbon-accessibility",
-        "polaris-accessibility"
-      ],
-      "determinism": "deterministic",
-      "resultKind": "risk",
-      "runtime": "computed-style",
-      "confidence": "medium",
-      "humanReviewRecommended": false
-    },
-    {
-      "id": "finding-desktop-tap-target-risk-2",
-      "category": "accessibility",
-      "severity": "medium",
-      "viewport": "desktop",
-      "selector": "#query",
-      "region": {
-        "x": 28,
-        "y": 182,
-        "width": 153,
-        "height": 21
-      },
-      "evidenceRefs": [
-        "screenshot-desktop",
-        "measurement-desktop",
-        "text-inventory-desktop",
-        "aria-snapshot-desktop"
-      ],
-      "problem": "Interactive target #query appears smaller than the configured minimum target size.",
-      "recommendation": "Increase the control hit area or spacing so the target is easier to activate.",
-      "checkName": "tap-target-risk",
-      "observed": {
-        "x": 28,
-        "y": 182,
-        "width": 153,
-        "height": 21
-      },
-      "expected": "Interactive targets are at least 24 by 24 CSS pixels unless an exception applies.",
-      "criterionId": "a11y.target-size.minimum",
-      "sourceRefs": [
-        "wcag-2-2",
-        "carbon-accessibility",
-        "polaris-accessibility"
-      ],
-      "determinism": "deterministic",
-      "resultKind": "risk",
-      "runtime": "computed-style",
-      "confidence": "medium",
-      "humanReviewRecommended": false
-    },
-    {
-      "id": "finding-desktop-tap-target-risk-3",
-      "category": "accessibility",
-      "severity": "medium",
-      "viewport": "desktop",
-      "selector": "div > button:nth-of-type(2)",
-      "region": {
-        "x": 190,
-        "y": 182,
-        "width": 45,
-        "height": 21
-      },
-      "evidenceRefs": [
-        "screenshot-desktop",
-        "measurement-desktop",
-        "text-inventory-desktop",
-        "aria-snapshot-desktop"
-      ],
-      "problem": "Interactive target div > button:nth-of-type(2) appears smaller than the configured minimum target size.",
-      "recommendation": "Increase the control hit area or spacing so the target is easier to activate.",
-      "checkName": "tap-target-risk",
-      "observed": {
-        "x": 190,
-        "y": 182,
-        "width": 45,
-        "height": 21
-      },
-      "expected": "Interactive targets are at least 24 by 24 CSS pixels unless an exception applies.",
-      "criterionId": "a11y.target-size.minimum",
-      "sourceRefs": [
-        "wcag-2-2",
-        "carbon-accessibility",
-        "polaris-accessibility"
-      ],
-      "determinism": "deterministic",
-      "resultKind": "risk",
-      "runtime": "computed-style",
-      "confidence": "medium",
-      "humanReviewRecommended": false
-    },
-    {
-      "id": "finding-desktop-tap-target-risk-4",
-      "category": "accessibility",
-      "severity": "medium",
-      "viewport": "desktop",
-      "selector": "div > button:nth-of-type(3)",
-      "region": {
-        "x": 239,
-        "y": 182,
-        "width": 45,
-        "height": 21
-      },
-      "evidenceRefs": [
-        "screenshot-desktop",
-        "measurement-desktop",
-        "text-inventory-desktop",
-        "aria-snapshot-desktop"
-      ],
-      "problem": "Interactive target div > button:nth-of-type(3) appears smaller than the configured minimum target size.",
-      "recommendation": "Increase the control hit area or spacing so the target is easier to activate.",
-      "checkName": "tap-target-risk",
-      "observed": {
-        "x": 239,
-        "y": 182,
-        "width": 45,
-        "height": 21
-      },
-      "expected": "Interactive targets are at least 24 by 24 CSS pixels unless an exception applies.",
-      "criterionId": "a11y.target-size.minimum",
-      "sourceRefs": [
-        "wcag-2-2",
-        "carbon-accessibility",
-        "polaris-accessibility"
-      ],
-      "determinism": "deterministic",
-      "resultKind": "risk",
-      "runtime": "computed-style",
-      "confidence": "medium",
-      "humanReviewRecommended": false
-    },
-    {
-      "id": "finding-desktop-tap-target-risk-5",
-      "category": "accessibility",
-      "severity": "medium",
-      "viewport": "desktop",
-      "selector": "div > button:nth-of-type(4)",
-      "region": {
-        "x": 287,
-        "y": 182,
-        "width": 45,
-        "height": 21
-      },
-      "evidenceRefs": [
-        "screenshot-desktop",
-        "measurement-desktop",
-        "text-inventory-desktop",
-        "aria-snapshot-desktop"
-      ],
-      "problem": "Interactive target div > button:nth-of-type(4) appears smaller than the configured minimum target size.",
-      "recommendation": "Increase the control hit area or spacing so the target is easier to activate.",
-      "checkName": "tap-target-risk",
-      "observed": {
-        "x": 287,
-        "y": 182,
-        "width": 45,
-        "height": 21
-      },
-      "expected": "Interactive targets are at least 24 by 24 CSS pixels unless an exception applies.",
-      "criterionId": "a11y.target-size.minimum",
-      "sourceRefs": [
-        "wcag-2-2",
-        "carbon-accessibility",
-        "polaris-accessibility"
-      ],
-      "determinism": "deterministic",
-      "resultKind": "risk",
-      "runtime": "computed-style",
-      "confidence": "medium",
-      "humanReviewRecommended": false
-    },
-    {
       "id": "finding-mobile-missing-accessible-name-1",
       "category": "accessibility",
       "severity": "medium",
@@ -1313,211 +1021,11 @@
       "resultKind": "needs-review",
       "runtime": "static-dom",
       "humanReviewRecommended": true
-    },
-    {
-      "id": "finding-mobile-tap-target-risk-1",
-      "category": "accessibility",
-      "severity": "medium",
-      "viewport": "mobile",
-      "selector": "div > button:nth-of-type(1)",
-      "region": {
-        "x": 8,
-        "y": 194,
-        "width": 16,
-        "height": 6
-      },
-      "evidenceRefs": [
-        "screenshot-mobile",
-        "measurement-mobile",
-        "text-inventory-mobile",
-        "aria-snapshot-mobile"
-      ],
-      "problem": "Interactive target div > button:nth-of-type(1) appears smaller than the configured minimum target size.",
-      "recommendation": "Increase the control hit area or spacing so the target is easier to activate.",
-      "checkName": "tap-target-risk",
-      "observed": {
-        "x": 8,
-        "y": 194,
-        "width": 16,
-        "height": 6
-      },
-      "expected": "Interactive targets are at least 24 by 24 CSS pixels unless an exception applies.",
-      "criterionId": "a11y.target-size.minimum",
-      "sourceRefs": [
-        "wcag-2-2",
-        "carbon-accessibility",
-        "polaris-accessibility"
-      ],
-      "determinism": "deterministic",
-      "resultKind": "risk",
-      "runtime": "computed-style",
-      "confidence": "medium",
-      "humanReviewRecommended": false
-    },
-    {
-      "id": "finding-mobile-tap-target-risk-2",
-      "category": "accessibility",
-      "severity": "medium",
-      "viewport": "mobile",
-      "selector": "#query",
-      "region": {
-        "x": 28,
-        "y": 182,
-        "width": 153,
-        "height": 21
-      },
-      "evidenceRefs": [
-        "screenshot-mobile",
-        "measurement-mobile",
-        "text-inventory-mobile",
-        "aria-snapshot-mobile"
-      ],
-      "problem": "Interactive target #query appears smaller than the configured minimum target size.",
-      "recommendation": "Increase the control hit area or spacing so the target is easier to activate.",
-      "checkName": "tap-target-risk",
-      "observed": {
-        "x": 28,
-        "y": 182,
-        "width": 153,
-        "height": 21
-      },
-      "expected": "Interactive targets are at least 24 by 24 CSS pixels unless an exception applies.",
-      "criterionId": "a11y.target-size.minimum",
-      "sourceRefs": [
-        "wcag-2-2",
-        "carbon-accessibility",
-        "polaris-accessibility"
-      ],
-      "determinism": "deterministic",
-      "resultKind": "risk",
-      "runtime": "computed-style",
-      "confidence": "medium",
-      "humanReviewRecommended": false
-    },
-    {
-      "id": "finding-mobile-tap-target-risk-3",
-      "category": "accessibility",
-      "severity": "medium",
-      "viewport": "mobile",
-      "selector": "div > button:nth-of-type(2)",
-      "region": {
-        "x": 190,
-        "y": 182,
-        "width": 45,
-        "height": 21
-      },
-      "evidenceRefs": [
-        "screenshot-mobile",
-        "measurement-mobile",
-        "text-inventory-mobile",
-        "aria-snapshot-mobile"
-      ],
-      "problem": "Interactive target div > button:nth-of-type(2) appears smaller than the configured minimum target size.",
-      "recommendation": "Increase the control hit area or spacing so the target is easier to activate.",
-      "checkName": "tap-target-risk",
-      "observed": {
-        "x": 190,
-        "y": 182,
-        "width": 45,
-        "height": 21
-      },
-      "expected": "Interactive targets are at least 24 by 24 CSS pixels unless an exception applies.",
-      "criterionId": "a11y.target-size.minimum",
-      "sourceRefs": [
-        "wcag-2-2",
-        "carbon-accessibility",
-        "polaris-accessibility"
-      ],
-      "determinism": "deterministic",
-      "resultKind": "risk",
-      "runtime": "computed-style",
-      "confidence": "medium",
-      "humanReviewRecommended": false
-    },
-    {
-      "id": "finding-mobile-tap-target-risk-4",
-      "category": "accessibility",
-      "severity": "medium",
-      "viewport": "mobile",
-      "selector": "div > button:nth-of-type(3)",
-      "region": {
-        "x": 239,
-        "y": 182,
-        "width": 45,
-        "height": 21
-      },
-      "evidenceRefs": [
-        "screenshot-mobile",
-        "measurement-mobile",
-        "text-inventory-mobile",
-        "aria-snapshot-mobile"
-      ],
-      "problem": "Interactive target div > button:nth-of-type(3) appears smaller than the configured minimum target size.",
-      "recommendation": "Increase the control hit area or spacing so the target is easier to activate.",
-      "checkName": "tap-target-risk",
-      "observed": {
-        "x": 239,
-        "y": 182,
-        "width": 45,
-        "height": 21
-      },
-      "expected": "Interactive targets are at least 24 by 24 CSS pixels unless an exception applies.",
-      "criterionId": "a11y.target-size.minimum",
-      "sourceRefs": [
-        "wcag-2-2",
-        "carbon-accessibility",
-        "polaris-accessibility"
-      ],
-      "determinism": "deterministic",
-      "resultKind": "risk",
-      "runtime": "computed-style",
-      "confidence": "medium",
-      "humanReviewRecommended": false
-    },
-    {
-      "id": "finding-mobile-tap-target-risk-5",
-      "category": "accessibility",
-      "severity": "medium",
-      "viewport": "mobile",
-      "selector": "div > button:nth-of-type(4)",
-      "region": {
-        "x": 287,
-        "y": 182,
-        "width": 45,
-        "height": 21
-      },
-      "evidenceRefs": [
-        "screenshot-mobile",
-        "measurement-mobile",
-        "text-inventory-mobile",
-        "aria-snapshot-mobile"
-      ],
-      "problem": "Interactive target div > button:nth-of-type(4) appears smaller than the configured minimum target size.",
-      "recommendation": "Increase the control hit area or spacing so the target is easier to activate.",
-      "checkName": "tap-target-risk",
-      "observed": {
-        "x": 287,
-        "y": 182,
-        "width": 45,
-        "height": 21
-      },
-      "expected": "Interactive targets are at least 24 by 24 CSS pixels unless an exception applies.",
-      "criterionId": "a11y.target-size.minimum",
-      "sourceRefs": [
-        "wcag-2-2",
-        "carbon-accessibility",
-        "polaris-accessibility"
-      ],
-      "determinism": "deterministic",
-      "resultKind": "risk",
-      "runtime": "computed-style",
-      "confidence": "medium",
-      "humanReviewRecommended": false
     }
   ],
   "advisoryScore": {
     "formulaVersion": "epistemic-weight-v1",
-    "value": 6.4,
+    "value": 51.4,
     "max": 100,
     "band": "blocked",
     "deductions": [
@@ -1557,31 +1065,6 @@
         "reason": "low task-fit finding with low confidence; heuristic needs-review finding is score-exempt"
       },
       {
-        "findingId": "finding-desktop-tap-target-risk-1",
-        "points": 4.5,
-        "reason": "medium accessibility finding with medium confidence; deterministic risk score weight 0.6"
-      },
-      {
-        "findingId": "finding-desktop-tap-target-risk-2",
-        "points": 4.5,
-        "reason": "medium accessibility finding with medium confidence; deterministic risk score weight 0.6"
-      },
-      {
-        "findingId": "finding-desktop-tap-target-risk-3",
-        "points": 4.5,
-        "reason": "medium accessibility finding with medium confidence; deterministic risk score weight 0.6"
-      },
-      {
-        "findingId": "finding-desktop-tap-target-risk-4",
-        "points": 4.5,
-        "reason": "medium accessibility finding with medium confidence; deterministic risk score weight 0.6"
-      },
-      {
-        "findingId": "finding-desktop-tap-target-risk-5",
-        "points": 4.5,
-        "reason": "medium accessibility finding with medium confidence; deterministic risk score weight 0.6"
-      },
-      {
         "findingId": "finding-mobile-missing-accessible-name-1",
         "points": 4.5,
         "reason": "medium accessibility finding with medium confidence; deterministic risk score weight 0.6"
@@ -1615,40 +1098,211 @@
         "findingId": "finding-mobile-ambiguous-repeated-label-1",
         "points": 0,
         "reason": "low task-fit finding with low confidence; heuristic needs-review finding is score-exempt"
-      },
-      {
-        "findingId": "finding-mobile-tap-target-risk-1",
-        "points": 4.5,
-        "reason": "medium accessibility finding with medium confidence; deterministic risk score weight 0.6"
-      },
-      {
-        "findingId": "finding-mobile-tap-target-risk-2",
-        "points": 4.5,
-        "reason": "medium accessibility finding with medium confidence; deterministic risk score weight 0.6"
-      },
-      {
-        "findingId": "finding-mobile-tap-target-risk-3",
-        "points": 4.5,
-        "reason": "medium accessibility finding with medium confidence; deterministic risk score weight 0.6"
-      },
-      {
-        "findingId": "finding-mobile-tap-target-risk-4",
-        "points": 4.5,
-        "reason": "medium accessibility finding with medium confidence; deterministic risk score weight 0.6"
-      },
-      {
-        "findingId": "finding-mobile-tap-target-risk-5",
-        "points": 4.5,
-        "reason": "medium accessibility finding with medium confidence; deterministic risk score weight 0.6"
       }
     ],
     "explanation": "Advisory score starts at 100 and subtracts finding deductions by severity, confidence, and evidence-tier weight. Needs-review findings are score-exempt. It is not an objective design-quality grade."
   },
   "timings": {
-    "startedAt": "2026-07-09T14:18:26.875Z",
-    "finishedAt": "2026-07-09T14:18:27.170Z",
-    "durationMs": 295
+    "startedAt": "2026-07-21T13:42:06.826Z",
+    "finishedAt": "2026-07-21T13:42:07.130Z",
+    "durationMs": 304
   },
   "status": "success",
-  "failedChecks": []
+  "failedChecks": [],
+  "layoutMetrics": [
+    {
+      "viewport": "desktop",
+      "properties": [
+        {
+          "property": "margin",
+          "sampledElementCount": 10,
+          "distinctValueCount": 3,
+          "values": [
+            {
+              "value": "0px",
+              "count": 34
+            },
+            {
+              "value": "21.44px",
+              "count": 4
+            },
+            {
+              "value": "18.72px",
+              "count": 2
+            }
+          ],
+          "truncatedValueCount": 0
+        },
+        {
+          "property": "padding",
+          "sampledElementCount": 10,
+          "distinctValueCount": 4,
+          "values": [
+            {
+              "value": "0px",
+              "count": 20
+            },
+            {
+              "value": "1px",
+              "count": 10
+            },
+            {
+              "value": "6px",
+              "count": 8
+            },
+            {
+              "value": "2px",
+              "count": 2
+            }
+          ],
+          "truncatedValueCount": 0
+        },
+        {
+          "property": "gap",
+          "sampledElementCount": 10,
+          "distinctValueCount": 1,
+          "values": [
+            {
+              "value": "normal",
+              "count": 20
+            }
+          ],
+          "truncatedValueCount": 0
+        },
+        {
+          "property": "border-radius",
+          "sampledElementCount": 10,
+          "distinctValueCount": 1,
+          "values": [
+            {
+              "value": "0px",
+              "count": 40
+            }
+          ],
+          "truncatedValueCount": 0
+        },
+        {
+          "property": "line-height",
+          "sampledElementCount": 10,
+          "distinctValueCount": 1,
+          "values": [
+            {
+              "value": "normal",
+              "count": 10
+            }
+          ],
+          "truncatedValueCount": 0
+        },
+        {
+          "property": "letter-spacing",
+          "sampledElementCount": 10,
+          "distinctValueCount": 1,
+          "values": [
+            {
+              "value": "normal",
+              "count": 10
+            }
+          ],
+          "truncatedValueCount": 0
+        }
+      ]
+    },
+    {
+      "viewport": "mobile",
+      "properties": [
+        {
+          "property": "margin",
+          "sampledElementCount": 10,
+          "distinctValueCount": 3,
+          "values": [
+            {
+              "value": "0px",
+              "count": 34
+            },
+            {
+              "value": "21.44px",
+              "count": 4
+            },
+            {
+              "value": "18.72px",
+              "count": 2
+            }
+          ],
+          "truncatedValueCount": 0
+        },
+        {
+          "property": "padding",
+          "sampledElementCount": 10,
+          "distinctValueCount": 4,
+          "values": [
+            {
+              "value": "0px",
+              "count": 20
+            },
+            {
+              "value": "1px",
+              "count": 10
+            },
+            {
+              "value": "6px",
+              "count": 8
+            },
+            {
+              "value": "2px",
+              "count": 2
+            }
+          ],
+          "truncatedValueCount": 0
+        },
+        {
+          "property": "gap",
+          "sampledElementCount": 10,
+          "distinctValueCount": 1,
+          "values": [
+            {
+              "value": "normal",
+              "count": 20
+            }
+          ],
+          "truncatedValueCount": 0
+        },
+        {
+          "property": "border-radius",
+          "sampledElementCount": 10,
+          "distinctValueCount": 1,
+          "values": [
+            {
+              "value": "0px",
+              "count": 40
+            }
+          ],
+          "truncatedValueCount": 0
+        },
+        {
+          "property": "line-height",
+          "sampledElementCount": 10,
+          "distinctValueCount": 1,
+          "values": [
+            {
+              "value": "normal",
+              "count": 10
+            }
+          ],
+          "truncatedValueCount": 0
+        },
+        {
+          "property": "letter-spacing",
+          "sampledElementCount": 10,
+          "distinctValueCount": 1,
+          "values": [
+            {
+              "value": "normal",
+              "count": 10
+            }
+          ],
+          "truncatedValueCount": 0
+        }
+      ]
+    }
+  ]
 }
