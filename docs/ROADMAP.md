@@ -94,6 +94,20 @@ Goal: reuse one explicit, strictly validated `design-guide.yaml` at audit time a
 
 Repair acceptance: strict additional-only/selector-only/combined schema and projection tests; frozen generation hashes and guide drift; criterion-policy and integrity gates; unchanged CLI/visual production seams; live long-stack good plus declared `Rogue`/undeclared `Rogue Fallback` negative fixtures; packed additional-only and fail-before-output config paths; pinned Observed `/providers/openai` at `991ad20644b1d7d28f3833b1017ca0b9af115848` and 정책한눈 `/` at `d08d89cc8a3f89ecb13fc1d7337551a555ed85ac`, each with zero selectors/violations; `CI=true pnpm validate`; and `CI=true pnpm release:check`. No dependency, enum, schema-version, policy-ID, scoring, report-contract, version, publish, tag, or release change belongs to this repair.
 
+## v0.5e — guide hex literals (COMPLETE 2026-07-21)
+
+Reins-side repair, following the unreleased v0.5c (measurement repair, #36) and v0.5d (report-copy honesty, #37). Zero new detector, criterion, schema, or enum change.
+
+Goal: hand the model CSS-usable color literals in the generation guide. `summarizeTokenGroup` in `packages/core/src/guide-compiler.ts` emitted a semantic color's DTCG `$value` verbatim, so the model-facing markdown carried `accent={"alpha":1,"colorSpace":"srgb","components":[0.12,0.38,0.82]}` — a normalized float triplet no model can write into CSS. It now renders `accent=#1F61D1` (`#RRGGBB`, or `#RRGGBBAA` when `alpha < 1`).
+
+1. **One leak path, one fix.** Only the `goodExample` field reaches the model (`renderGuideMarkdown` renders name/description/badExample/goodExample; `subject` is integrity-only, never rendered). `summarizeTokenGroup` gained an optional per-group value formatter (default `compactJson`, so every other caller is byte-identical); `buildTokenRules` passes a new `formatColorLiteral` for the `color(...)` group only. Non-srgb/malformed shapes fall back to `compactJson`, keeping the formatter total.
+2. **Presentation only — invariants held.** `sourceHash` is hashed over the raw normalized guide, not the summary, so it is unmoved (pinned golden `e775c105…` in `guide-compiler.test.ts` is the automatic guard). The emitted DTCG token file (`designTokensJson`) keeps its float `components` — DTCG is the correct machine format there, pinned by a new test. `SCHEMA_VERSION` `0.2`, `GUIDE_CATALOG_VERSION`, `criteria.ts`, and every enum are diff-free; hex is shorter than the JSON object so the token-budget estimate can only drop.
+3. **Two-sided gate.** New `guide-compiler.test.ts` case: markdown contains `#1F61D1` and the 8-digit alpha hex and contains neither `"components"` nor the float triplet, while `designTokensJson` still contains both — a change that ever hexes the token file or regresses the guide to JSON fails it.
+
+Out of scope (deliberate — milestone is `hex-literals` = colors): `spacing`/`radius` still emit `{"unit":"px","value":8}` and `font` still emits the family array. Same formatter mechanism, zero hash/schema risk; font needs CSS quoting for multi-word names. Folded in only on owner request. Plan: `.omx/plans/RALPLAN_V05E_GUIDE_HEX_LITERALS.md`.
+
+Acceptance: core 90 / cli 150 / visual-audit 154 / copy-audit 22 tests green; per-package `tsc -p tsconfig.json --noEmit`; real-compile eyeball of the color line. Release is owner-gated and ships with v0.5c + v0.5d.
+
 ## v0.5 remainder — UNSCHEDULED (item 2 remainder and items 3–6)
 
 The following retain their prior item numbers for traceability. None is authorized by v0.5b.
