@@ -364,7 +364,20 @@ describe("core schemas", () => {
     ];
     const report = renderMarkdownReport({ auditResult });
     expect(report).not.toContain("only contains deterministic");
-    expect(report).toContain("retain their recorded deterministic and heuristic classifications");
+    expect(report).toContain("shown with their recorded classifications");
+  });
+
+  it("does not name a determinism class the note's findings lack (legacy-only)", () => {
+    const auditResult = createExampleAuditResult();
+    const legacyFinding = { ...createExampleFinding(), id: "legacy" };
+    delete (legacyFinding as { determinism?: unknown }).determinism;
+    auditResult.findings = [legacyFinding];
+    const report = renderMarkdownReport({ auditResult });
+    // A legacy finding carries neither a deterministic nor a heuristic classification; the note must not
+    // assert either one, only that findings are shown with whatever classification they carry.
+    expect(report).not.toContain("only contains deterministic");
+    expect(report).not.toMatch(/retain their recorded deterministic/);
+    expect(report).toContain("shown with their recorded classifications");
   });
 
   it("still says 'only deterministic findings' when that is actually true", () => {

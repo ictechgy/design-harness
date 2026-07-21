@@ -47,7 +47,7 @@ export function scoreFindings(findings: Finding[]): AdvisoryScore {
  * heuristic-only audit claim "deterministic findings" it does not have. This function never names a
  * determinism class or result kind the findings do not contain — that is HARD RULE 1 applied to report copy.
  */
-export function verdictForScore(score: AdvisoryScore, findings: Finding[]): string {
+export function verdictForScore(score: AdvisoryScore, findings: Finding[] = []): string {
   const deterministicFailures = findings.filter(
     (finding) => finding.determinism === "deterministic" && finding.resultKind === "failure"
   ).length;

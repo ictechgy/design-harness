@@ -280,7 +280,7 @@ function renderOptionalCritique(critique: Critique | undefined, findings: Findin
       (finding) => finding.determinism === "heuristic" || finding.determinism === "subjective" || !finding.determinism
     );
     return hasNonDeterministic
-      ? "No subjective critique was supplied. The findings above retain their recorded deterministic and heuristic classifications."
+      ? "No subjective critique was supplied. The findings above are shown with their recorded classifications."
       : "No subjective critique was supplied. This report only contains deterministic audit findings.";
   }
 
