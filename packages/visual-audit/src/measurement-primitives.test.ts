@@ -11,7 +11,9 @@ import {
   relativeLuminance,
   requiredContrastRatio,
   tapTargetSpacingExempt,
-  type ContrastCandidate
+  type ContrastCandidate,
+  type TapTargetCandidate,
+  type TargetRect
 } from "./measurement-primitives.js";
 
 function candidate(overrides: Partial<ContrastCandidate> = {}): ContrastCandidate {
@@ -286,7 +288,7 @@ describe("computeContrastRisks", () => {
 });
 
 describe("tap-target Spacing exception", () => {
-  const box = (x, y, width, height) => ({ x, y, width, height });
+  const box = (x: number, y: number, width: number, height: number): TargetRect => ({ x, y, width, height });
 
   describe("pointToRectDistance", () => {
     it("is zero when the point is inside the rectangle", () => {
@@ -365,7 +367,8 @@ describe("tap-target Spacing exception", () => {
   });
 
   describe("computeTapTargetRisks", () => {
-    const candidate = (selector, rect) => ({ selector, text: selector, region: rect, rect });
+    const candidate = (selector: string, rect: TargetRect): TapTargetCandidate =>
+      ({ selector, text: selector, region: rect, rect });
 
     it("flags only the cramped and discriminator targets on the bad-fixture geometry", () => {
       const candidates = [
