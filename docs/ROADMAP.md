@@ -108,6 +108,20 @@ Out of scope (deliberate — milestone is `hex-literals` = colors): `spacing`/`r
 
 Acceptance: core 90 / cli 150 / visual-audit 154 / copy-audit 22 tests green; per-package `tsc -p tsconfig.json --noEmit`; real-compile eyeball of the color line. Release is owner-gated and ships with v0.5c + v0.5d.
 
+## v0.5f — guide token literals: dimensions + fonts (COMPLETE 2026-07-22)
+
+Completes v0.5e using the same per-group formatter argument. Zero new detector, criterion, schema, or enum change.
+
+Goal: hand the model CSS-usable literals for the remaining two token groups, not raw JSON. `spacing`/`radius` emitted `{"unit":"px","value":8}` and `font` emitted `["Inter","sans-serif"]`; they now render `md=8px` / `md=0.5rem` and `heading='Helvetica Neue', Inter, sans-serif`.
+
+1. **Two formatters, one wiring change.** `formatDimensionLiteral` renders a literal `{ value: finite ≥ 0, unit: px|rem }` as `${value}${unit}`. `formatFontLiteral` renders `string | string[]` as a CSS font-family list with stack order preserved: a single CSS identifier (regex covers every generic and single-word family) stays bare, a multi-word name is single-quoted (single quotes survive `renderLiteral` unescaped), and a member containing `'` or any non-string member falls back to `compactJson`. Both stay total via a `compactJson` fallback. `buildTokenRules` passes them for `font`/`spacing`/`radius`; `color` keeps v0.5e's `formatColorLiteral`.
+2. **Presentation only.** `sourceHash` (over the raw normalized guide) is unmoved — pinned golden `e775c105…` guards it. `designTokensJson` keeps the DTCG `{value,unit}` objects and font arrays, pinned by the new test. `SCHEMA_VERSION` `0.2`, `criteria.ts`, and every enum are diff-free; literals are shorter than the JSON so the token-budget estimate only drops.
+3. **Two-sided gate.** New `guide-compiler.test.ts` case: markdown contains the CSS lengths and the quoted family list and contains none of `md={` / `none={` / `heading=[`, while `designTokensJson` still contains `"unit"`/`"px"`.
+
+Font-stack order is never sorted (`summarizeTokenGroup` sorts object keys only; the array value passes through intact) — semantic for font fallback. Plan: `.omx/plans/RALPLAN_V05F_GUIDE_TOKEN_LITERALS.md`.
+
+Acceptance: core 91 / cli 150 / visual-audit 154 / copy-audit 22 tests green; per-package `tsc -p tsconfig.json --noEmit`; real-compile eyeball. Release is owner-gated and ships with v0.5c + v0.5d + v0.5e.
+
 ## v0.5 remainder — UNSCHEDULED (item 2 remainder and items 3–6)
 
 The following retain their prior item numbers for traceability. None is authorized by v0.5b.

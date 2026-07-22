@@ -147,6 +147,42 @@ describe("pure guide compiler", () => {
     );
   });
 
+  it("renders dimensions as CSS lengths and fonts as CSS family lists, keeping DTCG shapes in the token file", () => {
+    const guide = createExampleDesignGuide();
+    guide.tokens.font.family.heading = { $value: ["Helvetica Neue", "Inter", "sans-serif"] };
+    guide.tokens.font.family.body = { $value: "Inter" };
+    guide.tokens.spacing = {
+      $type: "dimension",
+      none: { $value: { value: 0, unit: "px" } },
+      md: { $value: { value: 0.5, unit: "rem" } }
+    };
+    guide.tokens.radius = {
+      $type: "dimension",
+      none: { $value: { value: 0, unit: "px" } },
+      md: { $value: { value: 8, unit: "px" } }
+    };
+    const result = compileDesignGuide(guide);
+
+    // Dimensions → CSS lengths, never the DTCG {value,unit} object.
+    expect(result.markdown).toContain("md=0.5rem");
+    expect(result.markdown).toContain("md=8px");
+    expect(result.markdown).toContain("none=0px");
+    expect(result.markdown).not.toContain("md={");
+    expect(result.markdown).not.toContain("none={");
+
+    // Fonts → CSS family list: multi-word single-quoted, generics/single-word bare, stack order kept.
+    expect(result.markdown).toContain("heading='Helvetica Neue', Inter, sans-serif");
+    expect(result.markdown).toContain("body=Inter");
+    expect(result.markdown).not.toContain("heading=[");
+
+    // Token file keeps the DTCG machine shapes; the hash stays put.
+    expect(result.designTokensJson).toContain('"unit"');
+    expect(result.designTokensJson).toContain('"px"');
+    expect(compileDesignGuide(createExampleDesignGuide()).sourceHash).toBe(
+      "e775c105733d39aa086f2e5aa9bc189bb4ba2850cc163e0762f4b86b14893243"
+    );
+  });
+
   it("is byte deterministic across scoped copy declaration order and sorts by Unicode scalar value", () => {
     const copy = createExampleCopyStyle();
     copy.glossary = [
