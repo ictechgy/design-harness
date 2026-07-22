@@ -1,6 +1,6 @@
 {
   "name": "@design-harness/core",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "description": "Core schemas, validation, scoring, and report rendering for Design Harness.",
   "license": "Apache-2.0",
   "type": "module",
