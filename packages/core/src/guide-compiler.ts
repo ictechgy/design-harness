@@ -270,9 +270,9 @@ function normalizeBannedPhrase(
 function buildTokenRules(tokens: DesignGuideTokens): GuideRule[] {
   const summary = [
     `color(${summarizeTokenGroup(tokens.color.semantic, formatColorLiteral)})`,
-    `font(${summarizeTokenGroup(tokens.font.family)})`,
-    `spacing(${summarizeTokenGroup(tokens.spacing)})`,
-    `radius(${summarizeTokenGroup(tokens.radius)})`
+    `font(${summarizeTokenGroup(tokens.font.family, formatFontLiteral)})`,
+    `spacing(${summarizeTokenGroup(tokens.spacing, formatDimensionLiteral)})`,
+    `radius(${summarizeTokenGroup(tokens.radius, formatDimensionLiteral)})`
   ].join("; ");
   return [{
     id: "tokens.design-system",
@@ -630,6 +630,53 @@ function formatColorLiteral(value: unknown): string {
 function toHexByte(component: number): string {
   const clamped = Math.min(1, Math.max(0, component));
   return Math.round(clamped * 255).toString(16).padStart(2, "0").toUpperCase();
+}
+
+// Emit DTCG dimension tokens to the model as CSS lengths (`8px`, `0.5rem`) rather than the
+// `{"unit":"px","value":8}` object the token file stores. Falls back to compact JSON for any
+// shape that is not a literal { value: finite number, unit: px|rem } so the formatter stays total.
+function formatDimensionLiteral(value: unknown): string {
+  if (
+    isRecord(value) &&
+    typeof value.value === "number" &&
+    Number.isFinite(value.value) &&
+    (value.unit === "px" || value.unit === "rem")
+  ) {
+    return `${value.value}${value.unit}`;
+  }
+  return compactJson(value);
+}
+
+// A font family name that is a single CSS identifier (letters, digits, hyphens) — this covers every
+// CSS generic (sans-serif, ui-monospace, …) and single-word named family, all of which must stay
+// unquoted. Anything else (multi-word names like `Helvetica Neue`) is single-quoted below.
+const SAFE_FONT_IDENTIFIER = /^[A-Za-z][A-Za-z0-9-]*$/u;
+
+// Emit a font family token to the model as a CSS font-family list (`'Helvetica Neue', Inter,
+// sans-serif`) rather than the JSON array the token file stores, preserving stack order. Multi-word
+// names are single-quoted (single quotes render cleanly through renderLiteral, unlike double). Any
+// non-string member, or a name already containing a single quote, falls back to compact JSON.
+function formatFontLiteral(value: unknown): string {
+  const members =
+    typeof value === "string"
+      ? [value]
+      : Array.isArray(value) && value.every((member): member is string => typeof member === "string")
+        ? value
+        : null;
+  if (members === null) {
+    return compactJson(value);
+  }
+  const rendered: string[] = [];
+  for (const name of members) {
+    if (SAFE_FONT_IDENTIFIER.test(name)) {
+      rendered.push(name);
+    } else if (name.includes("'")) {
+      return compactJson(value);
+    } else {
+      rendered.push(`'${name}'`);
+    }
+  }
+  return rendered.join(", ");
 }
 
 function summarizeLocaleAndRegisters(copy: SafeCopyProjection): string {
