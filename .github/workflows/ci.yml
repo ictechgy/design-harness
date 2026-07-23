@@ -42,6 +42,7 @@ jobs:
       - run: pnpm smoke:example
       - run: pnpm smoke:copy
       - run: pnpm smoke:loop
+      - run: pnpm smoke:packed-loop
       - run: pnpm calibrate:fixtures
       - name: Upload Design Harness example artifacts
         if: always()
@@ -52,6 +53,7 @@ jobs:
             runs/example-smoke
             runs/copy-smoke
             runs/loop-smoke
+            runs/packed-loop
             runs/calibration
           if-no-files-found: warn
           retention-days: 14
