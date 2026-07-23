@@ -115,7 +115,7 @@ These are deliberately narrow operational markers. Neighboring placeholder-like 
 
 `audit.json` may include an optional `notices` array. Each notice has a non-blank `code` and `message`, with optional `viewport` and structured `details`. Notices describe configuration or capability limits; they are not findings, do not affect the advisory score or `failedChecks`, and do not change run status. An empty notice list is normally omitted.
 
-`contrast-elements-skipped` is one audit-level notice with no top-level viewport. Its
+`contrast-elements-skipped` is one count-neutral audit-level notice with no top-level viewport. Its
 `details.viewports[]` entries are sorted by viewport and record `{ viewport, skippedElementCount,
 skippedByReason }`. The canonical complete counts remain in each measurement asset's `contrastCoverage`.
 

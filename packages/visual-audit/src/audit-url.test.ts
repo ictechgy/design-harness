@@ -872,7 +872,7 @@ describe("auditUrl copy analysis", () => {
             measurements: measurementFor("mobile"),
             notices: [{
               code: "contrast-elements-skipped",
-              message: "Some painted contrast could not be determined.",
+              message: "Skipped 3 element(s) whose painted contrast could not be determined from computed styles.",
               viewport: "mobile",
               details: {
                 skippedByReason: { opacity: 2, filter: 1 },
@@ -884,7 +884,7 @@ describe("auditUrl copy analysis", () => {
             measurements: measurementFor("desktop"),
             notices: [{
               code: "contrast-elements-skipped",
-              message: "Some painted contrast could not be determined.",
+              message: "Skipped 1 element(s) whose painted contrast could not be determined from computed styles.",
               viewport: "desktop",
               details: {
                 skippedElementCount: 1,
@@ -898,7 +898,8 @@ describe("auditUrl copy analysis", () => {
 
     expect(result.auditResult.notices).toEqual([{
       code: "contrast-elements-skipped",
-      message: "Some painted contrast could not be determined.",
+      message: "Some elements whose painted contrast could not be determined from computed styles were skipped; "
+        + "no contrast finding was emitted for them.",
       details: {
         viewports: [
           {

@@ -34,6 +34,9 @@ import {
 
 const MAX_ARIA_SNAPSHOT_LENGTH = 20_000;
 const MAX_TEXT_INVENTORY_FIELD_LENGTH = 2_000;
+const CONTRAST_SKIP_AGGREGATE_MESSAGE =
+  "Some elements whose painted contrast could not be determined from computed styles were skipped; "
+  + "no contrast finding was emitted for them.";
 
 export interface AuditUrlOptions {
   url: string;
@@ -490,7 +493,7 @@ function deduplicateNotices(notices: AuditNotice[]): AuditNotice[] {
       if (!deduplicated.has(contrastSkipKey)) {
         deduplicated.set(contrastSkipKey, {
           code: notice.code,
-          message: notice.message
+          message: CONTRAST_SKIP_AGGREGATE_MESSAGE
         });
       }
       if (!contrastSkipViewports.has(contrastSkipViewport.viewport)) {
