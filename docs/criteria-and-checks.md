@@ -85,8 +85,9 @@ the same text twice. This is not a leaf rule: in `<p style="color:#777">x <stron
 
 **What it does not measure.** When the painted contrast cannot be determined from computed styles, the check
 emits *no finding* and records the element in `contrastCoverage` on the measurement evidence, plus a
-`contrast-elements-skipped` notice. A skipped element is not a passing element, and `evaluatedElementCount`
-is what distinguishes "looked and found nothing" from "never looked". Skips are:
+single audit-level `contrast-elements-skipped` notice whose `details.viewports[]` summarizes each affected
+viewport. A skipped element is not a passing element, and `evaluatedElementCount` is what distinguishes
+"looked and found nothing" from "never looked". Skips are:
 
 | Condition | Why it is not measurable here |
 |---|---|

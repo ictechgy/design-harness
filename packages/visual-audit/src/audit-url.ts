@@ -84,6 +84,12 @@ interface SensitiveInputMask {
   value: string;
 }
 
+interface ContrastSkipViewportNotice {
+  viewport: string;
+  skippedElementCount: number;
+  skippedByReason: Record<string, number>;
+}
+
 export async function auditUrl(options: AuditUrlOptions): Promise<AuditUrlResult> {
   const startedAtMs = Date.now();
   const startedAt = new Date(startedAtMs).toISOString();
@@ -475,7 +481,24 @@ function textInventoryEvidenceData(measurement: ViewportMeasurements): Record<st
 
 function deduplicateNotices(notices: AuditNotice[]): AuditNotice[] {
   const deduplicated = new Map<string, AuditNotice>();
+  const contrastSkipViewports = new Map<string, ContrastSkipViewportNotice>();
+  const contrastSkipKey = "contrast-elements-skipped\u0000aggregated-viewports";
+
   for (const notice of notices) {
+    const contrastSkipViewport = contrastSkipViewportNotice(notice);
+    if (contrastSkipViewport) {
+      if (!deduplicated.has(contrastSkipKey)) {
+        deduplicated.set(contrastSkipKey, {
+          code: notice.code,
+          message: notice.message
+        });
+      }
+      if (!contrastSkipViewports.has(contrastSkipViewport.viewport)) {
+        contrastSkipViewports.set(contrastSkipViewport.viewport, contrastSkipViewport);
+      }
+      continue;
+    }
+
     const details = notice.details === undefined
       ? undefined
       : canonicalizeJsonValue(notice.details) as Record<string, unknown>;
@@ -488,7 +511,53 @@ function deduplicateNotices(notices: AuditNotice[]): AuditNotice[] {
       });
     }
   }
+
+  if (contrastSkipViewports.size > 0) {
+    const notice = deduplicated.get(contrastSkipKey);
+    if (notice) {
+      deduplicated.set(contrastSkipKey, {
+        ...notice,
+        details: {
+          viewports: [...contrastSkipViewports.values()]
+            .sort((left, right) => compareUtf16(left.viewport, right.viewport))
+        }
+      });
+    }
+  }
+
   return [...deduplicated.values()];
+}
+
+function contrastSkipViewportNotice(notice: AuditNotice): ContrastSkipViewportNotice | undefined {
+  if (
+    notice.code !== "contrast-elements-skipped"
+    || !notice.viewport
+    || !notice.details
+  ) {
+    return undefined;
+  }
+
+  const skippedElementCount = notice.details.skippedElementCount;
+  const skippedByReason = notice.details.skippedByReason;
+  if (
+    typeof skippedElementCount !== "number"
+    || !Number.isInteger(skippedElementCount)
+    || skippedElementCount < 0
+    || skippedByReason === null
+    || typeof skippedByReason !== "object"
+    || Array.isArray(skippedByReason)
+    || Object.values(skippedByReason).some((count) => (
+      typeof count !== "number" || !Number.isInteger(count) || count < 0
+    ))
+  ) {
+    return undefined;
+  }
+
+  return {
+    viewport: notice.viewport,
+    skippedElementCount,
+    skippedByReason: canonicalizeJsonValue(skippedByReason) as Record<string, number>
+  };
 }
 
 function canonicalizeJsonValue(value: unknown): unknown {
@@ -503,6 +572,10 @@ function canonicalizeJsonValue(value: unknown): unknown {
     );
   }
   return value;
+}
+
+function compareUtf16(left: string, right: string): number {
+  return left < right ? -1 : left > right ? 1 : 0;
 }
 
 async function recordAriaSnapshotEvidence(

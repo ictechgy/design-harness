@@ -489,17 +489,27 @@ function assertContrastEffectRun(auditResult, scenario) {
   if (!/painted/i.test(notice.message) || !/contrast/i.test(notice.message)) {
     throw new Error(`${scenario.name} contrast skip notice does not describe painted contrast uncertainty`);
   }
-  if (notice.details?.skippedElementCount !== scenario.expectedSkipped) {
+  const noticeViewports = notice.details?.viewports;
+  if (!Array.isArray(noticeViewports) || noticeViewports.length !== viewportNames.length) {
     throw new Error(
-      `${scenario.name} notice skippedElementCount is ${notice.details?.skippedElementCount}, `
-      + `expected ${scenario.expectedSkipped}`
+      `${scenario.name} contrast skip notice summarized ${noticeViewports?.length ?? 0} viewport(s), `
+      + `expected ${viewportNames.length}`
     );
   }
-  assertExactReasonCounts(
-    notice.details?.skippedByReason,
-    scenario.expectedReasons,
-    `${scenario.name} contrast skip notice`
-  );
+  for (const [index, viewport] of viewportNames.entries()) {
+    const summary = noticeViewports[index];
+    if (summary?.viewport !== viewport || summary.skippedElementCount !== scenario.expectedSkipped) {
+      throw new Error(
+        `${scenario.name} contrast skip notice summary ${index} was `
+        + `${summary?.viewport}:${summary?.skippedElementCount}, expected ${viewport}:${scenario.expectedSkipped}`
+      );
+    }
+    assertExactReasonCounts(
+      summary.skippedByReason,
+      scenario.expectedReasons,
+      `${scenario.name} ${viewport} contrast skip notice`
+    );
+  }
 }
 
 function assertExactReasonCounts(actual, expected, label) {

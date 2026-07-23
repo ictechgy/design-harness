@@ -859,6 +859,63 @@ describe("auditUrl copy analysis", () => {
     }
     expect(() => assertAuditResultIntegrity(result.auditResult)).not.toThrow();
   });
+
+  it("aggregates contrast skip notices with stable per-viewport details", async () => {
+    const result = await auditUrl({
+      url: "http://localhost:3000",
+      outDir: await tempDir(),
+      viewportPresets: [mobileViewport, viewport],
+      launchBrowser: async () => fakeBrowser({
+        measurement: measurementFor("mobile"),
+        collectionResults: [
+          {
+            measurements: measurementFor("mobile"),
+            notices: [{
+              code: "contrast-elements-skipped",
+              message: "Some painted contrast could not be determined.",
+              viewport: "mobile",
+              details: {
+                skippedByReason: { opacity: 2, filter: 1 },
+                skippedElementCount: 3
+              }
+            }]
+          },
+          {
+            measurements: measurementFor("desktop"),
+            notices: [{
+              code: "contrast-elements-skipped",
+              message: "Some painted contrast could not be determined.",
+              viewport: "desktop",
+              details: {
+                skippedElementCount: 1,
+                skippedByReason: { "background-image": 1 }
+              }
+            }]
+          }
+        ]
+      })
+    });
+
+    expect(result.auditResult.notices).toEqual([{
+      code: "contrast-elements-skipped",
+      message: "Some painted contrast could not be determined.",
+      details: {
+        viewports: [
+          {
+            viewport: "desktop",
+            skippedElementCount: 1,
+            skippedByReason: { "background-image": 1 }
+          },
+          {
+            viewport: "mobile",
+            skippedElementCount: 3,
+            skippedByReason: { filter: 1, opacity: 2 }
+          }
+        ]
+      }
+    }]);
+    expect(() => assertAuditResultIntegrity(result.auditResult)).not.toThrow();
+  });
 });
 
 describe("auditUrl finding coverage", () => {
