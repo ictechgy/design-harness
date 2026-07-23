@@ -74,11 +74,24 @@ const workflowPath = resolve(".github/workflows/ci.yml");
 const workflow = await readFile(workflowPath, "utf8");
 assertExactTriggerPolicy(workflow, "GitHub Actions CI workflow");
 
+const rootManifest = JSON.parse(await readFile(resolve("package.json"), "utf8"));
+const packedLoopScript = rootManifest.scripts?.["smoke:packed-loop"];
+const releaseCheckScript = rootManifest.scripts?.["release:check"];
+if (packedLoopScript !== "node scripts/verify-packed-cli.mjs --positive-loop") {
+  throw new Error("smoke:packed-loop must select the explicit positive verifier mode.");
+}
+if (typeof releaseCheckScript !== "string" || releaseCheckScript.includes("smoke:packed-loop")) {
+  throw new Error("release:check must remain browserless and exclude smoke:packed-loop.");
+}
+
 const requiredFragments = [
   "pnpm release:check",
+  "playwright install --with-deps chromium",
+  "pnpm build",
   "pnpm smoke:example",
   "pnpm smoke:copy",
   "pnpm smoke:loop",
+  "pnpm smoke:packed-loop",
   "pnpm calibrate:fixtures",
   "actions/upload-artifact@v4",
   "if: always()",
@@ -86,6 +99,7 @@ const requiredFragments = [
   "runs/example-smoke",
   "runs/copy-smoke",
   "runs/loop-smoke",
+  "runs/packed-loop",
   "runs/calibration",
   "if-no-files-found: warn"
 ];
@@ -96,14 +110,21 @@ if (missing.length > 0) {
 }
 
 const uploadIndex = workflow.indexOf("actions/upload-artifact@v4");
+const browserInstallIndex = workflow.indexOf("playwright install --with-deps chromium");
+const buildIndex = workflow.indexOf("pnpm build");
+const packedLoopIndex = workflow.indexOf("pnpm smoke:packed-loop");
 const lastAuditIndex = Math.max(
   workflow.indexOf("pnpm smoke:example"),
   workflow.indexOf("pnpm smoke:copy"),
   workflow.indexOf("pnpm smoke:loop"),
+  workflow.indexOf("pnpm smoke:packed-loop"),
   workflow.indexOf("pnpm calibrate:fixtures")
 );
+if (packedLoopIndex < browserInstallIndex || packedLoopIndex < buildIndex) {
+  throw new Error("Packed-loop smoke must run after Chromium installation and the workspace build.");
+}
 if (uploadIndex < lastAuditIndex) {
-  throw new Error("Artifact upload step must run after the example, copy, loop, and calibration audit steps.");
+  throw new Error("Artifact upload step must run after the example, copy, loop, packed-loop, and calibration audit steps.");
 }
 
 console.log("Validated GitHub Actions artifact upload scaffold.");

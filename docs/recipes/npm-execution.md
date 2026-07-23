@@ -65,10 +65,27 @@ Maintainers can verify the packed CLI before publishing:
 pnpm smoke:packed-cli
 ```
 
-The smoke test packs the four workspace packages, installs the CLI tarball into a temporary consumer project, resolves internal packages through local tarball overrides, checks audit/copy/guide/loop help, proves plain `audit` rejects `--agent-cmd` without launching it, exercises guide compile/check idempotence and drift, and verifies invalid copy and guide configs exit `1` without output artifacts. Its installed help command is:
+This browserless smoke test packs the four workspace packages, installs the CLI tarball into a temporary consumer project, resolves internal packages through local tarball overrides, checks audit/copy/guide/loop help, proves plain `audit` rejects `--agent-cmd` without launching it, exercises guide compile/check idempotence and drift, and verifies invalid copy and guide configs exit `1` without output artifacts. Its installed help command is:
 
 ```bash
 pnpm exec design-harness --help
 ```
 
 This catches broken `bin` entries, missing package files, and workspace dependency packaging mistakes before npm publish.
+
+The browser-backed positive path is separate so `release:check` remains
+browserless:
+
+```bash
+pnpm playwright:install
+pnpm smoke:packed-loop
+```
+
+It creates another fresh consumer, pins that consumer to the checkout's
+installed Playwright version, and runs `pnpm exec design-harness loop` from the
+consumer. A consumer-local helper repairs one missing page language; the smoke
+requires one agent pass, two audits, and convergence to zero deterministic
+failures. The fixture, helper, server, and consumer are temporary. The validated
+loop artifacts remain under `runs/packed-loop` for CI upload and local
+inspection. CI runs this command only in the browser-equipped `example-smoke`
+job.

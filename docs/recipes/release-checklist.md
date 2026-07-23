@@ -17,6 +17,21 @@ pnpm release:check
 - temporary-project guide compile/check and Style Dictionary 5.5 compatibility smokes,
 - a local packed-CLI install smoke test that installs the generated tarballs into a temporary consumer project, exercises audit/copy/guide/loop help and failure gates, and proves plain `audit` cannot execute `--agent-cmd`.
 
+That required local gate remains browserless. The browser-equipped CI job adds
+the positive installed-tarball loop proof:
+
+```bash
+pnpm playwright:install
+pnpm smoke:packed-loop
+```
+
+The command creates a fresh temporary consumer, runs its installed
+`design-harness loop`, repairs one missing page-language failure, and requires
+one agent pass plus two audits to converge. It pins the temporary consumer to
+the checkout's installed Playwright version so the executable and installed
+Chromium revision stay aligned. The consumer and repair fixture are removed;
+the validated result remains at `runs/packed-loop` for CI upload.
+
 Committed example runs are provenance artifacts, not release-version mirrors. Never mechanically bump their `harnessVersion` or `toolVersions`: either regenerate the complete run (`audit.json`, `metadata.json`, `report-manifest.json`, `report.md`, and screenshots) with the release candidate, or retain the version that actually produced the committed run.
 
 ## npm Publish

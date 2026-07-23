@@ -60,6 +60,7 @@
     "smoke:guide": "node scripts/run-guide-smoke.mjs && node scripts/run-guide-compat-smoke.mjs",
     "calibrate:fixtures": "pnpm validate:korean-copy && node scripts/run-calibration.mjs",
     "smoke:packed-cli": "node scripts/verify-packed-cli.mjs",
+    "smoke:packed-loop": "node scripts/verify-packed-cli.mjs --positive-loop",
     "pack:dry-run": "pnpm --filter @design-harness/core pack --dry-run && pnpm --filter @design-harness/copy-audit pack --dry-run && pnpm --filter @design-harness/visual-audit pack --dry-run && pnpm --filter @design-harness/cli pack --dry-run",
     "release:check": "pnpm build && pnpm typecheck && pnpm test && pnpm validate && pnpm pack:dry-run && pnpm smoke:guide && pnpm smoke:packed-cli",
     "check:report-copy-guardrails": "node scripts/check-report-copy-guardrails.mjs"

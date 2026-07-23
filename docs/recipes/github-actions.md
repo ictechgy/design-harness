@@ -12,10 +12,21 @@ The harness does not start your app for you because every frontend stack has a d
 
 This repository's own CI workflow is the maintainable reference scaffold:
 
-- `.github/workflows/ci.yml` runs `pnpm release:check`.
-- The `example-smoke` job runs the fixture audits through `pnpm smoke:example`, `pnpm smoke:copy`, and the six-fixture `pnpm calibrate:fixtures` TP/FP/FN drift gate.
-- The generated `runs/example-smoke`, `runs/copy-smoke`, and `runs/calibration` directories are uploaded as the `design-harness-example-smoke` artifact, even when the smoke job fails.
-- `pnpm check:github-actions` verifies that the artifact step stays wired into CI.
+- `.github/workflows/ci.yml` runs for every pull request, pushes to `main`,
+  and manual dispatch. Feature-branch pushes do not also run CI because the
+  pull request is the branch-validation boundary.
+- The `verify` job runs the browserless `pnpm release:check`.
+- The browser-equipped `example-smoke` job runs `pnpm smoke:example`,
+  `pnpm smoke:copy`, the workspace `pnpm smoke:loop`, the installed-tarball
+  `pnpm smoke:packed-loop`, and the six-fixture
+  `pnpm calibrate:fixtures` TP/FP/FN drift gate.
+- The generated `runs/example-smoke`, `runs/copy-smoke`, `runs/loop-smoke`,
+  `runs/packed-loop`, and `runs/calibration` directories are uploaded as the
+  `design-harness-example-smoke` artifact, even when the smoke job fails. The
+  packed-loop consumer, fixture, and helper are temporary; its validated loop
+  artifacts remain for upload.
+- `pnpm check:github-actions` locks the event policy, browser/build ordering,
+  required smoke commands, and artifact upload.
 
 ## App Repository Example
 
