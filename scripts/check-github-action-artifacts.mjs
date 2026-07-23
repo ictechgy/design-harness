@@ -1,8 +1,78 @@
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 
+const exactTriggerBlock = [
+  "on:",
+  "  workflow_dispatch:",
+  "  push:",
+  "    branches:",
+  "      - main",
+  "  pull_request:"
+].join("\n");
+
+function extractTriggerBlock(source, label) {
+  const lines = source.split(/\r?\n/);
+  const onIndexes = lines.flatMap((line, index) =>
+    /^on:[ \t]*(?:#.*)?$/.test(line) ? [index] : []
+  );
+  if (onIndexes.length !== 1) {
+    throw new Error(`${label} must contain exactly one top-level on: block.`);
+  }
+
+  const block = [];
+  for (let index = onIndexes[0]; index < lines.length; index += 1) {
+    const line = lines[index];
+    if (index > onIndexes[0] && !/^\s*(?:#.*)?$/.test(line) && /^\S/.test(line)) {
+      break;
+    }
+    const normalized = line.replace(/\s+#.*$/, "").trimEnd();
+    if (normalized !== "" && !/^\s*#/.test(normalized)) {
+      block.push(normalized);
+    }
+  }
+  return block.join("\n");
+}
+
+function assertExactTriggerPolicy(source, label) {
+  const actualTriggerBlock = extractTriggerBlock(source, label);
+  if (actualTriggerBlock !== exactTriggerBlock) {
+    throw new Error(
+      `${label} must trigger only on workflow_dispatch, pull_request, and pushes to main.\n` +
+        `Expected:\n${exactTriggerBlock}\nFound:\n${actualTriggerBlock}`
+    );
+  }
+}
+
+function runTriggerPolicyGuardRegressions() {
+  const fixture = `${exactTriggerBlock}\n\npermissions:\n  contents: read\n`;
+  assertExactTriggerPolicy(fixture, "Trigger policy guard fixture");
+
+  const mutations = [
+    ["an extra push branch", (source) => source.replace("      - main", "      - main\n      - codex/**")],
+    ["an extra event", (source) => source.replace("  pull_request:", "  pull_request:\n  schedule:")],
+    [
+      "a pull-request branch filter",
+      (source) => source.replace("  pull_request:", "  pull_request:\n    branches:\n      - main")
+    ],
+    ["a missing manual trigger", (source) => source.replace("  workflow_dispatch:\n", "")]
+  ];
+
+  for (const [label, mutate] of mutations) {
+    const mutated = mutate(fixture);
+    try {
+      assertExactTriggerPolicy(mutated, `Mutation fixture with ${label}`);
+    } catch {
+      continue;
+    }
+    throw new Error(`Trigger policy guard regression: accepted ${label}.`);
+  }
+}
+
+runTriggerPolicyGuardRegressions();
+
 const workflowPath = resolve(".github/workflows/ci.yml");
 const workflow = await readFile(workflowPath, "utf8");
+assertExactTriggerPolicy(workflow, "GitHub Actions CI workflow");
 
 const requiredFragments = [
   "pnpm release:check",
