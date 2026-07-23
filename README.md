@@ -82,16 +82,16 @@ The config is validated before Chromium starts. Without `--copy`, Design Harness
 
 Use `pnpm playwright:install` if Chromium is missing.
 
-### Guide compile/check (v0.6.0)
+### Guide compile/check (v0.6.1)
 
 From inside the project that owns an explicit `design-guide.yaml`:
 
 ```bash
-npx @design-harness/cli@0.6.0 guide compile \
+npx @design-harness/cli@0.6.1 guide compile \
   --guide ./design-guide.yaml \
   --target .
 
-npx @design-harness/cli@0.6.0 guide check \
+npx @design-harness/cli@0.6.1 guide check \
   --guide ./design-guide.yaml \
   --target . \
   --max-tokens 2000
@@ -101,10 +101,10 @@ Compile derives marker-owned `AGENTS.md`/`DESIGN.md` guidance, a non-duplicating
 
 ## Agent Loop
 
-The current checkout adds a bounded command to the post-v0.6.0 maintenance train. It is not part of the published v0.6.0 package:
+The v0.6.1 package adds a bounded command for the exact deterministic-failure gate:
 
 ```bash
-pnpm design-harness -- loop \
+npx @design-harness/cli@0.6.1 loop \
   --url http://localhost:3000 \
   --out runs/repair-loop \
   --until deterministic-failures==0 \
@@ -230,6 +230,9 @@ Implemented:
 - source-backed criteria registry,
 - parser-free rendered-copy analysis through the programmatic API and explicit `--copy` CLI path,
 - explicit guide compile/check and audit-time font-family contract checking,
+- contrast measurement that fails closed on unsupported ancestor paint effects,
+- criterion-bounded advisory scoring and explicit capped-finding cardinality,
+- a bounded `design-harness loop` gated only by deterministic failures,
 - example fixtures,
 - Midjourney Reference Lab manifest and policy validators.
 
@@ -238,12 +241,6 @@ Checkout-local recipes/scaffolding:
 - PR comment renderer,
 - scenario audit runner,
 - MCP adapter manifest and local dispatcher.
-
-Completed checkout-only maintenance train (not part of published v0.6.0):
-
-- contrast measurement that fails closed on unsupported ancestor paint effects,
-- criterion-bounded advisory scoring and explicit capped-finding cardinality,
-- a bounded `design-harness loop` in the current checkout, gated only by deterministic failures.
 
 Not on the current roadmap: a package-installed MCP server/surface or Open Design integration. The existing checkout-local MCP scaffolding remains available as documented above.
 

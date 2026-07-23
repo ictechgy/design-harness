@@ -53,7 +53,7 @@ This evidence describes the computed family list, not the font face that rendere
 
 ## Bounded loop
 
-The loop described here is present in the current source checkout and remains unreleased after v0.6.0.
+The bounded loop is available starting with v0.6.1.
 
 ```bash
 design-harness loop \

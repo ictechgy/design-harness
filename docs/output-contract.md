@@ -26,7 +26,7 @@ Current artifact `schemaVersion`: `0.2`.
 
 ## Bounded Loop Artifacts
 
-The current checkout's post-v0.6.0 loop is implemented but unreleased and is not part of the published v0.6.0 package. Its exact invocation shape is:
+The bounded loop is published starting with v0.6.1. Its exact invocation shape is:
 
 ```bash
 design-harness loop \

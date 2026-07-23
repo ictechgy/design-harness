@@ -2,11 +2,18 @@
 
 ## Unreleased
 
-- Reconciled release, install, roadmap, and integration documentation with the published v0.6.0 state; every entry below remains checkout-only and unreleased.
+## 0.6.1 - 2026-07-24
+
+- Reconciled release, install, roadmap, and integration documentation with the published v0.6.0 baseline before this maintenance release.
 - Made DOM contrast measurement fail closed when `opacity`, `mix-blend-mode`, or `filter` on the measured element or an ancestor makes the painted result indeterminate, with exact coverage and live-fixture regression gates.
 - Made current advisory scoring criterion-bounded with formula-discriminated v2 group membership, totals, and saturation while preserving validation of historical v1 artifacts under schema `0.2`.
 - Added exact pre-cap cardinality for every reachable capped visual detector and one neutral audit-level notice when bounded finding samples are omitted.
-- Added the unreleased bounded `design-harness loop` for the exact deterministic-failure gate, with fresh per-iteration artifacts, no-progress detection, an explicit timed agent-command boundary, sanitized atomic summaries, packed non-execution guards, and live repair/error smokes.
+- Added the bounded `design-harness loop` for the exact deterministic-failure gate, with fresh per-iteration artifacts, no-progress detection, an explicit timed agent-command boundary, sanitized atomic summaries, packed non-execution guards, and live repair/error smokes.
+
+Compatibility and safety notes:
+
+- `schemaVersion` remains `0.2`; historical `epistemic-weight-v1` artifacts remain valid, but their scores are not directly comparable with the criterion-bounded v2 formula.
+- Loop `--agent-cmd` values execute arbitrary shell code with the caller's permissions and inherited environment; Design Harness supplies no sandbox or network boundary.
 
 ## 0.6.0 - 2026-07-23
 
