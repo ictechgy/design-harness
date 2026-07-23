@@ -15,7 +15,7 @@ pnpm release:check
 - schema and calibration validation,
 - dry-run package packing for `@design-harness/core`, `@design-harness/copy-audit`, `@design-harness/visual-audit`, and `@design-harness/cli`,
 - temporary-project guide compile/check and Style Dictionary 5.5 compatibility smokes,
-- a local packed-CLI install smoke test that installs the generated tarballs into a temporary consumer project and exercises audit/copy/guide help and failure gates.
+- a local packed-CLI install smoke test that installs the generated tarballs into a temporary consumer project, exercises audit/copy/guide/loop help and failure gates, and proves plain `audit` cannot execute `--agent-cmd`.
 
 Committed example runs are provenance artifacts, not release-version mirrors. Never mechanically bump their `harnessVersion` or `toolVersions`: either regenerate the complete run (`audit.json`, `metadata.json`, `report-manifest.json`, `report.md`, and screenshots) with the release candidate, or retain the version that actually produced the committed run.
 
