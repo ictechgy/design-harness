@@ -57,7 +57,7 @@ runs/demo/
 
 Partial audits still write artifacts but exit with code `2` by default. Use `--allow-partial` when a debugging workflow should treat partial artifacts as success.
 
-The npm package is CLI-focused: it ships the local audit command and explicit guide compile/check commands. The PR comment renderer, scenario audit runner, and MCP adapter are checkout-local — they run only from a clone of this repository, not from the npm packages — until they are promoted to shipped package APIs.
+The npm package is CLI-focused: it ships the local audit command and explicit guide compile/check commands. The PR comment renderer and scenario audit runner are checkout-local recipes. The MCP manifest and dispatcher are checkout-local compatibility scaffolding, not a shipped package API or server; `audit.json` and `report.md` remain the canonical integration boundary.
 
 ### From a checkout (for contributors)
 
@@ -82,16 +82,16 @@ The config is validated before Chromium starts. Without `--copy`, Design Harness
 
 Use `pnpm playwright:install` if Chromium is missing.
 
-### Guide compile/check (v0.5.0)
+### Guide compile/check (v0.6.0)
 
 From inside the project that owns an explicit `design-guide.yaml`:
 
 ```bash
-npx @design-harness/cli@0.5.0 guide compile \
+npx @design-harness/cli@0.6.0 guide compile \
   --guide ./design-guide.yaml \
   --target .
 
-npx @design-harness/cli@0.5.0 guide check \
+npx @design-harness/cli@0.6.0 guide check \
   --guide ./design-guide.yaml \
   --target . \
   --max-tokens 2000
@@ -101,7 +101,24 @@ Compile derives marker-owned `AGENTS.md`/`DESIGN.md` guidance, a non-duplicating
 
 ## Agent Loop
 
-The core workflow is meant to be boring in the best way:
+The current checkout adds a bounded command to the post-v0.6.0 maintenance train. It is not part of the published v0.6.0 package:
+
+```bash
+pnpm design-harness -- loop \
+  --url http://localhost:3000 \
+  --out runs/repair-loop \
+  --until deterministic-failures==0 \
+  --max-iters 3 \
+  --agent-cmd '<non-interactive command>'
+```
+
+The output root must be new. The only supported stop condition is exactly `deterministic-failures==0`; heuristic risks and `needs-review` findings never gate the loop. `--max-iters N` permits at most N agent commands and N+1 audits because the baseline audit comes first. A partial audit stops before the condition is evaluated or an agent is launched.
+
+Exit `0` means the baseline was already clean for this condition or a re-audit converged, `1` means preflight/audit/agent/timeout/summary error, `2` means partial audit, and `3` means no progress or the iteration budget was exhausted. Each audit is retained under `iterations/`, and `loop-summary.json` records the terminal state without storing the raw agent command, its output, or report contents.
+
+`--agent-cmd` runs arbitrary code with the caller's permissions, working directory, and inherited environment, which may expose credentials. The loop supplies no sandbox or network boundary. See [Agent Loop Recipes](docs/recipes/agent-loop.md) for the fixed evidence environment, timeout behavior, and platform caveats. This narrow condition is not a completeness or overall-quality guarantee.
+
+The manual workflow remains useful when a human should decide which risks to change:
 
 1. Run your app locally.
 2. Audit the local URL.
@@ -130,7 +147,7 @@ Checks are conservative and source-backed:
 - **Interaction state**: error association, color-only states, disabled controls, live status, dialogs, custom controls, moving content.
 - **Reference-derived hierarchy heuristics**: repeated visual weight, saturated color noise, checklist state visibility.
 
-Every finding includes severity, confidence, viewport, category, evidence references, and a recommendation. v0.3 findings may also include `criterionId`, `sourceRefs`, `determinism`, `resultKind`, runtime type, observed evidence, and expected behavior.
+Every finding includes severity, confidence, viewport, category, evidence references, a recommendation, and a `checkName`. Registry-backed findings also carry `criterionId`, `sourceRefs`, `determinism`, `resultKind`, and runtime metadata; selector, region, observed, and expected evidence are present when the producing check supplies them.
 
 A real finding from an audit of the `semantic-a11y-bad` fixture (abridged):
 
@@ -152,7 +169,7 @@ A real finding from an audit of the `semantic-a11y-bad` fixture (abridged):
 }
 ```
 
-A complete failing run — the full `report.md`, `audit.json`, and screenshots for a fixture with 24 findings and a blocked advisory score — is committed at [examples/reports/semantic-a11y-bad](examples/reports/semantic-a11y-bad/report.md).
+A complete failing run — the full `report.md`, `audit.json`, and screenshots for a fixture with 14 findings and a blocked advisory score — is committed at [examples/reports/semantic-a11y-bad](examples/reports/semantic-a11y-bad/report.md). Its recorded `harnessVersion` is the version that generated it, not necessarily the latest package version.
 
 See [Criteria And Checks](docs/criteria-and-checks.md), [Output Contract](docs/output-contract.md), and [Fixture Catalog](docs/fixtures.md).
 
@@ -206,12 +223,13 @@ The fixture gives new contributors a stable target for checking the full local l
 
 Implemented:
 
-- local CLI audit loop, published to npm,
+- local CLI audit command, published to npm,
 - desktop/mobile screenshot capture,
 - schema-valid audit artifacts,
 - Markdown report generation,
 - source-backed criteria registry,
-- parser-free rendered-copy analysis through the programmatic `copyStyle` API,
+- parser-free rendered-copy analysis through the programmatic API and explicit `--copy` CLI path,
+- explicit guide compile/check and audit-time font-family contract checking,
 - example fixtures,
 - Midjourney Reference Lab manifest and policy validators.
 
@@ -221,12 +239,13 @@ Checkout-local recipes/scaffolding:
 - scenario audit runner,
 - MCP adapter manifest and local dispatcher.
 
-In progress or planned:
+Completed checkout-only maintenance train (not part of published v0.6.0):
 
-- package-installed PR comment/scenario/MCP command surface,
-- more fixture coverage,
-- deeper hosted/action adapters,
-- Open Design integrations beyond the current specs.
+- contrast measurement that fails closed on unsupported ancestor paint effects,
+- criterion-bounded advisory scoring and explicit capped-finding cardinality,
+- a bounded `design-harness loop` in the current checkout, gated only by deterministic failures.
+
+Not on the current roadmap: a package-installed MCP server/surface or Open Design integration. The existing checkout-local MCP scaffolding remains available as documented above.
 
 ## Midjourney Reference Lab
 

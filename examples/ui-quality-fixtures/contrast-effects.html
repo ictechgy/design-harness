@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Contrast paint effects — ancestry</title>
+    <style>
+      html {
+        background: #f4f4f4;
+      }
+      body {
+        margin: 0;
+        padding: 32px;
+        font: 16px/1.5 system-ui, sans-serif;
+      }
+      main {
+        display: grid;
+        gap: 12px;
+        max-width: 480px;
+      }
+      .candidate {
+        box-sizing: border-box;
+        margin: 0;
+        min-height: 44px;
+        padding: 10px 12px;
+        background: #ffffff;
+      }
+      #contrast-pass {
+        color: #111111;
+      }
+      #contrast-control,
+      #contrast-opacity,
+      #contrast-blend,
+      #contrast-filter {
+        color: #777777;
+      }
+      #opacity-ancestor {
+        opacity: 0.8;
+      }
+      #blend-ancestor {
+        mix-blend-mode: multiply;
+      }
+      #filter-ancestor {
+        /* Identity-looking filters are still unsupported paint composition. */
+        filter: brightness(1);
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <p class="candidate" id="contrast-pass">Ordinary high-contrast candidate</p>
+      <p class="candidate" id="contrast-control">Ordinary low-contrast control</p>
+      <div id="opacity-ancestor">
+        <p class="candidate" id="contrast-opacity">Opaque child below ancestor opacity</p>
+      </div>
+      <div id="blend-ancestor">
+        <p class="candidate" id="contrast-blend">Opaque child below ancestor blend mode</p>
+      </div>
+      <div id="filter-ancestor">
+        <p class="candidate" id="contrast-filter">Opaque child below ancestor filter</p>
+      </div>
+    </main>
+  </body>
+</html>

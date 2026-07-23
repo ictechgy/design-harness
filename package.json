@@ -56,6 +56,7 @@
     "example:serve": "node scripts/serve-static.mjs examples/merchant-dashboard 4173",
     "smoke:example": "node scripts/run-example-smoke.mjs",
     "smoke:copy": "node scripts/run-copy-smoke.mjs",
+    "smoke:loop": "node scripts/run-loop-smoke.mjs",
     "smoke:guide": "node scripts/run-guide-smoke.mjs && node scripts/run-guide-compat-smoke.mjs",
     "calibrate:fixtures": "pnpm validate:korean-copy && node scripts/run-calibration.mjs",
     "smoke:packed-cli": "node scripts/verify-packed-cli.mjs",

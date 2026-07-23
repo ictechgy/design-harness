@@ -1,6 +1,6 @@
 # MCP Spec
 
-This is a v0.1 contract only. It does not claim a production MCP server exists yet.
+This is a retained v0.1 contract only. It does not implement a production MCP server or commit the project to one; that surface is cut from the current roadmap unless the owner explicitly reopens it.
 
 ## Tool: design_audit
 
@@ -45,7 +45,7 @@ Output:
   "value": 90,
   "max": 100,
   "band": "strong",
-  "explanation": "Scores are advisory and derived from deterministic findings."
+  "explanation": "Scores are advisory and use evidence-tier-weighted findings."
 }
 ```
 

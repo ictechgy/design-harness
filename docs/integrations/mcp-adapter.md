@@ -1,6 +1,6 @@
-# MCP Adapter
+# Checkout-local MCP Adapter Scaffolding
 
-The v0.3 MCP adapter is checkout-local scaffolding: a small local dispatcher plus a tool manifest. It keeps the contract model-neutral and local-first while leaving room for a fuller MCP server package later. It is not yet a shipped npm package API.
+The MCP adapter introduced in v0.3 is checkout-local compatibility scaffolding: a small local dispatcher plus a tool manifest. It is not a shipped npm package API and does not implement an MCP server. A fuller/package-installed MCP surface is cut from the current roadmap; `audit.json` and `report.md` remain the canonical model-neutral integration boundary.
 
 - Manifest: `integrations/mcp/design-harness.tools.json`
 - Dispatcher: `scripts/mcp-adapter.mjs`
@@ -35,4 +35,4 @@ node scripts/mcp-adapter.mjs call design_harness_run_scenarios '{"configPath":"e
 - Generated Midjourney reference images remain outside runtime.
 - Tool outputs point to local artifacts instead of embedding screenshots into protocol messages.
 
-MCP hosts can wrap the manifest entries as native tools, or call the dispatcher as a subprocess while preserving the same input schema.
+An MCP host may still wrap these checkout-local manifest entries as native tools, or call the dispatcher as a subprocess while preserving the same input schema. That compatibility use does not make this repository an MCP server implementation.

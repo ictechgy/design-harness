@@ -13,13 +13,27 @@ import { BrowserUnavailableError, type AuditUrlOptions } from "@design-harness/v
 import { CopyStyleLoadError } from "./copy-style.js";
 import { GuideOperationError } from "./guide-errors.js";
 import type { GuideRunDependencies, GuideRunResult } from "./guide-run.js";
+import type { LoopRunInput, LoopRunResult } from "./loop-run.js";
 import { runCli, type RunCliDependencies } from "./run.js";
 
 const baseArgv = ["audit", "--url", "http://localhost:3000", "--out", "runs/demo"];
+const baseLoopArgv = [
+  "loop",
+  "--url",
+  "http://localhost:3000",
+  "--out",
+  "runs/loop",
+  "--until",
+  "deterministic-failures==0",
+  "--max-iters",
+  "3",
+  "--agent-cmd",
+  "repair --non-interactive"
+];
 
 describe("runCli", () => {
   it("preserves the no-config path without resolving cwd, invoking loaders, or passing policy properties", async () => {
-    const { dependencies, audit, loadDesignGuide, loadCopyStyle, writeArtifacts, cwd } = successfulDependencies();
+    const { dependencies, audit, loadDesignGuide, loadCopyStyle, runLoop, writeArtifacts, cwd } = successfulDependencies();
 
     await expect(runCli(baseArgv, dependencies)).resolves.toBe(0);
 
@@ -27,6 +41,7 @@ describe("runCli", () => {
     expect(loadDesignGuide).not.toHaveBeenCalled();
     expect(loadCopyStyle).not.toHaveBeenCalled();
     expect(audit).toHaveBeenCalledOnce();
+    expect(runLoop).not.toHaveBeenCalled();
     expect(audit.mock.calls[0]?.[0]).not.toHaveProperty("copyStyle");
     expect(audit.mock.calls[0]?.[0]).not.toHaveProperty("fontFamilyPolicy");
     expect(audit.mock.calls[0]?.[0]).not.toHaveProperty("guide");
@@ -215,6 +230,98 @@ describe("runCli", () => {
     expect(stderr).toHaveBeenCalledWith("browser unavailable");
   });
 
+  it("preflights loop URL and explicit configs once before dispatching the bounded runner", async () => {
+    const guide = createExampleDesignGuide();
+    const copyStyle = createMinimalCopyStyle();
+    const {
+      dependencies,
+      audit,
+      loadDesignGuide,
+      loadCopyStyle,
+      runLoop,
+      writeArtifacts,
+      cwd,
+      stderr,
+      stdout
+    } = successfulDependencies();
+    loadDesignGuide.mockResolvedValue(guide);
+    loadCopyStyle.mockResolvedValue(copyStyle);
+
+    await expect(runCli([
+      ...baseLoopArgv,
+      "--copy",
+      "config/copy-style.yaml",
+      "--guide",
+      "config/design-guide.yaml",
+      "--timeout-ms",
+      "2500",
+      "--agent-timeout-ms",
+      "5000"
+    ], dependencies)).resolves.toBe(0);
+
+    expect(cwd).toHaveBeenCalledOnce();
+    expect(loadDesignGuide).toHaveBeenCalledWith("config/design-guide.yaml", { cwd: "/project" });
+    expect(loadCopyStyle).toHaveBeenCalledWith("config/copy-style.yaml", { cwd: "/project" });
+    expect(loadDesignGuide.mock.invocationCallOrder[0]).toBeLessThan(loadCopyStyle.mock.invocationCallOrder[0]);
+    expect(runLoop).toHaveBeenCalledOnce();
+    expect(runLoop.mock.calls[0]?.[0]).toMatchObject({
+      url: "http://localhost:3000/",
+      outDir: "runs/loop",
+      until: "deterministic-failures==0",
+      maxIters: 3,
+      agentCmd: "repair --non-interactive",
+      agentTimeoutMs: 5000,
+      timeoutMs: 2500,
+      cwd: "/project",
+      copyStyle,
+      fontFamilyPolicy: projectFontFamilyAdherencePolicy(guide)
+    });
+    expect(audit).not.toHaveBeenCalled();
+    expect(writeArtifacts).not.toHaveBeenCalled();
+    expect(stderr).toHaveBeenCalledWith(expect.stringContaining("arbitrary code"));
+    expect(stdout).toHaveBeenCalledWith("Design Harness loop already-clean: runs/loop");
+    expect(stdout).toHaveBeenCalledWith("Summary: runs/loop/loop-summary.json");
+  });
+
+  it("rejects a loop URL before cwd, config, output, browser, or agent orchestration", async () => {
+    const {
+      dependencies,
+      audit,
+      loadDesignGuide,
+      loadCopyStyle,
+      runLoop,
+      writeArtifacts,
+      cwd
+    } = successfulDependencies();
+    dependencies.assertUrl = vi.fn(() => {
+      throw new Error("Only local http(s) URLs are allowed");
+    });
+
+    await expect(runCli([
+      ...baseLoopArgv,
+      "--guide",
+      "design-guide.yaml",
+      "--copy",
+      "copy-style.yaml"
+    ], dependencies)).resolves.toBe(1);
+
+    expect(cwd).not.toHaveBeenCalled();
+    expect(loadDesignGuide).not.toHaveBeenCalled();
+    expect(loadCopyStyle).not.toHaveBeenCalled();
+    expect(runLoop).not.toHaveBeenCalled();
+    expect(audit).not.toHaveBeenCalled();
+    expect(writeArtifacts).not.toHaveBeenCalled();
+  });
+
+  it("preserves the loop runner's unmet-condition exit class", async () => {
+    const { dependencies, runLoop, stderr } = successfulDependencies();
+    runLoop.mockResolvedValue(loopResult("no-progress", 3));
+
+    await expect(runCli(baseLoopArgv, dependencies)).resolves.toBe(3);
+
+    expect(stderr).toHaveBeenCalledWith(expect.stringContaining("condition was reached"));
+  });
+
   it("routes guide compile without invoking the audit path", async () => {
     const { dependencies, runGuide, audit, loadDesignGuide, loadCopyStyle, writeArtifacts, stdout } = successfulDependencies();
 
@@ -297,12 +404,14 @@ function successfulDependencies(status: "success" | "partial" = "success") {
     args: { action: "compile" | "check" },
     _guideDependencies?: GuideRunDependencies
   ) => guideResult(args.action));
+  const runLoop = vi.fn(async (_input: LoopRunInput) => loopResult("already-clean", 0));
   const cwd = vi.fn(() => "/project");
   const dependencies: RunCliDependencies = {
     audit,
     loadDesignGuide,
     loadCopyStyle,
     runGuide,
+    runLoop,
     writeArtifacts,
     assertUrl: vi.fn((url: string) => `${url}/`),
     cwd,
@@ -315,10 +424,18 @@ function successfulDependencies(status: "success" | "partial" = "success") {
     loadDesignGuide,
     loadCopyStyle,
     runGuide,
+    runLoop,
     writeArtifacts,
     cwd,
     stdout,
     stderr
+  };
+}
+
+function loopResult(status: LoopRunResult["summary"]["status"], exitCode: 0 | 1 | 2 | 3): LoopRunResult {
+  return {
+    exitCode,
+    summary: { status } as LoopRunResult["summary"]
   };
 }
 

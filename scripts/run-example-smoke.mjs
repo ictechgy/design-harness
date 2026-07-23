@@ -43,6 +43,8 @@ const expectedRealStackAllowedFamilies = [
 // meaningfulElementCount is textElements.length, so it moves if and only if the shared array moves.
 const meaningfulElementCountBaseline = { desktop: 71, mobile: 66 };
 const lineLengthTripwireFixture = "responsive-readability-bad.html";
+const findingCoverageFixture = "finding-coverage-over-limit.html";
+const overLimitCheckNames = ["dom-contrast-risk", "tap-target-risk", "text-clipping"];
 
 // v0.5c step 2 — clean-corpus false-positive gate for dom-contrast-risk.
 //
@@ -51,8 +53,6 @@ const lineLengthTripwireFixture = "responsive-readability-bad.html";
 // disabled to achieve that silence. Hand-computed reference values, written before the detector was ever
 // run against these pages, live in examples/ui-quality-fixtures/clean-corpus-expected.md.
 //
-// This gate is RED on the current build and is meant to be: it is the definition of done for the contrast
-// repair. Set DESIGN_HARNESS_CLEAN_CORPUS=off only to unblock unrelated work on a shared branch.
 // `expected` pins the defective element and its ratio. A bare count is satisfiable by implementations that
 // are still wrong — assuming a black backdrop scores these 2.02/2.57, ignoring translucent layers 2.19/2.53,
 // compositing only the background 16.78 — so the band rejects each of those while tolerating the
@@ -79,10 +79,38 @@ const cleanCorpusPairs = [
   }
 ];
 const cleanCorpusRatioTolerance = 0.05;
+const contrastEffectFixtures = [
+  {
+    name: "contrast-effects",
+    fixture: "contrast-effects.html",
+    expectedEvaluated: 2,
+    expectedSkipped: 3,
+    expectedReasons: {
+      filter: 1,
+      "mix-blend-mode": 1,
+      opacity: 1
+    },
+    expectedFindingSelectors: ["#contrast-control"]
+  },
+  {
+    name: "contrast-effect-priority",
+    fixture: "contrast-effect-priority.html",
+    expectedEvaluated: 0,
+    expectedSkipped: 6,
+    expectedReasons: {
+      "background-image": 1,
+      "backdrop-filter": 1,
+      "detached-backdrop": 1,
+      filter: 1,
+      "mix-blend-mode": 1,
+      opacity: 1
+    },
+    expectedFindingSelectors: []
+  }
+];
 // #disc is the CONJ-vs-ASYM discriminator: it fires only under the conjunctive reading of the Spacing
 // exception, so pinning it rejects the asymmetric misreading, and the exact set rejects a disabled check.
 const expectedTapTargetBadSelectors = ["#cramp-a", "#cramp-b", "#disc"];
-const cleanCorpusEnabled = process.env.DESIGN_HARNESS_CLEAN_CORPUS !== "off";
 const cleanCorpusFailures = [];
 
 rmSync(outRoot, { recursive: true, force: true });
@@ -160,37 +188,61 @@ try {
   }
   assertTapTargetBad(readAuditResult(tapTargetBadOut));
 
-  // Collected rather than thrown: this gate is red until the contrast repair lands, and a throw here
-  // would skip every font-family assertion below it, masking an unrelated regression for the duration of
-  // the milestone. Failures are reported immediately and rethrown after the rest of the suite has run.
-  if (cleanCorpusEnabled) {
-    for (const pair of cleanCorpusPairs) {
-      for (const [half, fixture, assertHalf] of [
-        ["good", pair.good, assertCleanCorpusGood],
-        ["defective", pair.defective, assertCleanCorpusDefective]
-      ]) {
-        const outDir = join(outRoot, `${pair.name}-${half}`);
-        try {
-          const exitCode = await run(process.execPath, [
-            cliPath,
-            "audit",
-            "--url",
-            `http://127.0.0.1:${port}/ui-quality-fixtures/${fixture}`,
-            "--out",
-            outDir
-          ]);
-          if (exitCode !== 0) {
-            throw new Error(`${pair.name} (${half}) CLI exited ${exitCode}`);
-          }
-          assertHalf(readAuditResult(outDir), pair);
-        } catch (error) {
-          cleanCorpusFailures.push(error instanceof Error ? error.message : String(error));
-          console.error(`CLEAN CORPUS FAIL: ${error instanceof Error ? error.message : String(error)}`);
+  const findingCoverageOut = join(outRoot, "finding-coverage-over-limit");
+  const findingCoverageExit = await run(process.execPath, [
+    cliPath,
+    "audit",
+    "--url",
+    `http://127.0.0.1:${port}/ui-quality-fixtures/${findingCoverageFixture}`,
+    "--out",
+    findingCoverageOut
+  ]);
+  if (findingCoverageExit !== 0) {
+    throw new Error(`Finding-coverage over-limit CLI exited ${findingCoverageExit}`);
+  }
+  assertFindingCoverageOverLimit(readAuditResult(findingCoverageOut));
+
+  // Collect failures so later independent fixture gates still run; the suite always fails after aggregation.
+  for (const pair of cleanCorpusPairs) {
+    for (const [half, fixture, assertHalf] of [
+      ["good", pair.good, assertCleanCorpusGood],
+      ["defective", pair.defective, assertCleanCorpusDefective]
+    ]) {
+      const outDir = join(outRoot, `${pair.name}-${half}`);
+      try {
+        const exitCode = await run(process.execPath, [
+          cliPath,
+          "audit",
+          "--url",
+          `http://127.0.0.1:${port}/ui-quality-fixtures/${fixture}`,
+          "--out",
+          outDir
+        ]);
+        if (exitCode !== 0) {
+          throw new Error(`${pair.name} (${half}) CLI exited ${exitCode}`);
         }
+        assertHalf(readAuditResult(outDir), pair);
+      } catch (error) {
+        cleanCorpusFailures.push(error instanceof Error ? error.message : String(error));
+        console.error(`CLEAN CORPUS FAIL: ${error instanceof Error ? error.message : String(error)}`);
       }
     }
-  } else {
-    console.warn("Clean corpus gate SKIPPED via DESIGN_HARNESS_CLEAN_CORPUS=off.");
+  }
+
+  for (const scenario of contrastEffectFixtures) {
+    const outDir = join(outRoot, scenario.name);
+    const contrastEffectExit = await run(process.execPath, [
+      cliPath,
+      "audit",
+      "--url",
+      `http://127.0.0.1:${port}/ui-quality-fixtures/${scenario.fixture}`,
+      "--out",
+      outDir
+    ]);
+    if (contrastEffectExit !== 0) {
+      throw new Error(`${scenario.name} CLI exited ${contrastEffectExit}`);
+    }
+    assertContrastEffectRun(readAuditResult(outDir), scenario);
   }
 
   await runFontFamilyFixture({
@@ -261,7 +313,7 @@ try {
       + `assertion above passed.\n  - ${cleanCorpusFailures.join("\n  - ")}`
     );
   }
-  console.log("Example smoke passed: no-config regression, measurement tripwires, clean corpus, tap-target spacing, plus live real-stack font-family success, exact companion mismatch, exception, and scoped-error audits.");
+  console.log("Example smoke passed: no-config regression, measurement tripwires, clean corpus, contrast paint-effect ancestry and priority, tap-target spacing, capped-finding coverage, plus live real-stack font-family success, exact companion mismatch, exception, and scoped-error audits.");
 } finally {
   await new Promise((resolveClose) => server.close(resolveClose));
 }
@@ -365,6 +417,110 @@ function contrastFindings(auditResult, viewport) {
   return auditResult.findings.filter(
     (finding) => finding.checkName === "dom-contrast-risk" && finding.viewport === viewport
   );
+}
+
+function assertContrastEffectRun(auditResult, scenario) {
+  if (auditResult.status !== "success") {
+    throw new Error(`${scenario.name} status is ${auditResult.status}, expected success`);
+  }
+  if (auditResult.failedChecks.length !== 0) {
+    throw new Error(`${scenario.name} recorded failed checks: ${auditResult.failedChecks.join(", ")}`);
+  }
+
+  const viewportNames = auditResult.viewportPresets.map((preset) => preset.name).sort();
+  if (JSON.stringify(viewportNames) !== JSON.stringify(["desktop", "mobile"])) {
+    throw new Error(`${scenario.name} audited [${viewportNames.join(", ")}], expected desktop and mobile`);
+  }
+
+  for (const viewport of viewportNames) {
+    const matchingMeasurements = auditResult.evidenceAssets.filter(
+      (asset) => asset.type === "measurement" && asset.viewport === viewport
+    );
+    if (matchingMeasurements.length !== 1) {
+      throw new Error(`${scenario.name} produced ${matchingMeasurements.length} measurements for ${viewport}`);
+    }
+    const coverage = matchingMeasurements[0].data?.contrastCoverage;
+    if (!coverage) {
+      throw new Error(`${scenario.name} ${viewport} measurement carries no contrastCoverage block`);
+    }
+    if (
+      coverage.evaluatedElementCount !== scenario.expectedEvaluated
+      || coverage.skippedElementCount !== scenario.expectedSkipped
+      || coverage.evaluatedElementCount + coverage.skippedElementCount
+        !== scenario.expectedEvaluated + scenario.expectedSkipped
+    ) {
+      throw new Error(
+        `${scenario.name} ${viewport} coverage was evaluated=${coverage.evaluatedElementCount}, `
+        + `skipped=${coverage.skippedElementCount}; expected evaluated=${scenario.expectedEvaluated}, `
+        + `skipped=${scenario.expectedSkipped}`
+      );
+    }
+    assertExactReasonCounts(
+      coverage.skippedByReason,
+      scenario.expectedReasons,
+      `${scenario.name} ${viewport} contrast coverage`
+    );
+
+    const selectors = contrastFindings(auditResult, viewport)
+      .map((finding) => finding.selector)
+      .sort();
+    const expectedSelectors = [...scenario.expectedFindingSelectors].sort();
+    if (
+      selectors.length !== expectedSelectors.length
+      || selectors.some((selector, index) => selector !== expectedSelectors[index])
+    ) {
+      throw new Error(
+        `${scenario.name} ${viewport} contrast selectors were [${selectors.join(", ")}], `
+        + `expected [${expectedSelectors.join(", ")}]`
+      );
+    }
+  }
+
+  const skipNotices = (auditResult.notices ?? []).filter(
+    (notice) => notice.code === "contrast-elements-skipped"
+  );
+  if (skipNotices.length !== 1) {
+    throw new Error(`${scenario.name} emitted ${skipNotices.length} contrast skip notices, expected 1`);
+  }
+  const [notice] = skipNotices;
+  if (notice.viewport !== undefined) {
+    throw new Error(`${scenario.name} contrast skip notice retained a top-level viewport after deduplication`);
+  }
+  if (!/painted/i.test(notice.message) || !/contrast/i.test(notice.message)) {
+    throw new Error(`${scenario.name} contrast skip notice does not describe painted contrast uncertainty`);
+  }
+  const noticeViewports = notice.details?.viewports;
+  if (!Array.isArray(noticeViewports) || noticeViewports.length !== viewportNames.length) {
+    throw new Error(
+      `${scenario.name} contrast skip notice summarized ${noticeViewports?.length ?? 0} viewport(s), `
+      + `expected ${viewportNames.length}`
+    );
+  }
+  for (const [index, viewport] of viewportNames.entries()) {
+    const summary = noticeViewports[index];
+    if (summary?.viewport !== viewport || summary.skippedElementCount !== scenario.expectedSkipped) {
+      throw new Error(
+        `${scenario.name} contrast skip notice summary ${index} was `
+        + `${summary?.viewport}:${summary?.skippedElementCount}, expected ${viewport}:${scenario.expectedSkipped}`
+      );
+    }
+    assertExactReasonCounts(
+      summary.skippedByReason,
+      scenario.expectedReasons,
+      `${scenario.name} ${viewport} contrast skip notice`
+    );
+  }
+}
+
+function assertExactReasonCounts(actual, expected, label) {
+  const actualEntries = Object.entries(actual ?? {}).sort(([left], [right]) => left < right ? -1 : left > right ? 1 : 0);
+  const expectedEntries = Object.entries(expected).sort(([left], [right]) => left < right ? -1 : left > right ? 1 : 0);
+  if (JSON.stringify(actualEntries) !== JSON.stringify(expectedEntries)) {
+    throw new Error(
+      `${label} reasons were ${JSON.stringify(Object.fromEntries(actualEntries))}, `
+      + `expected ${JSON.stringify(Object.fromEntries(expectedEntries))}`
+    );
+  }
 }
 
 // A zero-findings assertion alone is satisfied by a dead measurement closure, which produces zero findings
@@ -495,6 +651,150 @@ function assertTapTargetBad(auditResult) {
         + "and a different count means over- or under-exemption. See tap-target-expected.md."
       );
     }
+  }
+}
+
+function assertFindingCoverageOverLimit(auditResult) {
+  const label = "finding-coverage-over-limit";
+  if (auditResult.status !== "success") {
+    throw new Error(`${label} status is ${auditResult.status}, expected success`);
+  }
+  if (auditResult.failedChecks.length !== 0) {
+    throw new Error(`${label} recorded failed checks: ${auditResult.failedChecks.join(", ")}`);
+  }
+
+  const viewportNames = auditResult.viewportPresets.map((preset) => preset.name).sort();
+  if (JSON.stringify(viewportNames) !== JSON.stringify(["desktop", "mobile"])) {
+    throw new Error(`${label} audited [${viewportNames.join(", ")}], expected desktop and mobile`);
+  }
+
+  const expectedCheckNames = [...overLimitCheckNames];
+  const expectedCheckSet = new Set(expectedCheckNames);
+  const unrelatedFindings = auditResult.findings.filter((finding) => !expectedCheckSet.has(finding.checkName));
+  if (unrelatedFindings.length !== 0) {
+    throw new Error(
+      `${label} emitted unrelated finding families: `
+      + unrelatedFindings.map((finding) => `${finding.viewport}:${finding.checkName}`).join(", ")
+    );
+  }
+
+  for (const viewport of viewportNames) {
+    for (const checkName of expectedCheckNames) {
+      const findingCount = auditResult.findings.filter(
+        (finding) => finding.viewport === viewport && finding.checkName === checkName
+      ).length;
+      if (findingCount !== 5) {
+        throw new Error(`${label} ${viewport} emitted ${findingCount} ${checkName} findings, expected 5`);
+      }
+    }
+
+    const measurements = auditResult.evidenceAssets.filter(
+      (asset) => asset.type === "measurement" && asset.viewport === viewport
+    );
+    if (measurements.length !== 1) {
+      throw new Error(`${label} produced ${measurements.length} measurements for ${viewport}, expected 1`);
+    }
+    const coverage = measurements[0].data?.findingCoverage;
+    if (coverage?.viewport !== viewport || !Array.isArray(coverage.entries)) {
+      throw new Error(`${label} ${viewport} has no matching findingCoverage { viewport, entries } block`);
+    }
+    if (coverage.entries.length !== 20) {
+      throw new Error(`${label} ${viewport} findingCoverage has ${coverage.entries.length} entries, expected 20`);
+    }
+    const distinctCheckNames = new Set(coverage.entries.map((entry) => entry.checkName));
+    if (distinctCheckNames.size !== coverage.entries.length) {
+      throw new Error(`${label} ${viewport} findingCoverage contains duplicate check names`);
+    }
+
+    const omittedEntries = coverage.entries.filter((entry) => entry.omittedCount !== 0);
+    const omittedCheckNames = omittedEntries.map((entry) => entry.checkName).sort();
+    if (JSON.stringify(omittedCheckNames) !== JSON.stringify(expectedCheckNames)) {
+      throw new Error(
+        `${label} ${viewport} omitted checks were [${omittedCheckNames.join(", ")}], `
+        + `expected exactly [${expectedCheckNames.join(", ")}]`
+      );
+    }
+    for (const checkName of expectedCheckNames) {
+      const entry = coverage.entries.find((candidate) => candidate.checkName === checkName);
+      assertOverLimitCoverageEntry(entry, `${label} ${viewport} measurement ${checkName}`);
+    }
+  }
+
+  const notices = auditResult.notices ?? [];
+  const truncationNotices = notices.filter((notice) => notice.code === "finding-samples-truncated");
+  if (truncationNotices.length !== 1) {
+    throw new Error(`${label} emitted ${truncationNotices.length} finding-samples-truncated notices, expected 1`);
+  }
+  if (notices.length !== 1) {
+    throw new Error(`${label} emitted unrelated notices: ${notices.map((notice) => notice.code).join(", ")}`);
+  }
+  const [notice] = truncationNotices;
+  if (Object.hasOwn(notice, "viewport")) {
+    throw new Error(`${label} truncation notice retained a top-level viewport`);
+  }
+  const noticeViewports = notice.details?.viewports;
+  if (!Array.isArray(noticeViewports) || noticeViewports.length !== 2) {
+    throw new Error(`${label} truncation notice must carry exactly two viewport detail entries`);
+  }
+  if (JSON.stringify(noticeViewports.map((entry) => entry.viewport)) !== JSON.stringify(["desktop", "mobile"])) {
+    throw new Error(`${label} truncation notice viewport details are not in canonical desktop/mobile order`);
+  }
+  for (const viewportEntry of noticeViewports) {
+    if (!Array.isArray(viewportEntry.checks)) {
+      throw new Error(`${label} notice ${viewportEntry.viewport} detail has no checks array`);
+    }
+    const checkNames = viewportEntry.checks.map((entry) => entry.checkName);
+    if (JSON.stringify(checkNames) !== JSON.stringify(expectedCheckNames)) {
+      throw new Error(
+        `${label} notice ${viewportEntry.viewport} checks were [${checkNames.join(", ")}], `
+        + `expected canonical [${expectedCheckNames.join(", ")}]`
+      );
+    }
+    for (const entry of viewportEntry.checks) {
+      assertOverLimitCoverageEntry(entry, `${label} notice ${viewportEntry.viewport} ${entry.checkName}`);
+    }
+  }
+
+  const score = auditResult.advisoryScore;
+  if (score.formulaVersion !== "epistemic-criterion-max-v2") {
+    throw new Error(`${label} score formula is ${score.formulaVersion}, expected epistemic-criterion-max-v2`);
+  }
+  if (score.deductions.length !== 3 || score.totalDeduction !== 13.5 || score.value !== 86.5 || score.saturated) {
+    throw new Error(
+      `${label} score was groups=${score.deductions.length}, total=${score.totalDeduction}, `
+      + `value=${score.value}, saturated=${score.saturated}; expected 3/13.5/86.5/false`
+    );
+  }
+  const findingsById = new Map(auditResult.findings.map((finding) => [finding.id, finding]));
+  const scoredCheckNames = score.deductions.map((deduction) => findingsById.get(deduction.findingId)?.checkName).sort();
+  if (JSON.stringify(scoredCheckNames) !== JSON.stringify(expectedCheckNames)) {
+    throw new Error(`${label} score groups were [${scoredCheckNames.join(", ")}], expected one per capped check`);
+  }
+  for (const deduction of score.deductions) {
+    if (
+      deduction.findingIds.length !== 10
+      || JSON.stringify(deduction.viewports) !== JSON.stringify(["desktop", "mobile"])
+    ) {
+      throw new Error(
+        `${label} score group ${deduction.findingId} has ${deduction.findingIds.length} occurrences `
+        + `across [${deduction.viewports.join(", ")}], expected 10 across desktop/mobile`
+      );
+    }
+  }
+}
+
+function assertOverLimitCoverageEntry(entry, label) {
+  if (
+    !entry
+    || entry.detectedCount !== 25
+    || entry.emittedCount !== 5
+    || entry.omittedCount !== 20
+    || entry.limit !== 5
+    || entry.capGroup !== undefined
+  ) {
+    throw new Error(
+      `${label} was ${JSON.stringify(entry)}, expected detected=25, emitted=5, omitted=20, limit=5, no capGroup`
+    );
   }
 }
 

@@ -261,20 +261,50 @@ export interface EvidenceAsset {
   createdAt: string;
 }
 
-export interface ScoreDeduction {
+export type AdvisoryScoreBand = "strong" | "usable" | "needs-work" | "blocked";
+
+export interface ScoreDeductionV1 {
   findingId: string;
   points: number;
   reason: string;
 }
 
-export interface AdvisoryScore {
+export interface ScoreDeductionV2 {
+  /** The maximum-point occurrence selected for this criterion/check-name group. */
+  findingId: string;
+  /** Every scoreable occurrence in the group, sorted by UTF-16 code-unit order. */
+  findingIds: string[];
+  /** Unique viewports represented by the group, sorted by UTF-16 code-unit order. */
+  viewports: string[];
+  points: number;
+  reason: string;
+}
+
+export type ScoreDeduction = ScoreDeductionV1 | ScoreDeductionV2;
+
+export interface AdvisoryScoreV1 {
   formulaVersion: "epistemic-weight-v1";
   value: number;
   max: number;
-  band: "strong" | "usable" | "needs-work" | "blocked";
-  deductions: ScoreDeduction[];
+  band: AdvisoryScoreBand;
+  deductions: ScoreDeductionV1[];
   explanation: string;
 }
+
+export interface AdvisoryScoreV2 {
+  formulaVersion: "epistemic-criterion-max-v2";
+  value: number;
+  max: number;
+  band: AdvisoryScoreBand;
+  deductions: ScoreDeductionV2[];
+  /** Rounded sum of criterion/check-name maxima before the score is floored at zero. */
+  totalDeduction: number;
+  /** True only when totalDeduction exceeds 100; an exact total of 100 is not saturated. */
+  saturated: boolean;
+  explanation: string;
+}
+
+export type AdvisoryScore = AdvisoryScoreV1 | AdvisoryScoreV2;
 
 export interface AuditTimings {
   startedAt: string;

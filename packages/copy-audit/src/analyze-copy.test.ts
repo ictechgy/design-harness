@@ -450,7 +450,16 @@ describe("copy finding contract", () => {
     ]);
 
     const score = scoreFindings(findings);
-    expect(score.deductions.map((deduction) => deduction.points)).toEqual([20, 2.4, 6, 2.4, 6]);
+    expect(score.deductions.map((deduction) => [
+      findings.find((finding) => finding.id === deduction.findingId)?.criterionId,
+      deduction.points
+    ])).toEqual([
+      ["content.banned-phrase.policy", 6],
+      ["content.glossary.banned-term", 6],
+      ["content.glossary.use-carefully-term", 2.4],
+      ["content.josa-hedge.policy", 2.4],
+      ["content.placeholder.unrendered", 20]
+    ]);
     expect(score).toMatchObject({ value: 63.2, band: "needs-work" });
   });
 

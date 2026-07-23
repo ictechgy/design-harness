@@ -1,5 +1,5 @@
 import type { AuditNotice, CopyStyleSurfaceRule, LayoutMetrics } from "@design-harness/core";
-import type { ViewportMeasurements } from "./checks.js";
+import type { FindingCoverage, FindingCoverageEntry, ViewportMeasurements } from "./checks.js";
 import {
   computeContrastRisks,
   computeTapTargetRisks,
@@ -12,6 +12,7 @@ export interface ViewportCollectionResult {
   measurements: ViewportMeasurements;
   notices: AuditNotice[];
   layoutMetrics?: LayoutMetrics;
+  findingCoverage?: FindingCoverage;
   fontFamilyCollection?: FontFamilyCollectionCounts;
   fontFamilyError?: FontFamilyMeasurementError;
 }
@@ -56,6 +57,8 @@ export async function collectViewportMeasurements(page: {
     const MAX_TEXT_INVENTORY_TEXT_LENGTH = 2_000;
     const MAX_FONT_FAMILY_CANDIDATES = 2_000;
     const MAX_COMPUTED_FONT_FAMILY_LENGTH = 1_024;
+    const MAX_BROWSER_FINDING_SAMPLES = 10;
+    const FINDING_MATERIALIZATION_LIMIT = 5;
     const measurementConfig = rawConfig && typeof rawConfig === "object"
       ? rawConfig as ViewportMeasurementConfig
       : undefined;
@@ -172,13 +175,14 @@ export async function collectViewportMeasurements(page: {
         return Boolean(element.innerText?.trim()) && style.display !== "none" && style.visibility !== "hidden" && rect.width > 0 && rect.height > 0;
       });
 
-    const clippedText = textElements
-      .filter((element) => {
-        const style = window.getComputedStyle(element);
-        const clipsOverflow = ["hidden", "clip"].includes(style.overflowX) || ["hidden", "clip"].includes(style.overflowY);
-        return clipsOverflow && (element.scrollWidth > element.clientWidth + 1 || element.scrollHeight > element.clientHeight + 1);
-      })
-      .slice(0, 10)
+    const clippedTextMatches = textElements.filter((element) => {
+      const style = window.getComputedStyle(element);
+      const clipsOverflow = ["hidden", "clip"].includes(style.overflowX) || ["hidden", "clip"].includes(style.overflowY);
+      return clipsOverflow && (element.scrollWidth > element.clientWidth + 1 || element.scrollHeight > element.clientHeight + 1);
+    });
+    const clippedTextDetectedCount = clippedTextMatches.length;
+    const clippedText = clippedTextMatches
+      .slice(0, MAX_BROWSER_FINDING_SAMPLES)
       .map((element) => sampleElement(element));
 
     // Collection only — parsing, ratio, and threshold happen in Node. See measurement-primitives.ts for
@@ -192,6 +196,7 @@ export async function collectViewportMeasurements(page: {
       .filter(rendersOwnText)
       .map((element) => {
         const style = window.getComputedStyle(element);
+        const paintEffectSkipReason = collectPaintEffectSkipReason(element);
         const backdrop = collectBackdrop(element);
         const sample = sampleElement(element);
         return {
@@ -203,7 +208,9 @@ export async function collectViewportMeasurements(page: {
           canvasColor,
           fontSizePx: Number.parseFloat(style.fontSize || "16"),
           fontWeight: Number.parseInt(style.fontWeight || "400", 10),
-          ...(backdrop.skipReason ? { skipReason: backdrop.skipReason } : {})
+          ...(backdrop.skipReason || paintEffectSkipReason
+            ? { skipReason: backdrop.skipReason ?? paintEffectSkipReason }
+            : {})
         };
       });
 
@@ -223,10 +230,12 @@ export async function collectViewportMeasurements(page: {
       "[tabindex]:not([tabindex='-1'])"
     ].join(","))).filter(isElementVisible);
 
-    const missingAccessibleNames = interactiveElements
+    const missingAccessibleNameMatches = interactiveElements
       .filter((element) => !requiresProgrammaticFormLabel(element))
-      .filter((element) => !accessibleNameFor(element))
-      .slice(0, 10)
+      .filter((element) => !accessibleNameFor(element));
+    const missingAccessibleNameDetectedCount = missingAccessibleNameMatches.length;
+    const missingAccessibleNames = missingAccessibleNameMatches
+      .slice(0, MAX_BROWSER_FINDING_SAMPLES)
       .map((element) => sampleElement(element));
 
     const formControls = Array.from(document.body.querySelectorAll<HTMLElement>([
@@ -235,37 +244,149 @@ export async function collectViewportMeasurements(page: {
       "textarea"
     ].join(","))).filter(isElementVisible);
 
-    const missingFormLabels = formControls
-      .filter((element) => !accessibleNameFor(element))
-      .slice(0, 10)
+    const missingFormLabelMatches = formControls.filter((element) => !accessibleNameFor(element));
+    const missingFormLabelDetectedCount = missingFormLabelMatches.length;
+    const missingFormLabels = missingFormLabelMatches
+      .slice(0, MAX_BROWSER_FINDING_SAMPLES)
       .map((element) => sampleElement(element));
 
-    const missingImageAlt = Array.from(document.body.querySelectorAll<HTMLImageElement>("img"))
+    const missingImageAltMatches = Array.from(document.body.querySelectorAll<HTMLImageElement>("img"))
       .filter(isElementVisible)
       .filter((element) => element.getAttribute("role") !== "presentation" && element.getAttribute("aria-hidden") !== "true")
-      .filter((element) => !element.hasAttribute("alt"))
-      .slice(0, 10)
+      .filter((element) => !element.hasAttribute("alt"));
+    const missingImageAltDetectedCount = missingImageAltMatches.length;
+    const missingImageAlt = missingImageAltMatches
+      .slice(0, MAX_BROWSER_FINDING_SAMPLES)
       .map((element) => sampleElement(element));
 
-    const headingIssues = collectHeadingIssues();
+    const headingIssueCollection = collectHeadingIssues();
+    const headingIssues = headingIssueCollection.samples;
     const missingMainLandmark = document.body.querySelector("main,[role='main']") === null;
     const pageLangMissing = (document.documentElement.getAttribute("lang") || "").trim() === "";
-    const repeatedLabels = collectRepeatedLabels(interactiveElements);
+    const repeatedLabelCollection = collectRepeatedLabels(interactiveElements);
+    const repeatedLabels = repeatedLabelCollection.samples;
     const repeatedVisualWeightRisks = collectRepeatedVisualWeightRisks();
     const saturatedColorNoiseRisks = collectSaturatedColorNoiseRisks();
     const checklistStateVisibilityRisks = collectChecklistStateVisibilityRisks();
-    const fixedWidthRisks = collectFixedWidthRisks();
-    const stickyObstructionRisks = collectStickyObstructionRisks();
-    const excessiveLineLength = collectExcessiveLineLength(textElements);
+    const fixedWidthRiskCollection = collectFixedWidthRisks();
+    const fixedWidthRisks = fixedWidthRiskCollection.samples;
+    const stickyObstructionRiskCollection = collectStickyObstructionRisks();
+    const stickyObstructionRisks = stickyObstructionRiskCollection.samples;
+    const excessiveLineLengthCollection = collectExcessiveLineLength(textElements);
+    const excessiveLineLength = excessiveLineLengthCollection.samples;
     const tapTargetCandidates = collectTapTargetCandidates(interactiveElements);
-    const formErrorAssociationRisks = collectFormErrorAssociationRisks(formControls);
-    const colorOnlyStateRisks = collectColorOnlyStateRisks();
-    const disabledWithoutExplanation = collectDisabledWithoutExplanation();
-    const statusLiveRegionRisks = collectStatusLiveRegionRisks();
-    const modalFocusRisks = collectModalFocusRisks();
-    const customControlSemanticsRisks = collectCustomControlSemanticsRisks();
-    const movingContentControlRisks = collectMovingContentControlRisks();
+    const formErrorAssociationRiskCollection = collectFormErrorAssociationRisks(formControls);
+    const formErrorAssociationRisks = formErrorAssociationRiskCollection.samples;
+    const colorOnlyStateRiskCollection = collectColorOnlyStateRisks();
+    const colorOnlyStateRisks = colorOnlyStateRiskCollection.samples;
+    const disabledWithoutExplanationCollection = collectDisabledWithoutExplanation();
+    const disabledWithoutExplanation = disabledWithoutExplanationCollection.samples;
+    const statusLiveRegionRiskCollection = collectStatusLiveRegionRisks();
+    const statusLiveRegionRisks = statusLiveRegionRiskCollection.samples;
+    const modalFocusRiskCollection = collectModalFocusRisks();
+    const modalFocusRisks = modalFocusRiskCollection.samples;
+    const customControlSemanticsRiskCollection = collectCustomControlSemanticsRisks();
+    const customControlSemanticsRisks = customControlSemanticsRiskCollection.samples;
+    const movingContentControlRiskCollection = collectMovingContentControlRisks();
+    const movingContentControlRisks = movingContentControlRiskCollection.samples;
     const textInventory = collectTextInventory();
+    const textLength = document.body.innerText.trim().length;
+    const likelyBlank = textLength === 0 && textElements.length === 0;
+    const emittedHeadingIssues = likelyBlank
+      ? []
+      : headingIssues.slice(0, FINDING_MATERIALIZATION_LIMIT);
+
+    const findingCoverageEntries: FindingCoverageEntry[] = [
+      findingCoverageEntry("text-clipping", clippedTextDetectedCount, materializedSampleCount(clippedText)),
+      findingCoverageEntry(
+        "missing-accessible-name",
+        missingAccessibleNameDetectedCount,
+        materializedSampleCount(missingAccessibleNames)
+      ),
+      findingCoverageEntry(
+        "missing-form-label",
+        missingFormLabelDetectedCount,
+        materializedSampleCount(missingFormLabels)
+      ),
+      findingCoverageEntry(
+        "missing-image-alt",
+        missingImageAltDetectedCount,
+        materializedSampleCount(missingImageAlt)
+      ),
+      findingCoverageEntry(
+        "empty-heading",
+        headingIssueCollection.detectedByIssue["empty-heading"],
+        emittedHeadingIssues.filter((sample) => sample.issue === "empty-heading").length,
+        "headingIssues"
+      ),
+      findingCoverageEntry(
+        "heading-level-skip",
+        headingIssueCollection.detectedByIssue["heading-level-skip"],
+        emittedHeadingIssues.filter((sample) => sample.issue === "heading-level-skip").length,
+        "headingIssues"
+      ),
+      findingCoverageEntry(
+        "duplicate-h1",
+        headingIssueCollection.detectedByIssue["duplicate-h1"],
+        emittedHeadingIssues.filter((sample) => sample.issue === "duplicate-h1").length,
+        "headingIssues"
+      ),
+      findingCoverageEntry(
+        "ambiguous-repeated-label",
+        repeatedLabelCollection.detectedCount,
+        materializedSampleCount(repeatedLabels)
+      ),
+      findingCoverageEntry(
+        "fixed-width-risk",
+        fixedWidthRiskCollection.detectedCount,
+        materializedSampleCount(fixedWidthRisks)
+      ),
+      findingCoverageEntry(
+        "sticky-obstruction-risk",
+        stickyObstructionRiskCollection.detectedCount,
+        materializedSampleCount(stickyObstructionRisks)
+      ),
+      findingCoverageEntry(
+        "excessive-line-length",
+        excessiveLineLengthCollection.detectedCount,
+        materializedSampleCount(excessiveLineLength)
+      ),
+      findingCoverageEntry(
+        "form-error-association-risk",
+        formErrorAssociationRiskCollection.detectedCount,
+        materializedSampleCount(formErrorAssociationRisks)
+      ),
+      findingCoverageEntry(
+        "color-only-state-risk",
+        colorOnlyStateRiskCollection.detectedCount,
+        materializedSampleCount(colorOnlyStateRisks)
+      ),
+      findingCoverageEntry(
+        "disabled-without-explanation",
+        disabledWithoutExplanationCollection.detectedCount,
+        materializedSampleCount(disabledWithoutExplanation)
+      ),
+      findingCoverageEntry(
+        "status-live-region-risk",
+        statusLiveRegionRiskCollection.detectedCount,
+        materializedSampleCount(statusLiveRegionRisks)
+      ),
+      findingCoverageEntry(
+        "modal-focus-risk",
+        modalFocusRiskCollection.detectedCount,
+        materializedSampleCount(modalFocusRisks)
+      ),
+      findingCoverageEntry(
+        "custom-control-semantics-risk",
+        customControlSemanticsRiskCollection.detectedCount,
+        materializedSampleCount(customControlSemanticsRisks)
+      ),
+      findingCoverageEntry(
+        "moving-content-control-risk",
+        movingContentControlRiskCollection.detectedCount,
+        materializedSampleCount(movingContentControlRisks)
+      )
+    ];
 
     const measurements: ViewportMeasurements = {
       viewport: viewportName,
@@ -273,7 +394,7 @@ export async function collectViewportMeasurements(page: {
       viewportHeight: viewport.height,
       documentScrollWidth: document.documentElement.scrollWidth,
       bodyScrollWidth: document.body.scrollWidth,
-      textLength: document.body.innerText.trim().length,
+      textLength,
       meaningfulElementCount: textElements.length,
       clippedText,
       contrastRisks: [],
@@ -308,6 +429,10 @@ export async function collectViewportMeasurements(page: {
       measurements,
       contrastCandidates,
       tapTargetCandidates,
+      findingCoverage: {
+        viewport: viewportName,
+        entries: findingCoverageEntries
+      },
       layoutMetrics,
       notices,
       ...(fontFamilyEnabled && fontFamilyError === undefined ? {
@@ -318,6 +443,26 @@ export async function collectViewportMeasurements(page: {
       } : {}),
       ...(fontFamilyError ? { fontFamilyError } : {})
     };
+
+    function materializedSampleCount(samples: unknown[]): number {
+      return likelyBlank ? 0 : Math.min(samples.length, FINDING_MATERIALIZATION_LIMIT);
+    }
+
+    function findingCoverageEntry(
+      checkName: string,
+      detectedCount: number,
+      emittedCount: number,
+      capGroup?: string
+    ): FindingCoverageEntry {
+      return {
+        checkName,
+        ...(capGroup ? { capGroup } : {}),
+        detectedCount,
+        emittedCount,
+        omittedCount: detectedCount - emittedCount,
+        limit: FINDING_MATERIALIZATION_LIMIT
+      };
+    }
 
     // Raw layout-value distributions. Measurement only — no criterion, no finding, no threshold. Collects
     // the values a page actually uses for each property group so a future consistency check can be
@@ -849,8 +994,20 @@ export async function collectViewportMeasurements(page: {
         issue: "empty-heading" | "heading-level-skip" | "duplicate-h1";
         previousLevel?: number;
       }> = [];
+      const detectedByIssue = {
+        "empty-heading": 0,
+        "heading-level-skip": 0,
+        "duplicate-h1": 0
+      };
       let previousLevel = 0;
       let h1Count = 0;
+
+      const recordIssue = (issue: (typeof issues)[number]): void => {
+        detectedByIssue[issue.issue] += 1;
+        if (issues.length < MAX_BROWSER_FINDING_SAMPLES) {
+          issues.push(issue);
+        }
+      };
 
       for (const heading of headings) {
         const level = Number(heading.tagName.slice(1));
@@ -858,26 +1015,26 @@ export async function collectViewportMeasurements(page: {
         if (level === 1) {
           h1Count += 1;
           if (h1Count > 1) {
-            issues.push({ ...sampleElement(heading), level, issue: "duplicate-h1" });
+            recordIssue({ ...sampleElement(heading), level, issue: "duplicate-h1" });
           }
         }
 
         if (!text) {
-          issues.push({ ...sampleElement(heading), level, issue: "empty-heading" });
+          recordIssue({ ...sampleElement(heading), level, issue: "empty-heading" });
         }
 
         if (previousLevel > 0 && level > previousLevel + 1) {
-          issues.push({ ...sampleElement(heading), level, issue: "heading-level-skip", previousLevel });
+          recordIssue({ ...sampleElement(heading), level, issue: "heading-level-skip", previousLevel });
         }
 
         previousLevel = level;
       }
 
-      return issues.slice(0, 10);
+      return { samples: issues, detectedByIssue };
     }
 
     function collectRepeatedLabels(elements: HTMLElement[]) {
-      const labelGroups = new Map<string, string[]>();
+      const labelGroups = new Map<string, { count: number; selectors: string[] }>();
       for (const element of elements) {
         const label = accessibleNameFor(element);
         if (!label || label.length > 40) {
@@ -885,19 +1042,26 @@ export async function collectViewportMeasurements(page: {
         }
 
         const normalized = label.toLowerCase();
-        const selectors = labelGroups.get(normalized) ?? [];
-        selectors.push(selectorFor(element));
-        labelGroups.set(normalized, selectors);
+        const group = labelGroups.get(normalized) ?? { count: 0, selectors: [] };
+        group.count += 1;
+        if (group.selectors.length < MAX_BROWSER_FINDING_SAMPLES) {
+          group.selectors.push(selectorFor(element));
+        }
+        labelGroups.set(normalized, group);
       }
 
-      return Array.from(labelGroups.entries())
-        .filter(([, selectors]) => selectors.length >= 3)
-        .slice(0, 10)
-        .map(([label, selectors]) => ({
-          label,
-          count: selectors.length,
-          selectors
-        }));
+      const qualifyingGroups = Array.from(labelGroups.entries())
+        .filter(([, group]) => group.count >= 3);
+      return {
+        detectedCount: qualifyingGroups.length,
+        samples: qualifyingGroups
+          .slice(0, MAX_BROWSER_FINDING_SAMPLES)
+          .map(([label, group]) => ({
+            label,
+            count: group.count,
+            selectors: group.selectors
+          }))
+      };
     }
 
     function collectRepeatedVisualWeightRisks() {
@@ -1092,21 +1256,20 @@ export async function collectViewportMeasurements(page: {
 
     function collectFixedWidthRisks() {
       if (viewport.width > 480) {
-        return [];
+        return { samples: [], detectedCount: 0 };
       }
 
-      return Array.from(document.body.querySelectorAll<HTMLElement>("body *"))
+      const matches = Array.from(document.body.querySelectorAll<HTMLElement>("body *"))
         .filter(isElementVisible)
         .filter((element) => {
           const rect = element.getBoundingClientRect();
           return rect.width > viewport.width + 2 || element.scrollWidth > viewport.width + 2;
-        })
-        .slice(0, 10)
-        .map((element) => sampleElement(element));
+        });
+      return boundedElementSamples(matches);
     }
 
     function collectStickyObstructionRisks() {
-      return Array.from(document.body.querySelectorAll<HTMLElement>("body *"))
+      const matches = Array.from(document.body.querySelectorAll<HTMLElement>("body *"))
         .filter(isElementVisible)
         .filter((element) => {
           const style = window.getComputedStyle(element);
@@ -1118,9 +1281,8 @@ export async function collectViewportMeasurements(page: {
           const occupiesLargeHeight = rect.height >= viewport.height * 0.22;
           const occupiesLargeWidth = rect.width >= viewport.width * 0.5;
           return intersectsViewport && occupiesLargeHeight && occupiesLargeWidth;
-        })
-        .slice(0, 10)
-        .map((element) => sampleElement(element));
+        });
+      return boundedElementSamples(matches);
     }
 
     function cjkCharacterShare(text: string): number {
@@ -1139,7 +1301,7 @@ export async function collectViewportMeasurements(page: {
     }
 
     function collectExcessiveLineLength(elements: HTMLElement[]) {
-      return elements
+      const matches = elements
         .filter(isReadableTextMeasureCandidate)
         .map((element) => {
           const style = window.getComputedStyle(element);
@@ -1161,12 +1323,16 @@ export async function collectViewportMeasurements(page: {
             riskThreshold
           };
         })
-        .filter(({ text, estimatedCharactersPerLine, riskThreshold }) => text.length > 160 && estimatedCharactersPerLine > riskThreshold)
-        .slice(0, 10)
-        .map(({ element, estimatedCharactersPerLine }) => ({
-          ...sampleElement(element),
-          estimatedCharactersPerLine
-        }));
+        .filter(({ text, estimatedCharactersPerLine, riskThreshold }) => text.length > 160 && estimatedCharactersPerLine > riskThreshold);
+      return {
+        detectedCount: matches.length,
+        samples: matches
+          .slice(0, MAX_BROWSER_FINDING_SAMPLES)
+          .map(({ element, estimatedCharactersPerLine }) => ({
+            ...sampleElement(element),
+            estimatedCharactersPerLine
+          }))
+      };
     }
 
     function isReadableTextMeasureCandidate(element: HTMLElement): boolean {
@@ -1203,15 +1369,14 @@ export async function collectViewportMeasurements(page: {
     }
 
     function collectFormErrorAssociationRisks(elements: HTMLElement[]) {
-      return elements
+      const matches = elements
         .filter((element) => element.getAttribute("aria-invalid") === "true")
-        .filter((element) => !element.getAttribute("aria-describedby") && !element.getAttribute("aria-errormessage"))
-        .slice(0, 10)
-        .map((element) => sampleElement(element));
+        .filter((element) => !element.getAttribute("aria-describedby") && !element.getAttribute("aria-errormessage"));
+      return boundedElementSamples(matches);
     }
 
     function collectColorOnlyStateRisks() {
-      return Array.from(document.body.querySelectorAll<HTMLElement>([
+      const matches = Array.from(document.body.querySelectorAll<HTMLElement>([
         "[class*='error']",
         "[class*='danger']",
         "[class*='success']",
@@ -1223,13 +1388,12 @@ export async function collectViewportMeasurements(page: {
         .filter(isElementVisible)
         .filter((element) => !element.innerText.trim())
         .filter((element) => !accessibleNameFor(element))
-        .filter((element) => !element.getAttribute("role") && !element.getAttribute("aria-live"))
-        .slice(0, 10)
-        .map((element) => sampleElement(element));
+        .filter((element) => !element.getAttribute("role") && !element.getAttribute("aria-live"));
+      return boundedElementSamples(matches);
     }
 
     function collectDisabledWithoutExplanation() {
-      return Array.from(document.body.querySelectorAll<HTMLElement>("button:disabled,input:disabled,select:disabled,textarea:disabled,[aria-disabled='true']"))
+      const matches = Array.from(document.body.querySelectorAll<HTMLElement>("button:disabled,input:disabled,select:disabled,textarea:disabled,[aria-disabled='true']"))
         .filter(isElementVisible)
         .filter((element) => !element.getAttribute("aria-describedby") && !element.getAttribute("title"))
         .filter((element) => {
@@ -1237,13 +1401,12 @@ export async function collectViewportMeasurements(page: {
           const ownText = element.innerText?.trim() ?? "";
           const nearbyText = parentText.replace(ownText, "").trim();
           return nearbyText.length < 12;
-        })
-        .slice(0, 10)
-        .map((element) => sampleElement(element));
+        });
+      return boundedElementSamples(matches);
     }
 
     function collectStatusLiveRegionRisks() {
-      return Array.from(document.body.querySelectorAll<HTMLElement>([
+      const matches = Array.from(document.body.querySelectorAll<HTMLElement>([
         "[class*='status']",
         "[class*='toast']",
         "[class*='alert']",
@@ -1262,26 +1425,23 @@ export async function collectViewportMeasurements(page: {
           ];
           return statusKeywordPatterns.some((pattern) => pattern.test(element.innerText));
         })
-        .filter((element) => !hasStatusSemantics(element))
-        .slice(0, 10)
-        .map((element) => sampleElement(element));
+        .filter((element) => !hasStatusSemantics(element));
+      return boundedElementSamples(matches);
     }
 
     function collectModalFocusRisks() {
-      return Array.from(document.body.querySelectorAll<HTMLElement>("dialog[open],[role='dialog'],[aria-modal='true']"))
+      const matches = Array.from(document.body.querySelectorAll<HTMLElement>("dialog[open],[role='dialog'],[aria-modal='true']"))
         .filter(isElementVisible)
-        .filter((element) => element.getAttribute("aria-modal") !== "true" || !hasFocusableDescendant(element))
-        .slice(0, 10)
-        .map((element) => sampleElement(element));
+        .filter((element) => element.getAttribute("aria-modal") !== "true" || !hasFocusableDescendant(element));
+      return boundedElementSamples(matches);
     }
 
     function collectCustomControlSemanticsRisks() {
-      return Array.from(document.body.querySelectorAll<HTMLElement>("[onclick],[role='button'],[role='link'],[role='checkbox'],[role='switch'],[role='tab']"))
+      const matches = Array.from(document.body.querySelectorAll<HTMLElement>("[onclick],[role='button'],[role='link'],[role='checkbox'],[role='switch'],[role='tab']"))
         .filter(isElementVisible)
         .filter((element) => !["BUTTON", "A", "INPUT", "SELECT", "TEXTAREA"].includes(element.tagName))
-        .filter((element) => !element.getAttribute("role") || (!element.hasAttribute("tabindex") && element.getAttribute("contenteditable") !== "true") || !accessibleNameFor(element))
-        .slice(0, 10)
-        .map((element) => sampleElement(element));
+        .filter((element) => !element.getAttribute("role") || (!element.hasAttribute("tabindex") && element.getAttribute("contenteditable") !== "true") || !accessibleNameFor(element));
+      return boundedElementSamples(matches);
     }
 
     function collectMovingContentControlRisks() {
@@ -1299,9 +1459,16 @@ export async function collectViewportMeasurements(page: {
         })
         .filter((element) => !element.closest("[data-design-harness-motion-control]"));
 
-      return [...autoplayMedia, ...animatedElements]
-        .slice(0, 10)
-        .map((element) => sampleElement(element));
+      return boundedElementSamples([...autoplayMedia, ...animatedElements]);
+    }
+
+    function boundedElementSamples(elements: HTMLElement[]) {
+      return {
+        detectedCount: elements.length,
+        samples: elements
+          .slice(0, MAX_BROWSER_FINDING_SAMPLES)
+          .map((element) => sampleElement(element))
+      };
     }
 
     function hasStatusSemantics(element: HTMLElement): boolean {
@@ -1400,6 +1567,41 @@ export async function collectViewportMeasurements(page: {
       return measured || "rgb(255, 255, 255)";
     }
 
+    /**
+     * Finds group paint effects that make computed foreground/background colours insufficient evidence.
+     *
+     * This walk is deliberately separate from `collectBackdrop` and always reaches through <html>.
+     * Backdrop collection can stop at an opaque child background, but an ancestor's opacity, blending, or
+     * filter still changes the pixels painted for that child. Scan every ancestor so an opaque layer cannot
+     * hide one of those effects, then apply one stable priority across the complete chain.
+     */
+    function collectPaintEffectSkipReason(element: HTMLElement): ContrastSkipReason | undefined {
+      let mixBlendModeFound = false;
+      let filterFound = false;
+      let current: HTMLElement | null = element;
+
+      while (current) {
+        const style = window.getComputedStyle(current);
+        const opacity = Number(style.opacity);
+        if (!Number.isFinite(opacity) || opacity !== 1) {
+          return "opacity";
+        }
+        if (style.mixBlendMode !== "normal") {
+          mixBlendModeFound = true;
+        }
+        // Identity-looking syntax still creates a filter effect and is intentionally not interpreted.
+        if (style.filter !== "none") {
+          filterFound = true;
+        }
+        current = current.parentElement;
+      }
+
+      if (mixBlendModeFound) {
+        return "mix-blend-mode";
+      }
+      return filterFound ? "filter" : undefined;
+    }
+
     function collectBackdrop(element: HTMLElement): { layers: string[]; skipReason?: ContrastSkipReason } {
       const layers: string[] = [];
       let outOfFlowVisited = false;
@@ -1408,8 +1610,9 @@ export async function collectViewportMeasurements(page: {
       while (current) {
         const style = window.getComputedStyle(current);
 
-        // Bail flags are tested BEFORE the opacity test on the same element: a background-image paints on
-        // top of that element's background-color, so an opaque colour does not make the image irrelevant.
+        // Bail flags are tested BEFORE the background-colour opacity test on the same element: a
+        // background-image paints on top of that element's background-color, so an opaque colour does not
+        // make the image irrelevant.
         if (style.backgroundImage !== "none") {
           return { layers, skipReason: "background-image" };
         }
@@ -1486,13 +1689,39 @@ export async function collectViewportMeasurements(page: {
     }
   }, config);
 
-  const { contrastCandidates, tapTargetCandidates, ...collection } = raw;
-  const { risks, coverage } = computeContrastRisks(contrastCandidates);
-  const tapTargetRisks = computeTapTargetRisks(tapTargetCandidates);
+  const { contrastCandidates, tapTargetCandidates, findingCoverage, ...collection } = raw;
+  const { risks, detectedCount: contrastDetectedCount, coverage } = computeContrastRisks(contrastCandidates);
+  const { risks: tapTargetRisks, detectedCount: tapTargetDetectedCount } = computeTapTargetRisks(tapTargetCandidates);
+  const likelyBlank = collection.measurements.textLength === 0
+    && collection.measurements.meaningfulElementCount === 0;
+  const emittedContrastCount = likelyBlank ? 0 : Math.min(risks.length, 5);
+  const emittedTapTargetCount = likelyBlank ? 0 : Math.min(tapTargetRisks.length, 5);
+  const completeFindingCoverage = !likelyBlank && findingCoverage
+    ? {
+        viewport: findingCoverage.viewport,
+        entries: [
+          ...findingCoverage.entries,
+          {
+            checkName: "dom-contrast-risk",
+            detectedCount: contrastDetectedCount,
+            emittedCount: emittedContrastCount,
+            omittedCount: contrastDetectedCount - emittedContrastCount,
+            limit: 5
+          },
+          {
+            checkName: "tap-target-risk",
+            detectedCount: tapTargetDetectedCount,
+            emittedCount: emittedTapTargetCount,
+            omittedCount: tapTargetDetectedCount - emittedTapTargetCount,
+            limit: 5
+          }
+        ]
+      } satisfies FindingCoverage
+    : undefined;
   const notices = coverage.skippedElementCount > 0
     ? [...collection.notices, {
         code: "contrast-elements-skipped",
-        message: `Skipped ${coverage.skippedElementCount} element(s) whose painted backdrop could not be `
+        message: `Skipped ${coverage.skippedElementCount} element(s) whose painted contrast could not be `
           + "determined from computed styles; no contrast finding was emitted for them.",
         viewport: collection.measurements.viewport,
         details: {
@@ -1505,6 +1734,7 @@ export async function collectViewportMeasurements(page: {
   return {
     ...collection,
     notices,
+    ...(completeFindingCoverage ? { findingCoverage: completeFindingCoverage } : {}),
     measurements: {
       ...collection.measurements,
       // Overrides the placeholders emitted by the closure. Every key already exists there, so these

@@ -331,67 +331,14 @@
       }
     },
     "advisoryScore": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": [
-        "formulaVersion",
-        "value",
-        "max",
-        "band",
-        "deductions",
-        "explanation"
-      ],
-      "properties": {
-        "formulaVersion": {
-          "type": "string",
-          "const": "epistemic-weight-v1"
+      "anyOf": [
+        {
+          "$ref": "#/$defs/advisoryScoreV1"
         },
-        "value": {
-          "type": "number",
-          "minimum": 0
-        },
-        "max": {
-          "type": "number",
-          "minimum": 1
-        },
-        "band": {
-          "type": "string",
-          "enum": [
-            "strong",
-            "usable",
-            "needs-work",
-            "blocked"
-          ]
-        },
-        "deductions": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "additionalProperties": false,
-            "required": [
-              "findingId",
-              "points",
-              "reason"
-            ],
-            "properties": {
-              "findingId": {
-                "type": "string"
-              },
-              "points": {
-                "type": "number",
-                "minimum": 0
-              },
-              "reason": {
-                "type": "string"
-              }
-            }
-          }
-        },
-        "explanation": {
-          "type": "string",
-          "minLength": 1
+        {
+          "$ref": "#/$defs/advisoryScoreV2"
         }
-      }
+      ]
     },
     "timings": {
       "type": "object",
@@ -506,6 +453,162 @@
     }
   },
   "$defs": {
+    "advisoryScoreBand": {
+      "type": "string",
+      "enum": [
+        "strong",
+        "usable",
+        "needs-work",
+        "blocked"
+      ]
+    },
+    "scoreDeductionV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "findingId",
+        "points",
+        "reason"
+      ],
+      "properties": {
+        "findingId": {
+          "type": "string"
+        },
+        "points": {
+          "type": "number",
+          "minimum": 0
+        },
+        "reason": {
+          "type": "string"
+        }
+      }
+    },
+    "scoreDeductionV2": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "findingId",
+        "findingIds",
+        "viewports",
+        "points",
+        "reason"
+      ],
+      "properties": {
+        "findingId": {
+          "$ref": "#/$defs/nonBlankString"
+        },
+        "findingIds": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/nonBlankString"
+          }
+        },
+        "viewports": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/nonBlankString"
+          }
+        },
+        "points": {
+          "type": "number",
+          "minimum": 0
+        },
+        "reason": {
+          "$ref": "#/$defs/nonBlankString"
+        }
+      }
+    },
+    "advisoryScoreV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "formulaVersion",
+        "value",
+        "max",
+        "band",
+        "deductions",
+        "explanation"
+      ],
+      "properties": {
+        "formulaVersion": {
+          "type": "string",
+          "const": "epistemic-weight-v1"
+        },
+        "value": {
+          "type": "number",
+          "minimum": 0
+        },
+        "max": {
+          "type": "number",
+          "minimum": 1
+        },
+        "band": {
+          "$ref": "#/$defs/advisoryScoreBand"
+        },
+        "deductions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/scoreDeductionV1"
+          }
+        },
+        "explanation": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "advisoryScoreV2": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "formulaVersion",
+        "value",
+        "max",
+        "band",
+        "deductions",
+        "totalDeduction",
+        "saturated",
+        "explanation"
+      ],
+      "properties": {
+        "formulaVersion": {
+          "type": "string",
+          "const": "epistemic-criterion-max-v2"
+        },
+        "value": {
+          "type": "number",
+          "minimum": 0
+        },
+        "max": {
+          "type": "number",
+          "minimum": 1
+        },
+        "band": {
+          "$ref": "#/$defs/advisoryScoreBand"
+        },
+        "deductions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/scoreDeductionV2"
+          }
+        },
+        "totalDeduction": {
+          "type": "number",
+          "minimum": 0
+        },
+        "saturated": {
+          "type": "boolean"
+        },
+        "explanation": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
     "nonBlankString": {
       "type": "string",
       "minLength": 1,

@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { createRenderFailureFinding, findingsFromMeasurements, type ViewportMeasurements } from "./checks.js";
+import {
+  createRenderFailureFinding,
+  findingsFromMeasurements,
+  type FindingCoverage,
+  type ViewportMeasurements
+} from "./checks.js";
+import { FINDING_COVERAGE_CHECK_NAMES } from "./finding-coverage.js";
 
 const baseMeasurements: ViewportMeasurements = {
   viewport: "desktop",
@@ -298,4 +304,112 @@ describe("findingsFromMeasurements", () => {
       humanReviewRecommended: true
     });
   });
+
+  it("retains the five-sample defensive cap while validating exact pre-cap coverage", () => {
+    const findings = findingsFromMeasurements({
+      ...baseMeasurements,
+      clippedText: Array.from({ length: 7 }, (_, index) => ({ selector: `.clipped-${index}` })),
+      missingAccessibleNames: Array.from({ length: 6 }, (_, index) => ({ selector: `.unnamed-${index}` })),
+      findingCoverage: coverageFor("desktop", {
+        "text-clipping": { detectedCount: 7, emittedCount: 5 },
+        "missing-accessible-name": { detectedCount: 6, emittedCount: 5 }
+      })
+    }, ["measurement-desktop"]);
+
+    expect(findings.filter(({ checkName }) => checkName === "text-clipping")).toHaveLength(5);
+    expect(findings.filter(({ checkName }) => checkName === "missing-accessible-name")).toHaveLength(5);
+  });
+
+  it("validates per-check heading counts against one shared five-finding cap", () => {
+    const headingIssues = [
+      { selector: "#empty-1", level: 2, issue: "empty-heading" as const },
+      { selector: "#skip-1", level: 3, previousLevel: 1, issue: "heading-level-skip" as const },
+      { selector: "#duplicate-1", level: 1, issue: "duplicate-h1" as const },
+      { selector: "#empty-2", level: 2, issue: "empty-heading" as const },
+      { selector: "#skip-2", level: 4, previousLevel: 2, issue: "heading-level-skip" as const },
+      { selector: "#duplicate-2", level: 1, issue: "duplicate-h1" as const }
+    ];
+    const findings = findingsFromMeasurements({
+      ...baseMeasurements,
+      headingIssues,
+      findingCoverage: coverageFor("desktop", {
+        "empty-heading": { detectedCount: 2, emittedCount: 2 },
+        "heading-level-skip": { detectedCount: 2, emittedCount: 2 },
+        "duplicate-h1": { detectedCount: 2, emittedCount: 1 }
+      })
+    }, ["measurement-desktop"]);
+
+    expect(findings.map(({ checkName }) => checkName)).toEqual([
+      "empty-heading",
+      "heading-level-skip",
+      "duplicate-h1",
+      "empty-heading",
+      "heading-level-skip"
+    ]);
+  });
+
+  it("freezes the unreachable aggregate detectors at their current maximum output shape", () => {
+    const findings = findingsFromMeasurements({
+      ...baseMeasurements,
+      repeatedVisualWeightRisks: [{
+        count: 4,
+        selectors: [".panel-1", ".panel-2", ".panel-3", ".panel-4"],
+        averageArea: 20_000,
+        areaVariation: 0.05
+      }],
+      saturatedColorNoiseRisks: [{
+        count: 5,
+        hueBucketCount: 3,
+        hueBuckets: [0, 120, 240],
+        selectors: [".red", ".green", ".blue"]
+      }],
+      checklistStateVisibilityRisks: [{
+        reason: "inconsistent-checked-styles",
+        checkedCount: 2,
+        uncheckedCount: 2,
+        selectors: [".one", ".two"]
+      }, {
+        reason: "checked-unchecked-styles-too-similar",
+        checkedCount: 2,
+        uncheckedCount: 2,
+        selectors: [".three", ".four"]
+      }],
+      findingCoverage: coverageFor("desktop")
+    }, ["measurement-desktop"]);
+
+    expect(countFindings(findings)).toMatchObject({
+      "repeated-visual-weight-risk": 1,
+      "saturated-color-noise-risk": 1,
+      "checklist-state-visibility-risk": 2
+    });
+  });
 });
+
+function coverageFor(
+  viewport: string,
+  counts: Partial<Record<string, { detectedCount: number; emittedCount: number }>> = {}
+): FindingCoverage {
+  return {
+    viewport,
+    entries: FINDING_COVERAGE_CHECK_NAMES.map((checkName) => {
+      const count = counts[checkName] ?? { detectedCount: 0, emittedCount: 0 };
+      return {
+        checkName,
+        ...(checkName === "empty-heading" || checkName === "heading-level-skip" || checkName === "duplicate-h1"
+          ? { capGroup: "headingIssues" }
+          : {}),
+        detectedCount: count.detectedCount,
+        emittedCount: count.emittedCount,
+        omittedCount: count.detectedCount - count.emittedCount,
+        limit: 5
+      };
+    })
+  };
+}
+
+function countFindings(findings: Array<{ checkName: string }>): Record<string, number> {
+  return Object.fromEntries(
+    [...new Set(findings.map(({ checkName }) => checkName))]
+      .map((checkName) => [checkName, findings.filter((finding) => finding.checkName === checkName).length])
+  );
+}

@@ -83,23 +83,28 @@ Only elements that render their **own** direct text are scored, so a wrapper and
 the same text twice. This is not a leaf rule: in `<p style="color:#777">x <strong style="color:#fff">y
 </strong></p>` both elements render text in their own colour and both are evaluated.
 
-**What it does not measure.** When the painted backdrop cannot be determined from computed styles, the check
+**What it does not measure.** When the painted contrast cannot be determined from computed styles, the check
 emits *no finding* and records the element in `contrastCoverage` on the measurement evidence, plus a
-`contrast-elements-skipped` notice. A skipped element is not a passing element, and `evaluatedElementCount`
-is what distinguishes "looked and found nothing" from "never looked". Skips are:
+single count-neutral audit-level `contrast-elements-skipped` notice whose `details.viewports[]` summarizes
+each affected viewport. A skipped element is not a passing element, and `evaluatedElementCount` is what
+distinguishes "looked and found nothing" from "never looked". Skips are:
 
 | Condition | Why it is not measurable here |
 |---|---|
 | `background-image` anywhere in the chain | A gradient or raster has no single colour; sampling only its stops is unsound in both directions. |
 | `backdrop-filter` in the chain | The painted result depends on what is behind the element, which computed style does not expose. |
 | Out-of-flow element whose chain never reaches an opaque layer | DOM ancestry does not describe what paints behind a fixed or portalled overlay. |
+| `opacity` other than exactly `1` on the element or any ancestor | Group opacity changes the composited foreground and backdrop after their computed colours are resolved. Invalid or non-finite values also fail closed. |
+| `mix-blend-mode` other than `normal` on the element or any ancestor | The painted result depends on pixels outside the computed foreground/background colour chain. |
+| `filter` other than `none` on the element or any ancestor | Filters transform the painted result; identity-looking syntax such as `brightness(1)` is conservatively skipped rather than interpreted. |
 | `color(display-p3 …)`, `lab()`, `lch()`, or any unparsed value | A scope decision, not a limit of the evidence — these are convertible and simply are not yet. |
 | Foreground `alpha: 0` | No glyph is painted, so there is nothing to contrast. |
 
-Additionally, the check is **blind to `opacity`, `mix-blend-mode`, and `filter`** on ancestors: it neither
-composites them nor skips for them, so a ratio under those properties is reported from the unblended
-colours. That is a known recall hole, recorded here rather than hidden, and it is unchanged from earlier
-versions.
+The paint-effect scan always walks the element and every ancestor through `<html>`, independently of the
+background-layer walk. An opaque child background therefore cannot hide an ancestor effect. When several
+unsupported conditions overlap, the recorded reason follows the stable order `background-image` →
+`backdrop-filter` → detached backdrop → `opacity` → `mix-blend-mode` → `filter` → unsupported colour
+space → invisible text.
 
 ### Raw layout metrics (measurement only)
 
@@ -171,16 +176,55 @@ Approved glossary entries do not emit findings. Lemma entries never fall back to
 
 A check can be deterministically computable while its criterion is research-grade. Color counts, font-variant counts, and density budgets are exact measurements, but the claim "this hurts design quality" rests on research whose best validated metric sets explain only ~30-50% of variance in human aesthetic ratings (Reinecke et al. CHI 2013, adj R² = .48; Miniukovich & De Angeli CHI 2015, 49% web / 32% app). Such checks land as `research-emerging` or `industry-heuristic` source strength, `heuristic` determinism, and `risk` or `needs-review` result kind — and the advisory score must never be presented as an objective design-quality grade. Evidence table: [Visual Metrics Evidence](research/visual-metrics-evidence.md).
 
+### Finding cardinality and bounded samples
+
+Reachable visual finding lists keep a defensive five-sample materializer bound per check and expose exact
+pre-cap cardinality through optional per-viewport `findingCoverage` measurement evidence. Coverage never
+turns an omitted sample into a finding: it separates how many semantic matches were detected, how many
+bounded examples became findings, and how many examples were omitted. Materialization validates the exact
+inventory and count equation before an audit can use the diagnostic.
+
+Heading findings are the exception to independent caps. `empty-heading`, `heading-level-skip`, and
+`duplicate-h1` are classified within one ordered `headingIssues` array, so their coverage entries carry
+`capGroup: "headingIssues"` and their combined emitted count cannot exceed five. A single audit-level notice
+summarizes all nonzero omissions across viewports; it is score-, status-, and failure-neutral.
+
+`unapproved-font-family` is excluded because its existing adherence summary already records total, emitted,
+and truncated stacks. `repeated-visual-weight-risk`, `saturated-color-noise-risk`, and
+`checklist-state-visibility-risk` are excluded because their algorithms currently produce at most one, one,
+and two semantic aggregates. If any of those output shapes later makes its nominal three-item slice
+reachable, the detector must add coverage in the same change. Non-finding payload and layout-metric sample
+bounds are outside this cardinality contract.
+
 ### Advisory Score Weights
 
-The advisory score uses `advisoryScore.formulaVersion: "epistemic-weight-v1"` and starts from 100. Each deduction is still based on finding severity and confidence, then weighted by evidence tier:
+Current producers use `advisoryScore.formulaVersion: "epistemic-criterion-max-v2"` and start from 100. Each
+finding's rounded base deduction is based on severity and confidence, then weighted by evidence tier:
 
 - deterministic `failure`: `1.0`
 - deterministic `risk`: `0.6`
 - heuristic `risk`: `0.25`
 - `needs-review`: `0` (score-exempt)
 
-Findings without determinism/resultKind metadata are treated as unclassified and use the heuristic-risk fallback weight `0.25`; subjective unclassified findings are score-exempt. When unsure, the score downgrades instead of upgrading.
+Scoreable findings use distinct namespaces: registry-backed findings group by `criterionId`, while legacy
+findings group by `checkName`; equal text across those namespaces does not merge the groups.
+Only the maximum base deduction in each group is charged. Repeated occurrences and viewports therefore stay
+in the findings and score membership evidence without multiplying one criterion's influence. Equal maxima
+select the smallest finding ID by locale-independent UTF-16 code-unit order. Groups, complete member IDs,
+and unique viewports are sorted by that same comparator; equal text keys put the criterion group first. This
+makes the normalized score independent of producer
+input order. `needs-review`, subjective, and all other zero-weight findings are omitted from deductions.
+
+V2 records the rounded pre-floor `totalDeduction` and whether it `saturated` above 100 before computing
+`value = max(0, round(100 - totalDeduction))`. An exact deduction of 100 is not saturated. Findings without
+determinism/resultKind metadata are treated as unclassified and use the heuristic-risk fallback weight
+`0.25`; subjective unclassified findings remain score-exempt. When unsure, the score downgrades instead of
+upgrading.
+
+The TypeScript and JSON contracts form a closed union with historical `epistemic-weight-v1`. V1 artifacts
+retain per-finding deductions and reject v2-only fields; v2 requires grouped membership/viewports plus total
+and saturation fields. Unknown formulas fail. The audit `schemaVersion` remains `0.2`, historical artifacts
+keep their producer formula, and v1/v2 values are not directly comparable.
 
 ### Precision Over Recall In Heuristic Tiers
 
@@ -196,7 +240,7 @@ The parser-free Korean copy checks use `pnpm calibrate:fixtures` as a live drift
 
 ### Regulatory Mapping
 
-Every criterion that cites `wcag-2-2` carries its WCAG 2.2 success-criterion IDs machine-readably in that source's `clausesByCriterion` map in `CRITERION_SOURCES` (enforced by `check:criteria-policy`), so future WCAG 3.0 or KWCAG remaps are mechanical — a new source entry with its own mapping, no criterion edits. The KWCAG 2.2 clause map lands with the v0.6 Korean market slice. WCAG 3.0 remains watch-only until Candidate Recommendation (projected Q4 2027 or later).
+Every criterion that cites `wcag-2-2` carries its WCAG 2.2 success-criterion IDs machine-readably in that source's `clausesByCriterion` map in `CRITERION_SOURCES` (enforced by `check:criteria-policy`), so future WCAG 3.0 or KWCAG remaps are mechanical — a new source entry with its own mapping, no criterion edits. The KWCAG 2.2 clause map belongs to the unscheduled v0.7 Korean market slice. WCAG 3.0 remains watch-only until Candidate Recommendation (projected Q4 2027 or later).
 
 ## Adding A Check
 

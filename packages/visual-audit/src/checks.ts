@@ -8,6 +8,12 @@ import {
   type RubricCategory,
   type Severity
 } from "@design-harness/core";
+import {
+  assertFindingCoverageIntegrity,
+  type FindingCoverage
+} from "./finding-coverage.js";
+
+export type { FindingCoverage, FindingCoverageEntry } from "./finding-coverage.js";
 
 export interface ElementSample {
   selector: string;
@@ -150,6 +156,7 @@ export interface ViewportMeasurements {
   movingContentControlRisks: ElementSample[];
   textInventory: TextInventoryItem[];
   fontFamilyAdherence?: FontFamilyAdherenceSummary;
+  findingCoverage?: FindingCoverage;
 }
 
 export function findingsFromMeasurements(
@@ -174,6 +181,7 @@ export function findingsFromMeasurements(
       },
       expected: "Meaningful visible content is present."
     }));
+    assertFindingCoverageIntegrity(measurements.findingCoverage, measurements.viewport, findings);
     return findings;
   }
 
@@ -650,6 +658,7 @@ export function findingsFromMeasurements(
     }));
   }
 
+  assertFindingCoverageIntegrity(measurements.findingCoverage, measurements.viewport, findings);
   return findings;
 }
 

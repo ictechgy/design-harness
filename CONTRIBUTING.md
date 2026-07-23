@@ -1,6 +1,6 @@
 # Contributing
 
-Thanks for helping improve Design Harness. The project is early, so the best contributions keep the v0.1 golden path reliable before expanding integrations.
+Thanks for helping improve Design Harness. The best contributions keep the core local-audit path reliable before expanding integrations.
 
 ## Development Setup
 
@@ -10,12 +10,12 @@ pnpm build
 pnpm test
 ```
 
-The required v0.1 path should work without a hosted model provider.
+The required local-audit path must work without a hosted model provider.
 
 ## Scope Rules
 
 - Keep deterministic audit findings separate from subjective critique.
-- Keep Open Design and MCP work as specs unless an implementation is explicitly verified.
+- Keep the existing Open Design and MCP material as specs/checkout-local scaffolding only. Do not expand either integration unless the owner explicitly reopens its cut-list item.
 - Every persisted JSON artifact must include `schemaVersion` and `harnessVersion`.
 - Every finding must include severity, confidence, viewport, category, evidence references, and a recommendation.
 

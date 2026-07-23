@@ -154,13 +154,61 @@ function renderRunSummary(auditResult: AuditResult): string {
 }
 
 function renderScore(auditResult: AuditResult): string {
+  const score = auditResult.advisoryScore;
+  const formulaLines = score.formulaVersion === "epistemic-criterion-max-v2"
+    ? renderV2ScoreDetails(auditResult)
+    : [
+        "- Deduction model: legacy per-finding deductions.",
+        "- Compatibility: formula versions have different semantics; v1 and v2 values are not directly comparable."
+      ];
+
   return [
     `**${auditResult.advisoryScore.value}/${auditResult.advisoryScore.max}** (${auditResult.advisoryScore.band})`,
+    "",
+    `- Formula: \`${score.formulaVersion}\``,
+    ...formulaLines,
     "",
     `Verdict: ${verdictForScore(auditResult.advisoryScore, auditResult.findings)}`,
     "",
     `Note: ${auditResult.advisoryScore.explanation}`
   ].join("\n");
+}
+
+function renderV2ScoreDetails(auditResult: AuditResult): string[] {
+  const score = auditResult.advisoryScore;
+  if (score.formulaVersion !== "epistemic-criterion-max-v2") {
+    return [];
+  }
+
+  const findingsById = new Map(auditResult.findings.map((finding) => [finding.id, finding]));
+  const saturation = score.saturated
+    ? "yes — the grouped pre-floor deduction exceeds 100, so the displayed value is floored at 0."
+    : "no — the grouped pre-floor deduction does not exceed 100.";
+  const deductions = score.deductions.length === 0
+    ? ["- Grouped deductions: none."]
+    : [
+        "- Grouped deductions:",
+        ...score.deductions.map((deduction) => {
+          const representative = findingsById.get(deduction.findingId);
+          if (!representative) {
+            throw new Error(
+              `Advisory score deduction references unknown representative ${deduction.findingId}.`
+            );
+          }
+          const groupKey = representative.criterionId ?? representative.checkName;
+          const occurrenceCount = deduction.findingIds.length;
+          const viewports = deduction.viewports.map((viewport) => `\`${escapeInline(viewport)}\``).join(", ");
+          return `  - \`${escapeInline(groupKey)}\`: ${deduction.points} points; ${occurrenceCount} ${occurrenceCount === 1 ? "occurrence" : "occurrences"}; viewports: ${viewports}; representative: \`${escapeInline(deduction.findingId)}\`. ${deduction.reason}`;
+        })
+      ];
+
+  return [
+    "- Deduction model: one maximum scoreable occurrence per criterion, with legacy findings grouped by check name.",
+    `- Grouped pre-floor total deduction: ${score.totalDeduction}`,
+    `- Saturation: ${saturation}`,
+    "- Compatibility: formula versions have different semantics; v1 and v2 values are not directly comparable.",
+    ...deductions
+  ];
 }
 
 function renderFindings(findings: Finding[]): string {

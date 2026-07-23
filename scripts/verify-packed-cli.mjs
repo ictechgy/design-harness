@@ -45,10 +45,12 @@ try {
   await assertPackedReadme(consumerDir);
   const help = await runPnpm(["exec", "design-harness", "--help"], { cwd: consumerDir, capture: true });
   const auditHelp = await runPnpm(["exec", "design-harness", "audit", "--help"], { cwd: consumerDir, capture: true });
+  const loopHelp = await runPnpm(["exec", "design-harness", "loop", "--help"], { cwd: consumerDir, capture: true });
 
   if (
     !help.includes("Design Harness")
     || !help.includes("design-harness audit")
+    || !help.includes("design-harness loop")
     || !help.includes("--guide <design-guide.yaml>")
     || !help.includes("--copy <copy-style.yaml>")
     || !help.includes("guide compile")
@@ -59,6 +61,14 @@ try {
   if (!auditHelp.includes("--guide <design-guide.yaml>") || !auditHelp.includes("no auto-discovery")) {
     throw new Error(`Packed audit help omitted explicit --guide/no-discovery behavior:\n${auditHelp}`);
   }
+  if (
+    !loopHelp.includes("Only --until deterministic-failures==0 is supported.")
+    || !loopHelp.includes("--agent-cmd executes arbitrary code with the caller's permissions.")
+  ) {
+    throw new Error(`Packed loop help omitted the exact gate or arbitrary-code warning:\n${loopHelp}`);
+  }
+
+  await assertPlainAuditRejectsAgentCommand(consumerDir);
 
   await assertPackedGuideCommands(consumerDir);
 
@@ -135,9 +145,45 @@ try {
     expectedStage: "profile"
   });
 
-  console.log("Validated packed CLI audit config gates plus guide fail-closed/compile/check/idempotence/drift without root data lookup.");
+  console.log("Validated packed CLI loop help and plain-audit non-execution plus existing audit/guide gates without root data lookup.");
 } finally {
   await rm(tempRoot, { recursive: true, force: true });
+}
+
+async function assertPlainAuditRejectsAgentCommand(consumerDir) {
+  const sentinelPath = join(consumerDir, "plain-audit-agent-sentinel.txt");
+  const helperPath = join(consumerDir, "plain-audit-agent-sentinel.mjs");
+  const outDir = join(consumerDir, "plain-audit-agent-out");
+  await writeFile(helperPath, [
+    "import { writeFile } from 'node:fs/promises';",
+    `await writeFile(${JSON.stringify(sentinelPath)}, 'plain audit launched the agent\\n');`,
+    ""
+  ].join("\n"));
+  const agentCommand = `${quoteCommandArgument(process.execPath)} ${quoteCommandArgument(helperPath)}`;
+  const result = await runPnpm([
+    "exec",
+    "design-harness",
+    "audit",
+    "--url",
+    "http://localhost:1",
+    "--out",
+    outDir,
+    "--agent-cmd",
+    agentCommand
+  ], { cwd: consumerDir, capture: true, allowFailure: true });
+
+  if (result.code !== 1) {
+    throw new Error(`Packed plain audit accepted --agent-cmd and exited ${result.code}.`);
+  }
+  if (!`${result.stdout}\n${result.stderr}`.includes("--agent-cmd")) {
+    throw new Error(`Packed plain audit rejection did not name --agent-cmd:\n${result.stderr}`);
+  }
+  await assertPathMissing(sentinelPath, "Packed plain audit launched the supplied agent command");
+  await assertPathMissing(outDir, "Packed plain audit created output before rejecting --agent-cmd");
+}
+
+function quoteCommandArgument(value) {
+  return `"${value.replaceAll('"', '\\"')}"`;
 }
 
 async function assertPackedReadme(consumerDir) {

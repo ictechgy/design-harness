@@ -1,6 +1,6 @@
-import type { AdvisoryScore, Confidence, Finding, Severity } from "./types.js";
+import type { AdvisoryScore, AdvisoryScoreV2, Confidence, Finding, Severity } from "./types.js";
 
-const SCORING_FORMULA_VERSION: AdvisoryScore["formulaVersion"] = "epistemic-weight-v1";
+const SCORING_FORMULA_VERSION: AdvisoryScoreV2["formulaVersion"] = "epistemic-criterion-max-v2";
 
 const SEVERITY_POINTS: Record<Severity, number> = {
   low: 4,
@@ -15,18 +15,58 @@ const CONFIDENCE_WEIGHT: Record<Confidence, number> = {
   high: 1
 };
 
-export function scoreFindings(findings: Finding[]): AdvisoryScore {
-  const deductions = findings.map((finding) => {
-    const epistemicWeight = epistemicWeightForFinding(finding);
-    const points = round(SEVERITY_POINTS[finding.severity] * CONFIDENCE_WEIGHT[finding.confidence] * epistemicWeight);
-    return {
-      findingId: finding.id,
-      points,
-      reason: deductionReason(finding, epistemicWeight)
-    };
-  });
+interface WeightedFinding {
+  finding: Finding;
+  points: number;
+  epistemicWeight: number;
+}
 
-  const totalDeduction = deductions.reduce((sum, deduction) => sum + deduction.points, 0);
+type ScoreGroupKind = "criterion" | "legacy check";
+
+interface ScoreGroup {
+  key: string;
+  kind: ScoreGroupKind;
+  members: WeightedFinding[];
+}
+
+export function scoreFindings(findings: readonly Finding[]): AdvisoryScoreV2 {
+  const groups = new Map<string, ScoreGroup>();
+
+  for (const finding of findings) {
+    const epistemicWeight = epistemicWeightForFinding(finding);
+    if (epistemicWeight === 0) {
+      continue;
+    }
+
+    const points = round(SEVERITY_POINTS[finding.severity] * CONFIDENCE_WEIGHT[finding.confidence] * epistemicWeight);
+    const { key, kind } = scoreGroupIdentity(finding);
+    const identity = JSON.stringify([kind, key]);
+    const group = groups.get(identity) ?? { key, kind, members: [] };
+    group.members.push({ finding, points, epistemicWeight });
+    groups.set(identity, group);
+  }
+
+  const deductions = [...groups.values()]
+    .sort((left, right) => (
+      compareUtf16CodeUnits(left.key, right.key)
+      || compareUtf16CodeUnits(left.kind, right.kind)
+    ))
+    .map(({ key: groupKey, kind: groupKind, members }) => {
+      const sortedMembers = [...members].sort((left, right) => compareUtf16CodeUnits(left.finding.id, right.finding.id));
+      const representative = sortedMembers.reduce((maximum, candidate) => (
+        candidate.points > maximum.points ? candidate : maximum
+      ));
+
+      return {
+        findingId: representative.finding.id,
+        findingIds: sortedMembers.map(({ finding }) => finding.id),
+        viewports: [...new Set(members.map(({ finding }) => finding.viewport))].sort(compareUtf16CodeUnits),
+        points: representative.points,
+        reason: `Maximum scoreable occurrence for ${groupKind} ${groupKey} across ${members.length} ${pluralize(members.length, "occurrence")}; ${deductionReason(representative.finding, representative.epistemicWeight)}`
+      };
+    });
+
+  const totalDeduction = round(deductions.reduce((sum, deduction) => sum + deduction.points, 0));
   const value = Math.max(0, round(100 - totalDeduction));
 
   return {
@@ -35,7 +75,9 @@ export function scoreFindings(findings: Finding[]): AdvisoryScore {
     max: 100,
     band: scoreBand(value),
     deductions,
-    explanation: "Advisory score starts at 100 and subtracts finding deductions by severity, confidence, and evidence-tier weight. Needs-review findings are score-exempt. It is not an objective design-quality grade."
+    totalDeduction,
+    saturated: totalDeduction > 100,
+    explanation: "Advisory score starts at 100 and subtracts the maximum scoreable finding once per criterion (or legacy check name), weighted by severity, confidence, and evidence tier. Needs-review findings are score-exempt and omitted, as are other zero-weight findings. This formula is not directly comparable with epistemic-weight-v1. It is not an objective design-quality grade."
   };
 }
 
@@ -118,6 +160,16 @@ function epistemicWeightForFinding(finding: Finding): number {
   }
 
   return 0.25;
+}
+
+function scoreGroupIdentity(finding: Finding): { key: string; kind: ScoreGroupKind } {
+  return finding.criterionId === undefined
+    ? { key: finding.checkName, kind: "legacy check" }
+    : { key: finding.criterionId, kind: "criterion" };
+}
+
+function compareUtf16CodeUnits(left: string, right: string): number {
+  return left < right ? -1 : left > right ? 1 : 0;
 }
 
 function deductionReason(finding: Finding, epistemicWeight: number): string {

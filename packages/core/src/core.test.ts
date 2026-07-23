@@ -103,6 +103,63 @@ function createRegisteredPromptFinding(
   });
 }
 
+function createLegacyV1AuditResult(): ReturnType<typeof createExampleAuditResult> {
+  const auditResult = createExampleAuditResult();
+  const finding = auditResult.findings[0];
+  if (!finding) {
+    throw new Error("Example audit must contain one finding.");
+  }
+
+  return {
+    ...auditResult,
+    advisoryScore: {
+      formulaVersion: "epistemic-weight-v1",
+      value: 94,
+      max: 100,
+      band: "strong",
+      deductions: [{
+        findingId: finding.id,
+        points: 6,
+        reason: "Legacy per-finding deduction."
+      }],
+      explanation: "Legacy v1 advisory score fixture."
+    }
+  };
+}
+
+function requireV2Score(auditResult: ReturnType<typeof createExampleAuditResult>) {
+  const score = auditResult.advisoryScore;
+  if (score.formulaVersion !== "epistemic-criterion-max-v2") {
+    throw new Error(`Expected v2 score, received ${score.formulaVersion}.`);
+  }
+  return score;
+}
+
+function createMultiGroupV2AuditResult(): ReturnType<typeof createExampleAuditResult> {
+  const auditResult = createExampleAuditResult();
+  const weaker = {
+    ...createExampleFinding(),
+    id: "finding-z",
+    severity: "low" as const,
+    viewport: "desktop"
+  };
+  const stronger = {
+    ...createExampleFinding(),
+    id: "finding-a",
+    severity: "high" as const,
+    viewport: "mobile"
+  };
+  const legacy = createContentFinding({
+    id: "legacy-finding",
+    checkName: "legacy-check",
+    severity: "medium"
+  });
+
+  auditResult.findings = [weaker, stronger, legacy];
+  auditResult.advisoryScore = scoreFindings(auditResult.findings);
+  return auditResult;
+}
+
 describe("core schemas", () => {
   it("accepts a valid design brief", () => {
     expect(validateSchema("brief", createExampleBrief()).valid).toBe(true);
@@ -331,8 +388,7 @@ describe("core schemas", () => {
     // A heuristic-only audit can still score into a low band, because heuristic risks deduct too. The
     // verdict must not then assert "deterministic" findings the audit does not have.
     const heuristicFindings = Array.from({ length: 12 }, (_unused, index) => ({
-      ...createExampleFinding(),
-      id: `heuristic-${index}`,
+      ...createContentFinding({ id: `heuristic-${index}`, checkName: `heuristic-check-${index}` }),
       determinism: "heuristic" as const,
       resultKind: "risk" as const,
       severity: "high" as const
@@ -362,6 +418,7 @@ describe("core schemas", () => {
       { ...createExampleFinding(), id: "det", determinism: "deterministic", resultKind: "risk" },
       { ...createExampleFinding(), id: "heur", determinism: "heuristic", resultKind: "risk" }
     ];
+    auditResult.advisoryScore = scoreFindings(auditResult.findings);
     const report = renderMarkdownReport({ auditResult });
     expect(report).not.toContain("only contains deterministic");
     expect(report).toContain("shown with their recorded classifications");
@@ -372,6 +429,7 @@ describe("core schemas", () => {
     const legacyFinding = { ...createExampleFinding(), id: "legacy" };
     delete (legacyFinding as { determinism?: unknown }).determinism;
     auditResult.findings = [legacyFinding];
+    auditResult.advisoryScore = scoreFindings(auditResult.findings);
     const report = renderMarkdownReport({ auditResult });
     // A legacy finding carries neither a deterministic nor a heuristic classification; the note must not
     // assert either one, only that findings are shown with whatever classification they carry.
@@ -385,6 +443,7 @@ describe("core schemas", () => {
     auditResult.findings = [
       { ...createExampleFinding(), id: "det", determinism: "deterministic", resultKind: "risk" }
     ];
+    auditResult.advisoryScore = scoreFindings(auditResult.findings);
     const report = renderMarkdownReport({ auditResult });
     expect(report).toContain("only contains deterministic audit findings");
   });
@@ -560,12 +619,124 @@ describe("artifact integrity", () => {
     expect(result.issues[0]?.path).toContain("evidenceRefs");
   });
 
-  it("rejects score deductions that do not reference findings", () => {
-    const auditResult = createExampleAuditResult();
+  it("keeps legacy v1 integrity reference-based and rejects unknown finding references", () => {
+    const auditResult = createLegacyV1AuditResult();
+    auditResult.advisoryScore.value = 12;
+    auditResult.advisoryScore.band = "blocked";
+    auditResult.advisoryScore.deductions[0]!.points = 99;
+    expect(validateAuditResultIntegrity(auditResult)).toEqual({ valid: true, issues: [] });
+
     auditResult.advisoryScore.deductions[0].findingId = "missing-finding";
     const result = validateAuditResultIntegrity(auditResult);
     expect(result.valid).toBe(false);
     expect(result.issues[0]?.path).toContain("deductions");
+  });
+
+  it("recomputes every derived v2 score field and canonical ordering", () => {
+    const auditResult = createMultiGroupV2AuditResult();
+    expect(validateAuditResultIntegrity(auditResult)).toEqual({ valid: true, issues: [] });
+
+    const mutations: Array<{
+      name: string;
+      path: string;
+      mutate: (score: ReturnType<typeof requireV2Score>) => void;
+    }> = [
+      {
+        name: "duplicate member",
+        path: "findingIds",
+        mutate: (score) => score.deductions[0]!.findingIds.push(score.deductions[0]!.findingIds[0]!)
+      },
+      {
+        name: "unknown member",
+        path: "findingIds",
+        mutate: (score) => { score.deductions[0]!.findingIds[0] = "unknown-finding"; }
+      },
+      {
+        name: "member assigned to two groups",
+        path: "findingIds",
+        mutate: (score) => score.deductions[1]!.findingIds.push(score.deductions[0]!.findingIds[0]!)
+      },
+      {
+        name: "wrong representative",
+        path: "findingId",
+        mutate: (score) => { score.deductions[1]!.findingId = "finding-z"; }
+      },
+      {
+        name: "wrong group maximum",
+        path: "points",
+        mutate: (score) => { score.deductions[1]!.points += 1; }
+      },
+      {
+        name: "wrong member order",
+        path: "findingIds",
+        mutate: (score) => score.deductions[1]!.findingIds.reverse()
+      },
+      {
+        name: "wrong viewport list",
+        path: "viewports",
+        mutate: (score) => score.deductions[1]!.viewports.reverse()
+      },
+      {
+        name: "wrong group order",
+        path: "deductions",
+        mutate: (score) => score.deductions.reverse()
+      },
+      {
+        name: "wrong total",
+        path: "totalDeduction",
+        mutate: (score) => { score.totalDeduction += 1; }
+      },
+      {
+        name: "wrong saturation",
+        path: "saturated",
+        mutate: (score) => { score.saturated = !score.saturated; }
+      },
+      {
+        name: "wrong value",
+        path: "value",
+        mutate: (score) => { score.value += 1; }
+      },
+      {
+        name: "wrong band",
+        path: "band",
+        mutate: (score) => { score.band = "blocked"; }
+      }
+    ];
+
+    for (const mutation of mutations) {
+      const malformed = createMultiGroupV2AuditResult();
+      mutation.mutate(requireV2Score(malformed));
+      const result = validateAuditResultIntegrity(malformed);
+      expect(result.valid, mutation.name).toBe(false);
+      expect(result.issues.some((issue) => issue.path.includes(mutation.path)), mutation.name).toBe(true);
+    }
+  });
+
+  it("rejects score-exempt needs-review membership in v2 deductions", () => {
+    const auditResult = createMultiGroupV2AuditResult();
+    const needsReview = createCopyFinding("saturated-color-noise-risk", ["iso-9241-210"], {
+      id: "needs-review-finding",
+      category: "hierarchy"
+    });
+    auditResult.findings.push(needsReview);
+    requireV2Score(auditResult).deductions[0]!.findingIds.push(needsReview.id);
+
+    const result = validateAuditResultIntegrity(auditResult);
+    expect(result.valid).toBe(false);
+    expect(result.issues).toContainEqual(expect.objectContaining({
+      path: expect.stringContaining("findingIds"),
+      message: expect.stringContaining("score-exempt needs-review")
+    }));
+  });
+
+  it("rejects an unknown advisory score formula at the integrity seam", () => {
+    const auditResult = createExampleAuditResult();
+    (auditResult.advisoryScore as { formulaVersion: string }).formulaVersion = "unknown-formula";
+    const result = validateAuditResultIntegrity(auditResult);
+    expect(result.valid).toBe(false);
+    expect(result.issues).toContainEqual(expect.objectContaining({
+      path: "$.advisoryScore.formulaVersion"
+    }));
   });
 
   it("rejects findings that reference unknown criteria or invalid determinism combinations", () => {
@@ -607,14 +778,18 @@ describe("artifact integrity", () => {
 describe("scoring", () => {
   it("deducts deterministic risk points by severity, confidence, and epistemic weight", () => {
     const score = scoreFindings([createExampleFinding()]);
-    expect(score.formulaVersion).toBe("epistemic-weight-v1");
+    expect(score.formulaVersion).toBe("epistemic-criterion-max-v2");
     expect(score.value).toBe(94);
     expect(score.band).toBe("strong");
     expect(score.deductions[0]).toMatchObject({
       findingId: "finding-desktop-overflow",
+      findingIds: ["finding-desktop-overflow"],
+      viewports: ["desktop"],
       points: 6
     });
     expect(score.deductions[0]?.reason).toContain("deterministic risk score weight 0.6");
+    expect(score.totalDeduction).toBe(6);
+    expect(score.saturated).toBe(false);
     expect(score.explanation).toContain("not an objective");
     expect(score.explanation).toContain("Needs-review findings are score-exempt");
   });
@@ -646,15 +821,168 @@ describe("scoring", () => {
     const score = scoreFindings([deterministicFailure, deterministicRisk, heuristicRisk, needsReview, legacy]);
 
     expect(score.deductions).toEqual([
-      expect.objectContaining({ findingId: "deterministic-failure", points: 10 }),
-      expect.objectContaining({ findingId: "deterministic-risk", points: 6 }),
-      expect.objectContaining({ findingId: "heuristic-risk", points: 2.5 }),
-      expect.objectContaining({ findingId: "needs-review", points: 0 }),
-      expect.objectContaining({ findingId: "legacy-unclassified", points: 2.5 })
+      expect.objectContaining({
+        findingId: "legacy-unclassified",
+        findingIds: ["legacy-unclassified"],
+        points: 2.5
+      }),
+      expect.objectContaining({
+        findingId: "deterministic-failure",
+        findingIds: ["deterministic-failure", "deterministic-risk", "heuristic-risk"],
+        points: 10
+      })
     ]);
-    expect(score.deductions.find((deduction) => deduction.findingId === "needs-review")?.reason).toContain("score-exempt");
+    expect(score.deductions.flatMap((deduction) => deduction.findingIds)).not.toContain("needs-review");
     expect(score.deductions.find((deduction) => deduction.findingId === "legacy-unclassified")?.reason).toContain("legacy/unclassified");
-    expect(score.value).toBe(79);
+    expect(score.totalDeduction).toBe(12.5);
+    expect(score.value).toBe(87.5);
+  });
+
+  it("bounds one, five, and 500 equal occurrences to one criterion maximum", () => {
+    for (const count of [1, 5, 500]) {
+      const findings = Array.from({ length: count }, (_unused, index) => ({
+        ...createExampleFinding(),
+        id: `criterion-occurrence-${String(index).padStart(3, "0")}`,
+        viewport: index % 2 === 0 ? "desktop" : "mobile"
+      }));
+      const score = scoreFindings(findings);
+
+      expect(score.value, `${count} occurrences`).toBe(94);
+      expect(score.totalDeduction, `${count} occurrences`).toBe(6);
+      expect(score.deductions, `${count} occurrences`).toHaveLength(1);
+      expect(score.deductions[0]?.findingIds, `${count} occurrences`).toHaveLength(count);
+      expect(score.deductions[0]?.viewports, `${count} occurrences`).toEqual(
+        count === 1 ? ["desktop"] : ["desktop", "mobile"]
+      );
+    }
+  });
+
+  it("selects the strongest occurrence and the lowest UTF-16 finding id on equal points", () => {
+    const equalSupplementary = {
+      ...createExampleFinding(),
+      id: "finding-\u{10000}",
+      severity: "medium" as const,
+      viewport: "mobile"
+    };
+    const equalBmp = {
+      ...createExampleFinding(),
+      id: "finding-\uE000",
+      severity: "medium" as const,
+      viewport: "desktop"
+    };
+    const stronger = {
+      ...createExampleFinding(),
+      id: "finding-stronger",
+      severity: "high" as const,
+      confidence: "medium" as const
+    };
+
+    const tied = scoreFindings([equalBmp, equalSupplementary]);
+    expect(tied.deductions[0]).toMatchObject({
+      findingId: "finding-\u{10000}",
+      findingIds: ["finding-\u{10000}", "finding-\uE000"],
+      viewports: ["desktop", "mobile"],
+      points: 6
+    });
+
+    const withStrongerOccurrence = scoreFindings([equalBmp, stronger, equalSupplementary]);
+    expect(withStrongerOccurrence.deductions[0]).toMatchObject({
+      findingId: "finding-stronger",
+      points: 9
+    });
+  });
+
+  it("normalizes groups, members, and viewports independently of input order", () => {
+    const supplementaryGroup = {
+      ...createContentFinding({ id: "member-z", checkName: "group-\u{10000}", viewport: "mobile" }),
+      determinism: "deterministic" as const,
+      resultKind: "risk" as const
+    };
+    const supplementaryGroupSecond = {
+      ...supplementaryGroup,
+      id: "member-a",
+      viewport: "desktop"
+    };
+    const bmpGroup = {
+      ...createContentFinding({ id: "member-bmp", checkName: "group-\uE000" }),
+      determinism: "deterministic" as const,
+      resultKind: "risk" as const
+    };
+    const findings = [bmpGroup, supplementaryGroup, supplementaryGroupSecond];
+
+    const forward = scoreFindings(findings);
+    const reversed = scoreFindings([...findings].reverse());
+
+    expect(JSON.stringify(forward)).toBe(JSON.stringify(reversed));
+    expect(forward.deductions.map((deduction) => deduction.findingId)).toEqual(["member-a", "member-bmp"]);
+    expect(forward.deductions[0]?.findingIds).toEqual(["member-a", "member-z"]);
+    expect(forward.deductions[0]?.viewports).toEqual(["desktop", "mobile"]);
+  });
+
+  it("adds distinct criterion/check-name groups and uses checkName for legacy findings", () => {
+    const criterionFinding = createExampleFinding();
+    const otherCriterion = {
+      ...criterionFinding,
+      id: "other-criterion",
+      criterionId: "another.criterion",
+      checkName: "same-check"
+    };
+    const legacyOne = createContentFinding({ id: "legacy-one", checkName: "legacy-check" });
+    const legacyTwo = createContentFinding({ id: "legacy-two", checkName: "legacy-check", severity: "high" });
+    const score = scoreFindings([criterionFinding, otherCriterion, legacyOne, legacyTwo]);
+
+    expect(score.deductions).toHaveLength(3);
+    expect(score.deductions.find((deduction) => deduction.findingIds.includes("legacy-one"))).toMatchObject({
+      findingId: "legacy-two",
+      findingIds: ["legacy-one", "legacy-two"],
+      points: 5
+    });
+    expect(score.totalDeduction).toBe(17);
+    expect(score.value).toBe(83);
+  });
+
+  it("keeps a criterion separate from a legacy check with the same text key", () => {
+    const criterionFinding = {
+      ...createExampleFinding(),
+      id: "criterion-member",
+      criterionId: "shared.group.key",
+      checkName: "registered-check"
+    };
+    const legacyFinding = createContentFinding({
+      id: "legacy-member",
+      checkName: "shared.group.key"
+    });
+
+    const score = scoreFindings([legacyFinding, criterionFinding]);
+
+    expect(score.deductions).toHaveLength(2);
+    expect(score.deductions.map((deduction) => deduction.findingIds)).toEqual([
+      ["criterion-member"],
+      ["legacy-member"]
+    ]);
+    expect(score.totalDeduction).toBe(8.5);
+  });
+
+  it("distinguishes exact-zero remainder from a saturated pre-floor total", () => {
+    const failure = (id: string, severity: "critical" | "high" | "medium") => ({
+      ...createContentFinding({ id, checkName: id, severity }),
+      determinism: "deterministic" as const,
+      resultKind: "failure" as const
+    });
+    const exact = scoreFindings([
+      failure("critical-a", "critical"),
+      failure("critical-b", "critical"),
+      failure("high", "high"),
+      failure("medium", "medium")
+    ]);
+    expect(exact).toMatchObject({ totalDeduction: 100, value: 0, saturated: false, band: "blocked" });
+
+    const saturated = scoreFindings([
+      failure("critical-a", "critical"),
+      failure("critical-b", "critical"),
+      failure("critical-c", "critical")
+    ]);
+    expect(saturated).toMatchObject({ totalDeduction: 105, value: 0, saturated: true, band: "blocked" });
   });
 
   it("locks deductions for the five parser-free copy checks", () => {
@@ -667,14 +995,19 @@ describe("scoring", () => {
     ].map((finding, index) => ({ ...finding, id: `${finding.id}-${index}` }));
 
     const score = scoreFindings(findings);
-    expect(score.deductions.map((deduction) => deduction.points)).toEqual([20, 2.4, 6, 2.4, 6]);
+    expect(score.deductions.map((deduction) => deduction.points)).toEqual([6, 6, 2.4, 2.4, 20]);
     expect(score.value).toBe(63.2);
     expect(score.band).toBe("needs-work");
   });
 
-  it("requires the advisory score formula version in the audit-result schema", () => {
+  it("validates closed formula-discriminated v1 and v2 score shapes under schema 0.2", () => {
     const auditResult = createExampleAuditResult();
-    expect(auditResult.advisoryScore.formulaVersion).toBe("epistemic-weight-v1");
+    expect(auditResult.schemaVersion).toBe("0.2");
+    expect(auditResult.advisoryScore.formulaVersion).toBe("epistemic-criterion-max-v2");
+    expect(validateSchema("audit-result", auditResult).valid).toBe(true);
+
+    const legacyAudit = createLegacyV1AuditResult();
+    expect(validateSchema("audit-result", legacyAudit).valid).toBe(true);
 
     const missingFormulaVersion = {
       ...auditResult,
@@ -685,16 +1018,39 @@ describe("scoring", () => {
     delete missingFormulaVersion.advisoryScore.formulaVersion;
     expect(validateSchema("audit-result", missingFormulaVersion).valid).toBe(false);
 
-    const wrongFormulaVersion = {
+    const unknownFormulaVersion = {
       ...auditResult,
       advisoryScore: {
         ...auditResult.advisoryScore,
-        formulaVersion: "legacy-severity-confidence"
+        formulaVersion: "unknown-formula"
       }
     };
-    const result = validateSchema("audit-result", wrongFormulaVersion);
-    expect(result.valid).toBe(false);
-    expect(result.issues.some((issue) => issue.path === "$.advisoryScore.formulaVersion")).toBe(true);
+    expect(validateSchema("audit-result", unknownFormulaVersion).valid).toBe(false);
+
+    const v1WithV2Fields = structuredClone(legacyAudit) as unknown as {
+      advisoryScore: Record<string, unknown> & { deductions: Array<Record<string, unknown>> };
+    };
+    v1WithV2Fields.advisoryScore.totalDeduction = 6;
+    v1WithV2Fields.advisoryScore.saturated = false;
+    v1WithV2Fields.advisoryScore.deductions[0]!.findingIds = ["finding-desktop-overflow"];
+    v1WithV2Fields.advisoryScore.deductions[0]!.viewports = ["desktop"];
+    expect(validateSchema("audit-result", v1WithV2Fields).valid).toBe(false);
+
+    for (const missingField of ["totalDeduction", "saturated"] as const) {
+      const malformed = structuredClone(auditResult) as unknown as {
+        advisoryScore: Record<string, unknown>;
+      };
+      delete malformed.advisoryScore[missingField];
+      expect(validateSchema("audit-result", malformed).valid, missingField).toBe(false);
+    }
+
+    for (const missingField of ["findingIds", "viewports"] as const) {
+      const malformed = structuredClone(auditResult) as unknown as {
+        advisoryScore: { deductions: Array<Record<string, unknown>> };
+      };
+      delete malformed.advisoryScore.deductions[0]![missingField];
+      expect(validateSchema("audit-result", malformed).valid, missingField).toBe(false);
+    }
   });
 });
 
@@ -772,6 +1128,59 @@ describe("report rendering", () => {
     expect(validateReportCopyGuardrails(report)).toEqual([]);
   });
 
+  it("renders v2 formula, grouped rationale, total, saturation, occurrences, and viewports", () => {
+    const auditResult = createMultiGroupV2AuditResult();
+    const report = renderMarkdownReport({ auditResult });
+
+    expect(report).toContain("Formula: `epistemic-criterion-max-v2`");
+    expect(report).toContain("one maximum scoreable occurrence per criterion");
+    expect(report).toContain("Grouped pre-floor total deduction: 14.5");
+    expect(report).toContain("Saturation: no");
+    expect(report).toContain("2 occurrences; viewports: `desktop`, `mobile`");
+    expect(report).toContain("representative: `finding-a`");
+    expect(report).toContain("Maximum scoreable occurrence for criterion responsive.horizontal-overflow.none");
+    expect(report).toContain("v1 and v2 values are not directly comparable");
+    expect(validateReportCopyGuardrails(report)).toEqual([]);
+
+    const saturatedFindings = Array.from({ length: 3 }, (_unused, index) => ({
+      ...createContentFinding({
+        id: `critical-${index}`,
+        checkName: `critical-${index}`,
+        severity: "critical"
+      }),
+      determinism: "deterministic" as const,
+      resultKind: "failure" as const
+    }));
+    auditResult.findings = saturatedFindings;
+    auditResult.advisoryScore = scoreFindings(saturatedFindings);
+    const saturatedReport = renderMarkdownReport({ auditResult });
+    expect(saturatedReport).toContain("Grouped pre-floor total deduction: 105");
+    expect(saturatedReport).toContain("Saturation: yes");
+    expect(saturatedReport).toContain("floored at 0");
+  });
+
+  it("fails report rendering when a v2 representative is absent", () => {
+    const auditResult = createExampleAuditResult();
+    const score = requireV2Score(auditResult);
+    score.deductions[0] = {
+      ...score.deductions[0],
+      findingId: "missing-representative"
+    };
+
+    expect(() => renderMarkdownReport({ auditResult })).toThrow(
+      "Advisory score deduction references unknown representative missing-representative"
+    );
+  });
+
+  it("renders legacy v1 formula details without reading v2-only fields", () => {
+    const report = renderMarkdownReport({ auditResult: createLegacyV1AuditResult() });
+    expect(report).toContain("Formula: `epistemic-weight-v1`");
+    expect(report).toContain("legacy per-finding deductions");
+    expect(report).not.toContain("Grouped pre-floor total deduction");
+    expect(report).not.toContain("Saturation:");
+    expect(report).toContain("v1 and v2 values are not directly comparable");
+  });
+
   it("renders notices only when they are non-empty", () => {
     const auditResult = createExampleAuditResult();
     expect(renderMarkdownReport({ auditResult })).not.toContain("## Notices");
@@ -811,7 +1220,7 @@ describe("report rendering", () => {
       auditResult.advisoryScore = scoreFindings([finding]);
       const criterionLine = renderMarkdownReport({ auditResult })
         .split("\n")
-        .find((line) => line.includes("`content.placeholder.unrendered`"));
+        .find((line) => line.includes("`content.placeholder.unrendered`") && line.includes("Sources used by emitted findings"));
 
       expect(criterionLine).toContain(expectedTitle);
       for (const excludedTitle of excludedTitles) {
@@ -826,7 +1235,7 @@ describe("report rendering", () => {
     auditResult.advisoryScore = scoreFindings(auditResult.findings);
     const criterionLine = renderMarkdownReport({ auditResult })
       .split("\n")
-      .find((line) => line.includes("`content.placeholder.unrendered`"));
+      .find((line) => line.includes("`content.placeholder.unrendered`") && line.includes("Sources used by emitted findings"));
     expect(criterionLine).toContain("Unicode ICU MessageFormat");
     expect(criterionLine).toContain("Mustache specification");
     expect(criterionLine).not.toContain("Design Harness output contract");

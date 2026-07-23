@@ -26,6 +26,7 @@ import {
 } from "./browser-measurements.js";
 import { createRenderFailureFinding, findingsFromMeasurements, type ViewportMeasurements } from "./checks.js";
 import { BrowserUnavailableError } from "./errors.js";
+import { findingSamplesTruncatedNotice } from "./finding-coverage.js";
 import {
   analyzeFontFamilyAdherence,
   type FontFamilyAdherenceAnalysisError
@@ -33,6 +34,9 @@ import {
 
 const MAX_ARIA_SNAPSHOT_LENGTH = 20_000;
 const MAX_TEXT_INVENTORY_FIELD_LENGTH = 2_000;
+const CONTRAST_SKIP_AGGREGATE_MESSAGE =
+  "Some elements whose painted contrast could not be determined from computed styles were skipped; "
+  + "no contrast finding was emitted for them.";
 
 export interface AuditUrlOptions {
   url: string;
@@ -81,6 +85,12 @@ interface MeasurementRecord {
 interface SensitiveInputMask {
   marker: string;
   value: string;
+}
+
+interface ContrastSkipViewportNotice {
+  viewport: string;
+  skippedElementCount: number;
+  skippedByReason: Record<string, number>;
 }
 
 export async function auditUrl(options: AuditUrlOptions): Promise<AuditUrlResult> {
@@ -212,6 +222,9 @@ export async function auditUrl(options: AuditUrlOptions): Promise<AuditUrlResult
         try {
           const collection = await collectViewportMeasurements(page, measurementConfig);
           const measurement = collection.measurements;
+          if (collection.findingCoverage) {
+            measurement.findingCoverage = collection.findingCoverage;
+          }
           noticeCandidates.push(...collection.notices);
           if (collection.layoutMetrics) {
             layoutMetrics.push(collection.layoutMetrics);
@@ -292,6 +305,14 @@ export async function auditUrl(options: AuditUrlOptions): Promise<AuditUrlResult
   }
 
   findings.push(...measurementRecords.flatMap((record) => findingsFromMeasurements(record.measurement, record.evidenceRefs)));
+  const truncationNotice = findingSamplesTruncatedNotice(
+    measurementRecords.flatMap(({ measurement }) => (
+      measurement.findingCoverage ? [measurement.findingCoverage] : []
+    ))
+  );
+  if (truncationNotice) {
+    noticeCandidates.push(truncationNotice);
+  }
   const finishedAtMs = Date.now();
   const finishedAt = new Date(finishedAtMs).toISOString();
   const status: RunStatus = failedChecks.length > 0 ? "partial" : "success";
@@ -463,7 +484,24 @@ function textInventoryEvidenceData(measurement: ViewportMeasurements): Record<st
 
 function deduplicateNotices(notices: AuditNotice[]): AuditNotice[] {
   const deduplicated = new Map<string, AuditNotice>();
+  const contrastSkipViewports = new Map<string, ContrastSkipViewportNotice>();
+  const contrastSkipKey = "contrast-elements-skipped\u0000aggregated-viewports";
+
   for (const notice of notices) {
+    const contrastSkipViewport = contrastSkipViewportNotice(notice);
+    if (contrastSkipViewport) {
+      if (!deduplicated.has(contrastSkipKey)) {
+        deduplicated.set(contrastSkipKey, {
+          code: notice.code,
+          message: CONTRAST_SKIP_AGGREGATE_MESSAGE
+        });
+      }
+      if (!contrastSkipViewports.has(contrastSkipViewport.viewport)) {
+        contrastSkipViewports.set(contrastSkipViewport.viewport, contrastSkipViewport);
+      }
+      continue;
+    }
+
     const details = notice.details === undefined
       ? undefined
       : canonicalizeJsonValue(notice.details) as Record<string, unknown>;
@@ -476,7 +514,53 @@ function deduplicateNotices(notices: AuditNotice[]): AuditNotice[] {
       });
     }
   }
+
+  if (contrastSkipViewports.size > 0) {
+    const notice = deduplicated.get(contrastSkipKey);
+    if (notice) {
+      deduplicated.set(contrastSkipKey, {
+        ...notice,
+        details: {
+          viewports: [...contrastSkipViewports.values()]
+            .sort((left, right) => compareUtf16(left.viewport, right.viewport))
+        }
+      });
+    }
+  }
+
   return [...deduplicated.values()];
+}
+
+function contrastSkipViewportNotice(notice: AuditNotice): ContrastSkipViewportNotice | undefined {
+  if (
+    notice.code !== "contrast-elements-skipped"
+    || !notice.viewport
+    || !notice.details
+  ) {
+    return undefined;
+  }
+
+  const skippedElementCount = notice.details.skippedElementCount;
+  const skippedByReason = notice.details.skippedByReason;
+  if (
+    typeof skippedElementCount !== "number"
+    || !Number.isInteger(skippedElementCount)
+    || skippedElementCount < 0
+    || skippedByReason === null
+    || typeof skippedByReason !== "object"
+    || Array.isArray(skippedByReason)
+    || Object.values(skippedByReason).some((count) => (
+      typeof count !== "number" || !Number.isInteger(count) || count < 0
+    ))
+  ) {
+    return undefined;
+  }
+
+  return {
+    viewport: notice.viewport,
+    skippedElementCount,
+    skippedByReason: canonicalizeJsonValue(skippedByReason) as Record<string, number>
+  };
 }
 
 function canonicalizeJsonValue(value: unknown): unknown {
@@ -491,6 +575,10 @@ function canonicalizeJsonValue(value: unknown): unknown {
     );
   }
   return value;
+}
+
+function compareUtf16(left: string, right: string): number {
+  return left < right ? -1 : left > right ? 1 : 0;
 }
 
 async function recordAriaSnapshotEvidence(
