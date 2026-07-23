@@ -2,6 +2,20 @@ import { describe, expect, it } from "vitest";
 import { helpText, parseArgs } from "./args.js";
 import { assertLocalHttpUrl } from "./url.js";
 
+const validLoopArgv = [
+  "loop",
+  "--url",
+  "http://localhost:3000",
+  "--out",
+  "runs/repair",
+  "--until",
+  "deterministic-failures==0",
+  "--max-iters",
+  "3",
+  "--agent-cmd",
+  "codex exec --full-auto"
+];
+
 describe("parseArgs", () => {
   it("parses audit arguments", () => {
     expect(parseArgs(["audit", "--url", "http://localhost:3000", "--out", "runs/demo"])).toEqual({
@@ -51,6 +65,137 @@ describe("parseArgs", () => {
       allowPartial: true
     });
   });
+
+  it("parses the exact loop contract and defaults the agent timeout", () => {
+    expect(parseArgs(validLoopArgv)).toEqual({
+      command: "loop",
+      url: "http://localhost:3000",
+      outDir: "runs/repair",
+      until: "deterministic-failures==0",
+      maxIters: 3,
+      agentCmd: "codex exec --full-auto",
+      agentTimeoutMs: 300_000,
+      guidePath: undefined,
+      copyStylePath: undefined,
+      timeoutMs: undefined
+    });
+  });
+
+  it("parses loop bounds and optional audit configuration", () => {
+    expect(parseArgs([
+      ...validLoopArgv.slice(0, -4),
+      "--max-iters",
+      "10",
+      "--agent-cmd",
+      "repair-ui",
+      "--agent-timeout-ms",
+      "3600000",
+      "--timeout-ms",
+      "120000",
+      "--guide",
+      "config/design-guide.yaml",
+      "--copy",
+      "config/copy-style.yaml"
+    ])).toMatchObject({
+      command: "loop",
+      maxIters: 10,
+      agentCmd: "repair-ui",
+      agentTimeoutMs: 3_600_000,
+      timeoutMs: 120_000,
+      guidePath: "config/design-guide.yaml",
+      copyStylePath: "config/copy-style.yaml"
+    });
+  });
+
+  it.each(["failures==0", "deterministic-failures <= 0", "score==100", ""])(
+    "rejects unsupported loop condition %j",
+    (condition) => {
+      const argv = [...validLoopArgv];
+      argv[argv.indexOf("deterministic-failures==0")] = condition;
+      expect(() => parseArgs(argv)).toThrow(condition ? "Invalid --until" : "Missing value for --until");
+    }
+  );
+
+  it.each(["0", "11", "-1", "1.5", "NaN"])("rejects invalid --max-iters %s", (value) => {
+    const argv = [...validLoopArgv];
+    argv[argv.indexOf("3")] = value;
+    expect(() => parseArgs(argv)).toThrow("Invalid --max-iters");
+  });
+
+  it("accepts both iteration boundaries", () => {
+    const minimum = [...validLoopArgv];
+    minimum[minimum.indexOf("3")] = "1";
+    expect(parseArgs(minimum)).toMatchObject({ maxIters: 1 });
+    const maximum = [...validLoopArgv];
+    maximum[maximum.indexOf("3")] = "10";
+    expect(parseArgs(maximum)).toMatchObject({ maxIters: 10 });
+  });
+
+  it.each(["999", "3600001", "-1", "1000.5", "NaN"])(
+    "rejects invalid --agent-timeout-ms %s",
+    (value) => {
+      expect(() => parseArgs([...validLoopArgv, "--agent-timeout-ms", value])).toThrow(
+        "Invalid --agent-timeout-ms"
+      );
+    }
+  );
+
+  it("accepts both agent-timeout boundaries", () => {
+    expect(parseArgs([...validLoopArgv, "--agent-timeout-ms", "1000"]))
+      .toMatchObject({ agentTimeoutMs: 1_000 });
+    expect(parseArgs([...validLoopArgv, "--agent-timeout-ms", "3600000"]))
+      .toMatchObject({ agentTimeoutMs: 3_600_000 });
+  });
+
+  it("enforces trim, NUL, Unicode-scalar validity, and the 8192-scalar command bound", () => {
+    const commandIndex = validLoopArgv.indexOf("codex exec --full-auto");
+    const withCommand = (command: string): string[] => {
+      const argv = [...validLoopArgv];
+      argv[commandIndex] = command;
+      return argv;
+    };
+    for (const invalid of [" repair", "repair ", "repair\0now", "\ud800", "x".repeat(8_193)]) {
+      expect(() => parseArgs(withCommand(invalid))).toThrow("Invalid --agent-cmd");
+    }
+    const astralAtLimit = "🧰".repeat(8_192);
+    expect(parseArgs(withCommand(astralAtLimit))).toMatchObject({ agentCmd: astralAtLimit });
+    expect(() => parseArgs(withCommand(`${astralAtLimit}x`))).toThrow("Invalid --agent-cmd");
+  });
+
+  it("does not support --allow-partial or boolean options on loop", () => {
+    expect(() => parseArgs([...validLoopArgv, "--allow-partial"])).toThrow(
+      "Unknown option: --allow-partial"
+    );
+  });
+
+  it.each(["--url", "--out", "--until", "--max-iters", "--agent-cmd"])(
+    "requires loop option %s",
+    (option) => {
+      const optionIndex = validLoopArgv.indexOf(option);
+      const argv = validLoopArgv.filter((_value, index) => index !== optionIndex && index !== optionIndex + 1);
+      expect(() => parseArgs(argv)).toThrow(`Missing required ${option}`);
+    }
+  );
+
+  it.each(["--url", "--out", "--until", "--max-iters", "--agent-cmd", "--agent-timeout-ms"])(
+    "rejects duplicate loop option %s",
+    (option) => {
+      const duplicateValue = option === "--until"
+        ? "deterministic-failures==0"
+        : option === "--agent-timeout-ms"
+          ? "1000"
+          : option === "--max-iters"
+            ? "2"
+            : option === "--url"
+              ? "http://localhost:4000"
+              : "duplicate";
+      const argv = [...validLoopArgv, option, duplicateValue];
+      if (option === "--agent-timeout-ms") {
+        argv.push(option, duplicateValue);
+      }
+      expect(() => parseArgs(argv)).toThrow(`Duplicate option: ${option}`);
+    }
+  );
 
   it("rejects invalid timeout values", () => {
     expect(() => parseArgs(["audit", "--url", "http://localhost:3000", "--out", "runs/demo", "--timeout-ms", "NaN"])).toThrow(
@@ -255,6 +400,7 @@ describe("parseArgs", () => {
 
   it("returns scoped help commands", () => {
     expect(parseArgs(["audit", "--help"])).toEqual({ command: "help", scope: "audit" });
+    expect(parseArgs(["loop", "--help"])).toEqual({ command: "help", scope: "loop" });
     expect(parseArgs(["guide"])).toEqual({ command: "help", scope: "guide" });
     expect(parseArgs(["guide", "--help"])).toEqual({ command: "help", scope: "guide" });
     expect(parseArgs(["guide", "compile", "--help"])).toEqual({ command: "help", scope: "guide-compile" });
@@ -269,6 +415,21 @@ describe("helpText", () => {
     expect(helpText()).toContain("--copy <copy-style.yaml>");
     expect(helpText()).toContain("opt-in");
     expect(helpText()).not.toContain("v0.3");
+  });
+
+  it("warns at root and loop scope about the explicit process boundary", () => {
+    for (const text of [helpText(), helpText("loop")]) {
+      const normalized = text.toLowerCase();
+      expect(normalized).toContain("arbitrary code");
+      expect(normalized).toContain("caller");
+      expect(normalized).toContain("environment");
+      expect(normalized).toContain("credentials");
+      expect(normalized).toContain("no sandbox");
+      expect(normalized).toContain("network boundary");
+    }
+    expect(helpText("loop")).toContain("deterministic-failures==0");
+    expect(helpText("loop")).toContain("--agent-timeout-ms");
+    expect(helpText("loop")).toContain("--allow-partial is not supported");
   });
 
   it("renders scoped guide help", () => {

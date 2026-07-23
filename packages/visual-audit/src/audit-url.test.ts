@@ -13,7 +13,8 @@ import {
 } from "@design-harness/core";
 import { auditUrl, BrowserUnavailableError, type BrowserHandle, type PageHandle } from "./index.js";
 import type { ViewportCollectionResult } from "./browser-measurements.js";
-import type { ViewportMeasurements } from "./checks.js";
+import type { FindingCoverage, ViewportMeasurements } from "./checks.js";
+import { FINDING_COVERAGE_CHECK_NAMES } from "./finding-coverage.js";
 
 const viewport: ViewportPreset = {
   name: "desktop",
@@ -608,10 +609,17 @@ describe("auditUrl font-family adherence", () => {
       })
     ]);
     expect(result.auditResult.advisoryScore).toMatchObject({
-      formulaVersion: "epistemic-weight-v1",
+      formulaVersion: "epistemic-criterion-max-v2",
       value: 97.6,
+      totalDeduction: 2.4,
+      saturated: false,
       deductions: [
-        expect.objectContaining({ points: 2.4, reason: expect.stringContaining("deterministic risk") })
+        expect.objectContaining({
+          points: 2.4,
+          findingIds: [result.auditResult.findings[0]?.id],
+          viewports: ["desktop"],
+          reason: expect.stringContaining("deterministic risk")
+        })
       ]
     });
     expect(result.auditResult.status).toBe("success");
@@ -728,11 +736,67 @@ describe("auditUrl copy analysis", () => {
     expect(result.auditResult.findings.every((finding) => (
       finding.evidenceRefs.length === 1 && finding.evidenceRefs[0] === "text-inventory-desktop"
     ))).toBe(true);
-    expect(result.auditResult.advisoryScore.value).toBe(63.2);
+    expect(new Set(result.auditResult.findings.map((finding) => finding.criterionId)).size).toBe(5);
+    expect(result.auditResult.advisoryScore).toMatchObject({
+      formulaVersion: "epistemic-criterion-max-v2",
+      value: 63.2,
+      totalDeduction: 36.8,
+      saturated: false
+    });
     expect(result.auditResult.advisoryScore.deductions).toHaveLength(5);
+    if (result.auditResult.advisoryScore.formulaVersion !== "epistemic-criterion-max-v2") {
+      throw new Error("current audit producer did not emit criterion-max-v2");
+    }
+    for (const deduction of result.auditResult.advisoryScore.deductions) {
+      expect(deduction.findingIds).toEqual([deduction.findingId]);
+      expect(deduction.viewports).toEqual(["desktop"]);
+    }
     expect(result.auditResult.status).toBe("success");
     expect(result.auditResult).not.toHaveProperty("notices");
     expect(result.metadata.toolVersions["@design-harness/copy-audit"]).toBe(result.auditResult.harnessVersion);
+    expect(() => assertAuditResultIntegrity(result.auditResult)).not.toThrow();
+  });
+
+  it("bounds duplicate viewport occurrences per criterion while keeping distinct criteria additive", async () => {
+    const result = await auditUrl({
+      url: "http://localhost:3000",
+      outDir: await tempDir(),
+      viewportPresets: [viewport, mobileViewport],
+      copyStyle: copyStyle(),
+      launchBrowser: async () => fakeBrowser({
+        measurement: copyMeasurementFor("desktop"),
+        collectionResults: [
+          { measurements: copyMeasurementFor("desktop"), notices: [] },
+          { measurements: copyMeasurementFor("mobile"), notices: [] }
+        ]
+      })
+    });
+
+    expect(result.auditResult.findings).toHaveLength(10);
+    expect(new Set(result.auditResult.findings.map((finding) => finding.criterionId)).size).toBe(5);
+    expect(result.auditResult.advisoryScore).toMatchObject({
+      formulaVersion: "epistemic-criterion-max-v2",
+      value: 63.2,
+      totalDeduction: 36.8,
+      saturated: false
+    });
+    expect(result.auditResult.advisoryScore.deductions).toHaveLength(5);
+    if (result.auditResult.advisoryScore.formulaVersion !== "epistemic-criterion-max-v2") {
+      throw new Error("current audit producer did not emit criterion-max-v2");
+    }
+    for (const deduction of result.auditResult.advisoryScore.deductions) {
+      const representative = result.auditResult.findings.find((finding) => finding.id === deduction.findingId);
+      expect(representative).toBeDefined();
+      const findingIds = result.auditResult.findings
+        .filter((finding) => finding.criterionId === representative?.criterionId)
+        .map((finding) => finding.id)
+        .sort();
+      expect(findingIds).toHaveLength(2);
+      expect(deduction.findingId).toBe(findingIds[0]);
+      expect(deduction.findingIds).toEqual(findingIds);
+      expect(deduction.viewports).toEqual(["desktop", "mobile"]);
+    }
+    expect(result.auditResult.advisoryScore.deductions.reduce((sum, deduction) => sum + deduction.points, 0)).toBeCloseTo(36.8, 10);
     expect(() => assertAuditResultIntegrity(result.auditResult)).not.toThrow();
   });
 
@@ -778,8 +842,13 @@ describe("auditUrl copy analysis", () => {
     });
 
     expect(result.auditResult.findings).toHaveLength(10);
-    expect(result.auditResult.advisoryScore.value).toBe(26.4);
-    expect(result.auditResult.advisoryScore.deductions).toHaveLength(10);
+    expect(result.auditResult.advisoryScore).toMatchObject({
+      formulaVersion: "epistemic-criterion-max-v2",
+      value: 63.2,
+      totalDeduction: 36.8,
+      saturated: false
+    });
+    expect(result.auditResult.advisoryScore.deductions).toHaveLength(5);
     expect(result.auditResult.status).toBe("success");
     expect(result.auditResult.failedChecks).toEqual([]);
     expect(result.auditResult.notices).toHaveLength(2);
@@ -789,6 +858,134 @@ describe("auditUrl copy analysis", () => {
       expect(finding.evidenceRefs).toEqual([`text-inventory-${finding.viewport}`]);
     }
     expect(() => assertAuditResultIntegrity(result.auditResult)).not.toThrow();
+  });
+});
+
+describe("auditUrl finding coverage", () => {
+  it("emits one audit-level notice for multiple truncated checks in one viewport", async () => {
+    const measurement = measurementWithCappedSamples("desktop", 7, 8);
+    const coverage = browserCoverageFor("desktop", {
+      "text-clipping": { detectedCount: 7, emittedCount: 5 },
+      "missing-accessible-name": { detectedCount: 8, emittedCount: 5 }
+    });
+    const result = await auditUrl({
+      url: "http://localhost:3000",
+      outDir: await tempDir(),
+      viewportPresets: [viewport],
+      launchBrowser: async () => fakeBrowser({
+        measurement,
+        collectionResults: [{ measurements: measurement, notices: [], findingCoverage: coverage }]
+      })
+    });
+
+    const truncationNotices = result.auditResult.notices?.filter(({ code }) => code === "finding-samples-truncated");
+    expect(truncationNotices).toHaveLength(1);
+    expect(truncationNotices?.[0]).not.toHaveProperty("viewport");
+    expect(truncationNotices?.[0]?.details).toEqual({
+      viewports: [{
+        viewport: "desktop",
+        checks: [{
+          checkName: "missing-accessible-name",
+          detectedCount: 8,
+          emittedCount: 5,
+          limit: 5,
+          omittedCount: 3
+        }, {
+          checkName: "text-clipping",
+          detectedCount: 7,
+          emittedCount: 5,
+          limit: 5,
+          omittedCount: 2
+        }]
+      }]
+    });
+    expect(result.auditResult.findings).toHaveLength(10);
+    const measurementEvidence = result.auditResult.evidenceAssets.find(({ id }) => id === "measurement-desktop");
+    expect((measurementEvidence?.data?.findingCoverage as FindingCoverage | undefined)?.entries).toHaveLength(20);
+  });
+
+  it("keeps two viewports separate inside one viewport-sorted notice", async () => {
+    const mobileMeasurement = measurementWithCappedSamples("mobile", 0, 7);
+    const desktopMeasurement = measurementWithCappedSamples("desktop", 6, 0);
+    const result = await auditUrl({
+      url: "http://localhost:3000",
+      outDir: await tempDir(),
+      viewportPresets: [mobileViewport, viewport],
+      launchBrowser: async () => fakeBrowser({
+        measurement: mobileMeasurement,
+        collectionResults: [{
+          measurements: mobileMeasurement,
+          notices: [],
+          findingCoverage: browserCoverageFor("mobile", {
+            "missing-accessible-name": { detectedCount: 7, emittedCount: 5 }
+          })
+        }, {
+          measurements: desktopMeasurement,
+          notices: [],
+          findingCoverage: browserCoverageFor("desktop", {
+            "text-clipping": { detectedCount: 6, emittedCount: 5 }
+          })
+        }]
+      })
+    });
+
+    const notices = result.auditResult.notices?.filter(({ code }) => code === "finding-samples-truncated");
+    const viewports = notices?.[0]?.details?.viewports as Array<{ viewport: string }> | undefined;
+    expect(notices).toHaveLength(1);
+    expect(viewports?.map(({ viewport }) => viewport)).toEqual(["desktop", "mobile"]);
+  });
+
+  it("emits no truncation notice at or below the materialization limit", async () => {
+    const measurement = measurementWithCappedSamples("desktop", 5, 3);
+    const result = await auditUrl({
+      url: "http://localhost:3000",
+      outDir: await tempDir(),
+      viewportPresets: [viewport],
+      launchBrowser: async () => fakeBrowser({
+        measurement,
+        collectionResults: [{
+          measurements: measurement,
+          notices: [],
+          findingCoverage: browserCoverageFor("desktop", {
+            "text-clipping": { detectedCount: 5, emittedCount: 5 },
+            "missing-accessible-name": { detectedCount: 3, emittedCount: 3 }
+          })
+        }]
+      })
+    });
+
+    expect(result.auditResult.notices?.some(({ code }) => code === "finding-samples-truncated") ?? false).toBe(false);
+  });
+
+  it("keeps findings, status, failed checks, and v2 score byte-equal when only diagnostics are added", async () => {
+    const withoutCoverageMeasurement = measurementWithCappedSamples("desktop", 7, 0);
+    const withoutCoverage = await auditUrl({
+      url: "http://localhost:3000",
+      outDir: await tempDir(),
+      viewportPresets: [viewport],
+      launchBrowser: async () => fakeBrowser({ measurement: withoutCoverageMeasurement })
+    });
+    const withCoverageMeasurement = measurementWithCappedSamples("desktop", 7, 0);
+    const withCoverage = await auditUrl({
+      url: "http://localhost:3000",
+      outDir: await tempDir(),
+      viewportPresets: [viewport],
+      launchBrowser: async () => fakeBrowser({
+        measurement: withCoverageMeasurement,
+        collectionResults: [{
+          measurements: withCoverageMeasurement,
+          notices: [],
+          findingCoverage: browserCoverageFor("desktop", {
+            "text-clipping": { detectedCount: 7, emittedCount: 5 }
+          })
+        }]
+      })
+    });
+
+    expect(withCoverage.auditResult.findings).toEqual(withoutCoverage.auditResult.findings);
+    expect(withCoverage.auditResult.status).toBe(withoutCoverage.auditResult.status);
+    expect(withCoverage.auditResult.failedChecks).toEqual(withoutCoverage.auditResult.failedChecks);
+    expect(withCoverage.auditResult.advisoryScore).toEqual(withoutCoverage.auditResult.advisoryScore);
   });
 });
 
@@ -990,6 +1187,45 @@ function measurementFor(name: string): ViewportMeasurements {
     customControlSemanticsRisks: [],
     movingContentControlRisks: [],
     textInventory: []
+  };
+}
+
+function measurementWithCappedSamples(
+  name: string,
+  clippedTextCount: number,
+  missingAccessibleNameCount: number
+): ViewportMeasurements {
+  return {
+    ...measurementFor(name),
+    clippedText: Array.from({ length: clippedTextCount }, (_, index) => ({ selector: `.clipped-${index}` })),
+    missingAccessibleNames: Array.from(
+      { length: missingAccessibleNameCount },
+      (_, index) => ({ selector: `.unnamed-${index}` })
+    )
+  };
+}
+
+function browserCoverageFor(
+  viewport: string,
+  counts: Partial<Record<string, { detectedCount: number; emittedCount: number }>> = {}
+): FindingCoverage {
+  return {
+    viewport,
+    entries: FINDING_COVERAGE_CHECK_NAMES
+      .filter((checkName) => checkName !== "dom-contrast-risk" && checkName !== "tap-target-risk")
+      .map((checkName) => {
+        const count = counts[checkName] ?? { detectedCount: 0, emittedCount: 0 };
+        return {
+          checkName,
+          ...(checkName === "empty-heading" || checkName === "heading-level-skip" || checkName === "duplicate-h1"
+            ? { capGroup: "headingIssues" }
+            : {}),
+          detectedCount: count.detectedCount,
+          emittedCount: count.emittedCount,
+          omittedCount: count.detectedCount - count.emittedCount,
+          limit: 5
+        };
+      })
   };
 }
 

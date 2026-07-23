@@ -1,7 +1,8 @@
 import {
   projectFontFamilyAdherencePolicy,
   type CopyStyle,
-  type DesignGuide
+  type DesignGuide,
+  type FontFamilyAdherencePolicy
 } from "@design-harness/core";
 import {
   BrowserUnavailableError,
@@ -9,7 +10,12 @@ import {
   type AuditUrlOptions,
   type AuditUrlResult
 } from "@design-harness/visual-audit";
-import { helpText, parseArgs } from "./args.js";
+import {
+  helpText,
+  parseArgs,
+  type AuditCommandArgs,
+  type LoopCommandArgs
+} from "./args.js";
 import { loadCopyStyleFile, type LoadCopyStyleOptions } from "./copy-style.js";
 import { loadDesignGuideFile, type LoadDesignGuideOptions } from "./design-guide.js";
 import {
@@ -18,6 +24,12 @@ import {
   type GuideRunDependencies,
   type GuideRunResult
 } from "./guide-run.js";
+import {
+  runLoop,
+  type LoopRunDependencies,
+  type LoopRunInput,
+  type LoopRunResult
+} from "./loop-run.js";
 import { writeAuditArtifacts, type WriteAuditArtifactsInput } from "./output.js";
 import { assertLocalHttpUrl } from "./url.js";
 
@@ -26,6 +38,7 @@ export interface RunCliDependencies {
   loadDesignGuide?: (path: string, options?: LoadDesignGuideOptions) => Promise<DesignGuide>;
   loadCopyStyle?: (path: string, options?: LoadCopyStyleOptions) => Promise<CopyStyle>;
   runGuide?: (args: GuideCommandArgs, dependencies?: GuideRunDependencies) => Promise<GuideRunResult>;
+  runLoop?: (input: LoopRunInput, dependencies?: LoopRunDependencies) => Promise<LoopRunResult>;
   writeArtifacts?: (input: WriteAuditArtifactsInput) => Promise<void>;
   assertUrl?: (url: string) => string;
   cwd?: () => string;
@@ -65,31 +78,59 @@ export async function runCli(argv: string[], dependencies: RunCliDependencies = 
   }
 
   try {
-    const url = (dependencies.assertUrl ?? assertLocalHttpUrl)(args.url);
-    const configCwd = args.guidePath || args.copyStylePath
-      ? (dependencies.cwd ?? process.cwd)()
-      : undefined;
-    const designGuide = args.guidePath
-      ? await (dependencies.loadDesignGuide ?? loadDesignGuideFile)(args.guidePath, { cwd: configCwd })
-      : undefined;
-    const fontFamilyPolicy = designGuide
-      ? projectFontFamilyAdherencePolicy(designGuide)
-      : undefined;
-    const copyStyle = args.copyStylePath
-      ? await (dependencies.loadCopyStyle ?? loadCopyStyleFile)(args.copyStylePath, {
-          cwd: configCwd
-        })
-      : undefined;
+    const prepared = await prepareAuditConfiguration(args, dependencies);
+    if (args.command === "loop") {
+      const loopInput: LoopRunInput = {
+        url: prepared.url,
+        outDir: args.outDir,
+        until: args.until,
+        maxIters: args.maxIters,
+        agentCmd: args.agentCmd,
+        agentTimeoutMs: args.agentTimeoutMs,
+        cwd: prepared.invocationCwd as string,
+        timeoutMs: args.timeoutMs
+      };
+      if (prepared.copyStyle) {
+        loopInput.copyStyle = prepared.copyStyle;
+      }
+      if (prepared.fontFamilyPolicy) {
+        loopInput.fontFamilyPolicy = prepared.fontFamilyPolicy;
+      }
+      const loopDependencies: LoopRunDependencies = {};
+      if (dependencies.audit) {
+        loopDependencies.audit = dependencies.audit;
+      }
+      if (dependencies.writeArtifacts) {
+        loopDependencies.writeArtifacts = dependencies.writeArtifacts;
+      }
+
+      stderr(
+        "Warning: --agent-cmd executes arbitrary code with the caller's permissions and inherited environment; "
+        + "Design Harness provides no sandbox or network boundary."
+      );
+      const result = await (dependencies.runLoop ?? runLoop)(loopInput, loopDependencies);
+      stdout(`Design Harness loop ${result.summary.status}: ${args.outDir}`);
+      stdout(`Summary: ${args.outDir}/loop-summary.json`);
+      if (result.exitCode === 2) {
+        stderr("Loop stopped because the latest audit is partial; no later agent pass was run.");
+      } else if (result.exitCode === 3) {
+        stderr("Loop stopped with valid evidence before the deterministic-failure condition was reached.");
+      } else if (result.exitCode === 1) {
+        stderr("Loop stopped after an audit, agent, timeout, or summary error.");
+      }
+      return result.exitCode;
+    }
+
     const auditOptions: AuditUrlOptions = {
-      url,
+      url: prepared.url,
       outDir: args.outDir,
       timeoutMs: args.timeoutMs
     };
-    if (copyStyle) {
-      auditOptions.copyStyle = copyStyle;
+    if (prepared.copyStyle) {
+      auditOptions.copyStyle = prepared.copyStyle;
     }
-    if (fontFamilyPolicy) {
-      auditOptions.fontFamilyPolicy = fontFamilyPolicy;
+    if (prepared.fontFamilyPolicy) {
+      auditOptions.fontFamilyPolicy = prepared.fontFamilyPolicy;
     }
 
     const result = await (dependencies.audit ?? auditUrl)(auditOptions);
@@ -114,6 +155,34 @@ export async function runCli(argv: string[], dependencies: RunCliDependencies = 
     stderr(errorMessage(error));
     return 1;
   }
+}
+
+interface PreparedAuditConfiguration {
+  url: string;
+  invocationCwd?: string;
+  copyStyle?: CopyStyle;
+  fontFamilyPolicy?: FontFamilyAdherencePolicy;
+}
+
+async function prepareAuditConfiguration(
+  args: AuditCommandArgs | LoopCommandArgs,
+  dependencies: RunCliDependencies
+): Promise<PreparedAuditConfiguration> {
+  const url = (dependencies.assertUrl ?? assertLocalHttpUrl)(args.url);
+  const needsInvocationCwd = args.command === "loop" || Boolean(args.guidePath || args.copyStylePath);
+  const invocationCwd = needsInvocationCwd
+    ? (dependencies.cwd ?? process.cwd)()
+    : undefined;
+  const designGuide = args.guidePath
+    ? await (dependencies.loadDesignGuide ?? loadDesignGuideFile)(args.guidePath, { cwd: invocationCwd })
+    : undefined;
+  const fontFamilyPolicy = designGuide
+    ? projectFontFamilyAdherencePolicy(designGuide)
+    : undefined;
+  const copyStyle = args.copyStylePath
+    ? await (dependencies.loadCopyStyle ?? loadCopyStyleFile)(args.copyStylePath, { cwd: invocationCwd })
+    : undefined;
+  return { url, invocationCwd, copyStyle, fontFamilyPolicy };
 }
 
 function renderGuideResult(

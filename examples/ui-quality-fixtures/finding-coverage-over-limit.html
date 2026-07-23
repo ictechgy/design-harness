@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Finding coverage — over limit</title>
+    <style>
+      html {
+        background: #ffffff;
+      }
+
+      body {
+        margin: 0;
+        padding: 32px;
+        background: #ffffff;
+        color: #111111;
+        font-family: Arial, sans-serif;
+      }
+
+      main {
+        max-width: 320px;
+      }
+
+      h1 {
+        margin: 0 0 24px;
+        font-size: 20px;
+        line-height: 28px;
+      }
+
+      /* Five columns keep every 16px target's centre 20px from a neighbour in both viewport presets.
+         Each target is therefore a genuine, non-exempt WCAG 2.5.8 risk rather than merely undersized. */
+      .coverage-grid {
+        display: grid;
+        grid-template-columns: repeat(5, 16px);
+        gap: 4px;
+      }
+
+      /* One element deliberately supplies one semantic match to each over-limit detector:
+         - 16px fixed box + nowrap + hidden overflow => text-clipping;
+         - #aaa on #fff at normal 12px text => sub-4.5:1 dom-contrast-risk;
+         - 16x16 with a neighbour 20px away => non-exempt tap-target-risk.
+         Unique visible text and aria-labels prevent repeated-label and missing-name findings. */
+      .coverage-target {
+        box-sizing: border-box;
+        width: 16px;
+        height: 16px;
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+        border: 0;
+        background: #ffffff;
+        color: #aaaaaa;
+        font: 400 12px/16px Arial, sans-serif;
+        white-space: nowrap;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Coverage limit calibration</h1>
+      <div class="coverage-grid">
+        <button class="coverage-target" type="button" aria-label="Coverage target 01">Target 01 overflow</button>
+        <button class="coverage-target" type="button" aria-label="Coverage target 02">Target 02 overflow</button>
+        <button class="coverage-target" type="button" aria-label="Coverage target 03">Target 03 overflow</button>
+        <button class="coverage-target" type="button" aria-label="Coverage target 04">Target 04 overflow</button>
+        <button class="coverage-target" type="button" aria-label="Coverage target 05">Target 05 overflow</button>
+        <button class="coverage-target" type="button" aria-label="Coverage target 06">Target 06 overflow</button>
+        <button class="coverage-target" type="button" aria-label="Coverage target 07">Target 07 overflow</button>
+        <button class="coverage-target" type="button" aria-label="Coverage target 08">Target 08 overflow</button>
+        <button class="coverage-target" type="button" aria-label="Coverage target 09">Target 09 overflow</button>
+        <button class="coverage-target" type="button" aria-label="Coverage target 10">Target 10 overflow</button>
+        <button class="coverage-target" type="button" aria-label="Coverage target 11">Target 11 overflow</button>
+        <button class="coverage-target" type="button" aria-label="Coverage target 12">Target 12 overflow</button>
+        <button class="coverage-target" type="button" aria-label="Coverage target 13">Target 13 overflow</button>
+        <button class="coverage-target" type="button" aria-label="Coverage target 14">Target 14 overflow</button>
+        <button class="coverage-target" type="button" aria-label="Coverage target 15">Target 15 overflow</button>
+        <button class="coverage-target" type="button" aria-label="Coverage target 16">Target 16 overflow</button>
+        <button class="coverage-target" type="button" aria-label="Coverage target 17">Target 17 overflow</button>
+        <button class="coverage-target" type="button" aria-label="Coverage target 18">Target 18 overflow</button>
+        <button class="coverage-target" type="button" aria-label="Coverage target 19">Target 19 overflow</button>
+        <button class="coverage-target" type="button" aria-label="Coverage target 20">Target 20 overflow</button>
+        <button class="coverage-target" type="button" aria-label="Coverage target 21">Target 21 overflow</button>
+        <button class="coverage-target" type="button" aria-label="Coverage target 22">Target 22 overflow</button>
+        <button class="coverage-target" type="button" aria-label="Coverage target 23">Target 23 overflow</button>
+        <button class="coverage-target" type="button" aria-label="Coverage target 24">Target 24 overflow</button>
+        <button class="coverage-target" type="button" aria-label="Coverage target 25">Target 25 overflow</button>
+      </div>
+    </main>
+  </body>
+</html>

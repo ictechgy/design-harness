@@ -8,7 +8,7 @@ export const CRITERION_SOURCES: CriterionSource[] = [
     strength: "official-testable",
     note: "Use only for scoped checks that Design Harness actually implements.",
     // WCAG 2.2 success-criterion ids per criterion (ADR-001). KWCAG 2.2 clause
-    // mapping lands as its own source entry with the v0.6 Korean market slice.
+    // mapping lands as its own source entry with the unscheduled v0.7 Korean market slice.
     clausesByCriterion: {
       "responsive.horizontal-overflow.none": ["1.4.10"],
       "a11y.text-contrast.minimum": ["1.4.3"],

@@ -32,7 +32,7 @@ try {
   assertGoodResult(good.auditResult);
   assertNoCopyResult(noCopy.auditResult);
   assertCliResult(cli.auditResult, cli.metadata);
-  console.log("Copy smoke passed: programmatic and CLI parser-free findings, no-copy behavior, surfaces, evidence, and provenance verified.");
+  console.log("Copy smoke passed: criterion-bounded programmatic and CLI scoring, parser-free findings, no-copy behavior, surfaces, evidence, and provenance verified.");
 } finally {
   await fixtureServer.close();
 }
@@ -77,6 +77,7 @@ function assertCliResult(auditResult, metadata) {
     auditResult.findings.length === parserFreeCopyCheckNames.length * DEFAULT_VIEWPORT_PRESETS.length,
     `CLI fixture emitted ${auditResult.findings.length} findings`
   );
+  assertCriterionMaxScore(auditResult, DEFAULT_VIEWPORT_PRESETS.map((viewport) => viewport.name));
   assert(
     metadata.toolVersions?.["@design-harness/copy-audit"] === HARNESS_VERSION,
     "CLI metadata omitted or changed the copy-audit tool version"
@@ -105,12 +106,7 @@ function assertBadResult(auditResult) {
     JSON.stringify(auditResult.findings.map((finding) => finding.checkName)) === JSON.stringify(parserFreeCopyCheckNames),
     `bad fixture check order was ${auditResult.findings.map((finding) => finding.checkName).join(", ")}`
   );
-  assert(auditResult.advisoryScore.value === 63.2, `bad fixture score was ${auditResult.advisoryScore.value}`);
-  assert(auditResult.advisoryScore.band === "needs-work", `bad fixture band was ${auditResult.advisoryScore.band}`);
-  assert(
-    sum(auditResult.advisoryScore.deductions.map((deduction) => deduction.points)) === 36.8,
-    "bad fixture deduction was not 36.8"
-  );
+  assertCriterionMaxScore(auditResult, ["desktop"]);
   assert(
     auditResult.findings.every((finding) => (
       finding.viewport === "desktop" &&
@@ -126,8 +122,7 @@ function assertGoodResult(auditResult) {
   assert(auditResult.status === "success", `good fixture status was ${auditResult.status}`);
   assert(auditResult.failedChecks.length === 0, "good fixture recorded failed checks");
   assert(auditResult.findings.length === 0, `good fixture emitted ${auditResult.findings.length} findings`);
-  assert(auditResult.advisoryScore.value === 100, `good fixture score was ${auditResult.advisoryScore.value}`);
-  assert(auditResult.advisoryScore.band === "strong", `good fixture band was ${auditResult.advisoryScore.band}`);
+  assertEmptyCriterionMaxScore(auditResult, "good fixture");
   assertNoticeAndSurfaceContract(auditResult);
   assertNestedSurfaceInheritance(auditResult);
   assertSurfacePrecedence(auditResult);
@@ -136,6 +131,7 @@ function assertGoodResult(auditResult) {
 function assertNoCopyResult(auditResult) {
   assert(auditResult.status === "success", `no-copy fixture status was ${auditResult.status}`);
   assert((auditResult.notices?.length ?? 0) === 0, "no-copy audit emitted notices");
+  assertEmptyCriterionMaxScore(auditResult, "no-copy fixture");
   const items = textInventoryItems(auditResult);
   const multiRoleItem = items.find((item) => item.selector === "#multi-role-copy");
   assert(multiRoleItem?.role === explicitRoleEvidence, `no-copy evidence role was ${multiRoleItem?.role}`);
@@ -209,6 +205,46 @@ function textInventoryItems(auditResult) {
   const items = textEvidence?.data?.items;
   assert(Array.isArray(items), "desktop text inventory items were not recorded");
   return items;
+}
+
+function assertCriterionMaxScore(auditResult, expectedViewports) {
+  const score = auditResult.advisoryScore;
+  assert(score.formulaVersion === "epistemic-criterion-max-v2", `score formula was ${score.formulaVersion}`);
+  assert(score.value === 63.2, `criterion-max score was ${score.value}`);
+  assert(score.band === "needs-work", `criterion-max band was ${score.band}`);
+  assert(score.totalDeduction === 36.8, `criterion-max total deduction was ${score.totalDeduction}`);
+  assert(score.saturated === false, "criterion-max score was unexpectedly saturated");
+  assert(score.deductions.length === 5, `criterion-max emitted ${score.deductions.length} deductions`);
+  assert(sum(score.deductions.map((deduction) => deduction.points)) === 36.8, "group deductions did not add to 36.8");
+
+  const criterionIds = new Set(auditResult.findings.map((finding) => finding.criterionId));
+  assert(criterionIds.size === 5, `copy fixture covered ${criterionIds.size} distinct criteria`);
+  for (const deduction of score.deductions) {
+    const representative = auditResult.findings.find((finding) => finding.id === deduction.findingId);
+    assert(representative !== undefined, `deduction referenced missing representative ${deduction.findingId}`);
+    const findingIds = auditResult.findings
+      .filter((finding) => finding.criterionId === representative.criterionId)
+      .map((finding) => finding.id)
+      .sort();
+    const viewports = [...new Set(auditResult.findings
+      .filter((finding) => finding.criterionId === representative.criterionId)
+      .map((finding) => finding.viewport))]
+      .sort();
+    assert(JSON.stringify(deduction.findingIds) === JSON.stringify(findingIds), `group members drifted for ${representative.criterionId}`);
+    assert(deduction.findingId === findingIds[0], `group representative drifted for ${representative.criterionId}`);
+    assert(JSON.stringify(deduction.viewports) === JSON.stringify(viewports), `group viewports drifted for ${representative.criterionId}`);
+    assert(JSON.stringify(viewports) === JSON.stringify([...expectedViewports].sort()), `unexpected viewports for ${representative.criterionId}`);
+  }
+}
+
+function assertEmptyCriterionMaxScore(auditResult, label) {
+  const score = auditResult.advisoryScore;
+  assert(score.formulaVersion === "epistemic-criterion-max-v2", `${label} score formula was ${score.formulaVersion}`);
+  assert(score.value === 100, `${label} score was ${score.value}`);
+  assert(score.band === "strong", `${label} band was ${score.band}`);
+  assert(score.totalDeduction === 0, `${label} total deduction was ${score.totalDeduction}`);
+  assert(score.saturated === false, `${label} score was unexpectedly saturated`);
+  assert(score.deductions.length === 0, `${label} emitted score deductions`);
 }
 
 function assert(condition, message) {

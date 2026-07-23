@@ -26,6 +26,7 @@ import {
 } from "./browser-measurements.js";
 import { createRenderFailureFinding, findingsFromMeasurements, type ViewportMeasurements } from "./checks.js";
 import { BrowserUnavailableError } from "./errors.js";
+import { findingSamplesTruncatedNotice } from "./finding-coverage.js";
 import {
   analyzeFontFamilyAdherence,
   type FontFamilyAdherenceAnalysisError
@@ -212,6 +213,9 @@ export async function auditUrl(options: AuditUrlOptions): Promise<AuditUrlResult
         try {
           const collection = await collectViewportMeasurements(page, measurementConfig);
           const measurement = collection.measurements;
+          if (collection.findingCoverage) {
+            measurement.findingCoverage = collection.findingCoverage;
+          }
           noticeCandidates.push(...collection.notices);
           if (collection.layoutMetrics) {
             layoutMetrics.push(collection.layoutMetrics);
@@ -292,6 +296,14 @@ export async function auditUrl(options: AuditUrlOptions): Promise<AuditUrlResult
   }
 
   findings.push(...measurementRecords.flatMap((record) => findingsFromMeasurements(record.measurement, record.evidenceRefs)));
+  const truncationNotice = findingSamplesTruncatedNotice(
+    measurementRecords.flatMap(({ measurement }) => (
+      measurement.findingCoverage ? [measurement.findingCoverage] : []
+    ))
+  );
+  if (truncationNotice) {
+    noticeCandidates.push(truncationNotice);
+  }
   const finishedAtMs = Date.now();
   const finishedAt = new Date(finishedAtMs).toISOString();
   const status: RunStatus = failedChecks.length > 0 ? "partial" : "success";

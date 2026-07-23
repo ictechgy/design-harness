@@ -2,7 +2,23 @@
 
 ## Unreleased
 
-No changes yet.
+- Reconciled release, install, roadmap, and integration documentation with the published v0.6.0 state; every entry below remains checkout-only and unreleased.
+- Made DOM contrast measurement fail closed when `opacity`, `mix-blend-mode`, or `filter` on the measured element or an ancestor makes the painted result indeterminate, with exact coverage and live-fixture regression gates.
+- Made current advisory scoring criterion-bounded with formula-discriminated v2 group membership, totals, and saturation while preserving validation of historical v1 artifacts under schema `0.2`.
+- Added exact pre-cap cardinality for every reachable capped visual detector and one neutral audit-level notice when bounded finding samples are omitted.
+- Added the unreleased bounded `design-harness loop` for the exact deterministic-failure gate, with fresh per-iteration artifacts, no-progress detection, an explicit timed agent-command boundary, sanitized atomic summaries, packed non-execution guards, and live repair/error smokes.
+
+## 0.6.0 - 2026-07-23
+
+- Added design-guide font-family adherence checks, including an explicit audit-only allowlist for intentional runtime families.
+- Repaired DOM contrast measurement with both-channel alpha compositing, `oklab()` / `oklch()` conversion, and skip-on-unknown coverage; repaired tap-target spacing-exception handling; and added measurement-only layout metric distributions.
+- Made report verdict and critique copy reflect the findings' actual epistemic composition, with the same copy guardrails enforced by the validation chain.
+- Changed generated agent guidance to render semantic colors, dimensions, radii, and font stacks as CSS-usable literals while preserving machine-token output and source hashes.
+
+Compatibility notes:
+
+- `schemaVersion` remains `0.2`; additive contracts include the project-declared font-family criterion and optional layout metrics, with no enum change.
+- Historical example artifacts retain the version of the producer that generated them.
 
 ## 0.5.0 - 2026-07-19
 

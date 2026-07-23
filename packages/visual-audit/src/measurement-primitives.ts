@@ -19,6 +19,9 @@ import type { ContrastRiskSample, ElementSample } from "./checks.js";
 export type ContrastSkipReason =
   | "background-image"
   | "backdrop-filter"
+  | "opacity"
+  | "mix-blend-mode"
+  | "filter"
   | "unsupported-color-space"
   | "invisible-text"
   | "detached-backdrop";
@@ -56,6 +59,8 @@ export interface ContrastCoverage {
 
 export interface ContrastRiskResult {
   risks: ContrastRiskSample[];
+  /** Exact post-skip, below-threshold count before `MAX_CONTRAST_SAMPLES` is applied. */
+  detectedCount: number;
   coverage: ContrastCoverage;
 }
 
@@ -405,6 +410,7 @@ export function computeContrastRisks(candidates: ContrastCandidate[]): ContrastR
 
   return {
     risks: risks.slice(0, MAX_CONTRAST_SAMPLES),
+    detectedCount: risks.length,
     coverage: { evaluatedElementCount, skippedElementCount, skippedByReason }
   };
 }
@@ -427,6 +433,12 @@ export interface TapTargetCandidate extends ElementSample {
 
 /** Maximum tap-target samples carried in a viewport's measurement payload. */
 export const MAX_TAP_TARGET_SAMPLES = 10;
+
+export interface TapTargetRiskResult {
+  risks: ElementSample[];
+  /** Exact count after evaluating the Spacing exception against the complete neighbour set. */
+  detectedCount: number;
+}
 
 /** SC 2.5.8's minimum, and the derived circle radius. */
 export const TAP_TARGET_MINIMUM_PX = 24;
@@ -490,7 +502,7 @@ export function tapTargetSpacingExempt(target: TargetRect, neighbours: TargetRec
  * but only undersized elements can be *flagged*. Runs over the full set before any slice, so a genuine
  * violation cannot be pushed out of the sample window by exempt neighbours.
  */
-export function computeTapTargetRisks(candidates: TapTargetCandidate[]): ElementSample[] {
+export function computeTapTargetRisks(candidates: TapTargetCandidate[]): TapTargetRiskResult {
   const rects = candidates.map((candidate) => candidate.rect);
   const risks: ElementSample[] = [];
   for (const candidate of candidates) {
@@ -503,5 +515,8 @@ export function computeTapTargetRisks(candidates: TapTargetCandidate[]): Element
     }
     risks.push(sample);
   }
-  return risks.slice(0, MAX_TAP_TARGET_SAMPLES);
+  return {
+    risks: risks.slice(0, MAX_TAP_TARGET_SAMPLES),
+    detectedCount: risks.length
+  };
 }

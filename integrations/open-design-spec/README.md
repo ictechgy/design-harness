@@ -1,6 +1,6 @@
 # Open Design Handoff Spec
 
-This is a v0.1 handoff contract only. Design Harness does not ship a verified Open Design plugin yet.
+This is a retained v0.1 handoff contract only. Design Harness does not ship an Open Design plugin, and the integration is cut from the current roadmap unless the owner explicitly reopens it.
 
 ## Goal
 
@@ -29,6 +29,6 @@ screenshots/mobile.png
 
 ## Constraints
 
-- Do not treat Open Design integration as production-ready until the API surface is verified.
+- Do not treat this spec as a production integration or as a commitment to build one.
 - Do not collapse deterministic audit findings and subjective critique.
 - Preserve evidence IDs so agents and humans can trace recommendations back to screenshots or measurements.

@@ -212,11 +212,22 @@ describe("computeContrastRisks", () => {
     expect(risks[0]).toMatchObject({ color: "rgb(220, 220, 220)", backgroundColor: "rgb(255, 255, 255)" });
   });
 
-  it("caps the emitted samples", () => {
+  it("reports all 25 detected risks while carrying at most 10 samples", () => {
     const many = Array.from({ length: 25 }, (_unused, index) =>
       candidate({ selector: `#fail-${index}`, color: "rgb(250, 250, 250)" })
     );
-    expect(computeContrastRisks(many).risks).toHaveLength(10);
+    const { risks, detectedCount } = computeContrastRisks(many);
+    expect(detectedCount).toBe(25);
+    expect(risks).toHaveLength(10);
+  });
+
+  it("keeps the exact detected count when it is at or below the sample cap", () => {
+    const atCap = Array.from({ length: 10 }, (_unused, index) =>
+      candidate({ selector: `#at-cap-${index}`, color: "rgb(250, 250, 250)" })
+    );
+    const { risks, detectedCount } = computeContrastRisks(atCap);
+    expect(detectedCount).toBe(10);
+    expect(risks).toHaveLength(10);
   });
 
   // Rewritten from the step-3 pin, which asserted the fail-open fabricated a 1:1 ratio.
@@ -267,10 +278,47 @@ describe("computeContrastRisks", () => {
   it("honours a skip reason set by the browser walk", () => {
     const { risks, coverage } = computeContrastRisks([
       candidate({ selector: "#hero", skipReason: "background-image" }),
-      candidate({ selector: "#glass", skipReason: "backdrop-filter" })
+      candidate({ selector: "#glass", skipReason: "backdrop-filter" }),
+      candidate({ selector: "#faded", skipReason: "opacity" }),
+      candidate({ selector: "#blended", skipReason: "mix-blend-mode" }),
+      candidate({ selector: "#filtered", skipReason: "filter" })
     ]);
     expect(risks).toHaveLength(0);
-    expect(coverage.skippedByReason).toEqual({ "background-image": 1, "backdrop-filter": 1 });
+    expect(coverage.skippedByReason).toEqual({
+      "background-image": 1,
+      "backdrop-filter": 1,
+      opacity: 1,
+      "mix-blend-mode": 1,
+      filter: 1
+    });
+  });
+
+  it("keeps browser skip reasons above Node colour and foreground skips", () => {
+    const { risks, coverage } = computeContrastRisks([
+      candidate({ selector: "#invalid-colour", color: "lab(50 40 59.5)", skipReason: "opacity" }),
+      candidate({ selector: "#invisible", color: "rgba(0, 0, 0, 0)", skipReason: "filter" })
+    ]);
+    expect(risks).toHaveLength(0);
+    expect(coverage).toEqual({
+      evaluatedElementCount: 0,
+      skippedElementCount: 2,
+      skippedByReason: { opacity: 1, filter: 1 }
+    });
+  });
+
+  it("does not globally skip ordinary candidates when paint effects use normal defaults", () => {
+    const { risks, coverage } = computeContrastRisks([
+      candidate({ selector: "#ordinary-low-contrast", color: "rgb(120, 120, 120)" }),
+      candidate({ selector: "#faded", skipReason: "opacity" }),
+      candidate({ selector: "#blended", skipReason: "mix-blend-mode" }),
+      candidate({ selector: "#filtered", skipReason: "filter" })
+    ]);
+    expect(risks.map((risk) => risk.selector)).toEqual(["#ordinary-low-contrast"]);
+    expect(coverage).toEqual({
+      evaluatedElementCount: 1,
+      skippedElementCount: 3,
+      skippedByReason: { opacity: 1, "mix-blend-mode": 1, filter: 1 }
+    });
   });
 
   it("reports coverage so silence is distinguishable from not measuring", () => {
@@ -379,7 +427,7 @@ describe("tap-target Spacing exception", () => {
         candidate("#lonely", box(300, 300, 16, 16)),
         candidate("#big", box(300, 20, 44, 44))
       ];
-      expect(computeTapTargetRisks(candidates).map((risk) => risk.selector).sort())
+      expect(computeTapTargetRisks(candidates).risks.map((risk) => risk.selector).sort())
         .toEqual(["#cramp-a", "#cramp-b", "#disc"]);
     });
 
@@ -391,22 +439,33 @@ describe("tap-target Spacing exception", () => {
         candidate("#small", box(120, 100, 16, 16)),
         candidate("#ua-check", box(20, 200, 13, 13))
       ];
-      expect(computeTapTargetRisks(candidates)).toEqual([]);
+      expect(computeTapTargetRisks(candidates)).toEqual({ risks: [], detectedCount: 0 });
     });
 
     it("drops the rect field and keeps the sample shape", () => {
       const [risk] = computeTapTargetRisks([
         candidate("#a", box(20, 20, 16, 16)),
         candidate("#b", box(40, 20, 16, 16))
-      ]);
+      ]).risks;
       expect(Object.keys(risk)).toEqual(["selector", "text", "region"]);
     });
 
-    it("caps the emitted samples", () => {
+    it("reports all 25 detected risks while carrying at most 10 samples", () => {
       const many = Array.from({ length: 25 }, (_unused, index) =>
         candidate(`#x-${index}`, box(index * 20, 0, 16, 16))
       );
-      expect(computeTapTargetRisks(many).length).toBeLessThanOrEqual(10);
+      const { risks, detectedCount } = computeTapTargetRisks(many);
+      expect(detectedCount).toBe(25);
+      expect(risks).toHaveLength(10);
+    });
+
+    it("keeps the exact detected count when it is below the sample cap", () => {
+      const belowCap = Array.from({ length: 6 }, (_unused, index) =>
+        candidate(`#below-cap-${index}`, box(index * 20, 0, 16, 16))
+      );
+      const { risks, detectedCount } = computeTapTargetRisks(belowCap);
+      expect(detectedCount).toBe(6);
+      expect(risks).toHaveLength(6);
     });
   });
 });

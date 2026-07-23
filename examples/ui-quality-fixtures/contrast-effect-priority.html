@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Contrast paint effects — priority</title>
+    <style>
+      body {
+        margin: 0;
+        min-height: 480px;
+        padding: 32px;
+        font: 16px/1.5 system-ui, sans-serif;
+      }
+      main {
+        display: grid;
+        gap: 12px;
+        max-width: 480px;
+      }
+      .case {
+        min-height: 44px;
+      }
+      .candidate {
+        box-sizing: border-box;
+        margin: 0;
+        min-height: 44px;
+        padding: 10px 12px;
+        color: #777777;
+        background-color: #ffffff;
+      }
+      #background-image-ancestor {
+        opacity: 0.8;
+      }
+      #priority-background-image {
+        background-image: linear-gradient(#ffffff, #ffffff);
+      }
+      #backdrop-filter-ancestor {
+        opacity: 0.8;
+      }
+      #priority-backdrop-filter {
+        backdrop-filter: blur(1px);
+      }
+      #detached-ancestor {
+        position: relative;
+        opacity: 0.8;
+      }
+      #priority-detached {
+        position: absolute;
+        inset: 0;
+        background-color: transparent;
+      }
+      #all-effects-ancestor {
+        opacity: 0.8;
+        mix-blend-mode: multiply;
+        filter: brightness(1);
+      }
+      #blend-filter-ancestor {
+        mix-blend-mode: multiply;
+        filter: brightness(1);
+      }
+      #filter-only-ancestor {
+        filter: brightness(1);
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <div class="case" id="background-image-ancestor">
+        <p class="candidate" id="priority-background-image">Background image outranks opacity</p>
+      </div>
+      <div class="case" id="backdrop-filter-ancestor">
+        <p class="candidate" id="priority-backdrop-filter">Backdrop filter outranks opacity</p>
+      </div>
+      <div class="case" id="detached-ancestor">
+        <p class="candidate" id="priority-detached">Detached backdrop outranks opacity</p>
+      </div>
+      <div class="case" id="all-effects-ancestor">
+        <p class="candidate" id="priority-opacity">Opacity outranks blend and filter</p>
+      </div>
+      <div class="case" id="blend-filter-ancestor">
+        <p class="candidate" id="priority-blend">Blend outranks filter</p>
+      </div>
+      <div class="case" id="filter-only-ancestor">
+        <p class="candidate" id="priority-filter">Filter supplies the final reason</p>
+      </div>
+    </main>
+  </body>
+</html>

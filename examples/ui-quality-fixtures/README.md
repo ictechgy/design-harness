@@ -28,6 +28,12 @@ Small pages used to calibrate source-backed criteria and report wording.
 - `clean-corpus-surface-defective.html`: the same page with one genuinely sub-threshold translucent label.
 - `clean-corpus-tokens.html`: correct dark theme authored in `oklch()` and `color-mix()`; must stay silent.
 - `clean-corpus-tokens-defective.html`: the same page with one genuinely sub-threshold `oklch` label.
+- `contrast-effects.html`: five-candidate ancestor-paint gate; two candidates are evaluated and opacity,
+  blend, and filter each skip one opaque-child candidate.
+- `contrast-effect-priority.html`: six-candidate skip-priority gate covering every browser-produced contrast
+  reason exactly once.
+- `finding-coverage-over-limit.html`: 25 exact semantic matches each for text clipping, low contrast, and
+  non-exempt tap targets in both viewports; calibrates complete pre-cap counts against five emitted samples.
 
 These fixtures intentionally stay framework-free so checks can isolate DOM, style, viewport, and report behavior.
 

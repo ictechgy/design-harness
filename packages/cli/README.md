@@ -51,6 +51,39 @@ Audit-only additions describe intentional runtime alternatives such as mono role
 
 This evidence describes the computed family list, not the font face that rendered each glyph. Selector-engine or computed-family processing errors mark only this check partial and retain unrelated measurements. Without audit `--guide`, the CLI performs no font-policy loading, capture, findings, notices, or failed checks.
 
+## Bounded loop
+
+The loop described here is present in the current source checkout and remains unreleased after v0.6.0.
+
+```bash
+design-harness loop \
+  --url http://localhost:3000 \
+  --out runs/repair-loop \
+  --until deterministic-failures==0 \
+  --max-iters 3 \
+  --agent-cmd '<non-interactive command>' \
+  --agent-timeout-ms 300000
+```
+
+Only the exact condition `deterministic-failures==0` is supported. The output root must not already exist. The CLI validates the local HTTP(S) target, explicit configs, limits, condition, and fresh output path before browser, output, or child-process side effects. It writes the baseline to `iterations/000-baseline`; `--max-iters N` then permits at most N agent commands and N additional audits. Heuristic risks, deterministic risks, and `needs-review` findings do not gate the loop. A partial audit always stops first with exit `2`; loop does not accept `--allow-partial`.
+
+Exit codes are `0` for `already-clean` or `converged`, `1` for invalid input or an audit/agent/timeout/summary error, `2` for a partial audit, and `3` for `no-progress` or `max-iters`. Consecutive progress compares only the sorted multiset of deterministic-failure criterion/check/viewport/selector tuples, not generated finding IDs or scores.
+
+Before each agent pass, the CLI inherits the caller environment except that the reserved `DESIGN_HARNESS_LOOP_*` prefix is cleared and replaced with exactly these fixed path/iteration variables:
+
+- `DESIGN_HARNESS_LOOP_ITERATION`
+- `DESIGN_HARNESS_LOOP_ROOT`
+- `DESIGN_HARNESS_LOOP_ITERATION_DIR`
+- `DESIGN_HARNESS_LOOP_AUDIT_PATH`
+- `DESIGN_HARNESS_LOOP_REPORT_PATH`
+- `DESIGN_HARNESS_LOOP_SUMMARY_PATH`
+
+The fixed stdin message identifies page, audit, and report evidence as untrusted and directs the command to the environment paths. The CLI never interpolates evidence into the command. `loop-summary.json` keeps relative artifact paths, audit/agent outcomes, and the SHA-256 command hash; it does not persist the raw command, stdout, stderr, report content, stack traces, environment, or stdin. Stdout and stderr are streamed to the caller.
+
+`--agent-cmd` executes one shell command with the caller's permissions, working directory, and inherited environment, which may expose credentials. Design Harness supplies no sandbox or network boundary. On POSIX, timeout cleanup targets the detached process group with `SIGTERM`, waits two seconds, then uses `SIGKILL` and reaps the child; direct-child signaling is the fallback. On Windows, the same direct-child sequence is best effort and may not terminate descendants. `--agent-timeout-ms` defaults to 300000 and accepts 1000–3600000.
+
+The condition covers only recorded deterministic failures. It is not a completeness, conformance, or overall-quality guarantee.
+
 ## Guide compile and check
 
 From inside the project that owns the guide:
@@ -112,6 +145,6 @@ max(Unicode scalar count, ceil(UTF-8 byte length / 2))
 
 It is an estimate, not an exact tokenizer count. Diagnostics identify the method, value, and ceiling.
 
-Audit `--guide` adds only computed-list font-family adherence, its exact audit-only additions, and its third-party selector exception. Palette/spacing adherence, actual glyph-face detection, framework inference, auto-discovery, an agent repair loop, a Claude skill, reference-file ingestion, anti-slop scoring, and obedience/quality claims remain out of scope. Partial audits still write artifacts and exit `2` unless `--allow-partial` is set; invalid audit config and invalid or stale guide operations exit `1`.
+Audit `--guide` adds only computed-list font-family adherence, its exact audit-only additions, and its third-party selector exception. Palette/spacing adherence, actual glyph-face detection, framework inference, auto-discovery, automatic agent selection, a Claude skill, reference-file ingestion, anti-slop scoring, and obedience/quality claims remain out of scope. Partial audits still write artifacts and exit `2` unless `--allow-partial` is set; invalid audit config and invalid or stale guide operations exit `1`.
 
 Repository: https://github.com/ictechgy/design-harness
