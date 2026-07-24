@@ -1,0 +1,2317 @@
+{
+  "aggregate": {
+    "cellsWithNewFailures": 0,
+    "closedDeterministicFailureCount": 48,
+    "closureRate": 1,
+    "completedCellCount": 12,
+    "deterministicClosureCellCount": 12,
+    "finalDeterministicFailureCount": 0,
+    "initialDeterministicFailureCount": 48,
+    "newlyIntroducedDeterministicFailureCount": 0,
+    "operationalRetryCellCount": 0,
+    "passedBothCellCount": 12,
+    "preservationPassCellCount": 12,
+    "terminalStatusCounts": {
+      "completed": 12,
+      "error": 0,
+      "timeout": 0,
+      "unavailable": 0
+    },
+    "totalCellCount": 12
+  },
+  "cells": [
+    {
+      "acceptedAttemptIndex": 1,
+      "attempts": [
+        {
+          "endedAt": "2026-07-24T00:16:25.270Z",
+          "exitStatus": 0,
+          "index": 1,
+          "operationalFailureKind": null,
+          "privateTranscriptSha256": "e5ceca95eaefc72bc2d65cff4cf6206ec7639ebd0b2a70e07cce7cbfc257e3c2",
+          "resolvedModel": "claude-haiku-4-5-20251001",
+          "retryReason": null,
+          "signal": null,
+          "startedAt": "2026-07-24T00:16:01.949Z",
+          "status": "completed",
+          "timedOut": false,
+          "usage": {
+            "cachedInputTokens": 48564,
+            "costUsd": 0.07235240000000001,
+            "inputTokens": 25,
+            "outputTokens": 1803,
+            "totalTokens": 1828
+          },
+          "wallTimeMs": 23321
+        }
+      ],
+      "audit": {
+        "baselineFinishedAt": "2026-07-24T00:16:01.930Z",
+        "baselineStartedAt": "2026-07-24T00:16:01.661Z",
+        "baselineStatus": "success",
+        "finalFinishedAt": "2026-07-24T00:16:26.043Z",
+        "finalStartedAt": "2026-07-24T00:16:25.767Z",
+        "finalStatus": "success"
+      },
+      "commandDescriptor": {
+        "deliveryMechanism": "inline",
+        "effort": "provider-default",
+        "executable": "claude",
+        "invocationMode": "noninteractive-stream-json",
+        "promptInputMode": "common-task-then-delivery-stanza",
+        "requestedModel": "haiku"
+      },
+      "editBoundary": {
+        "modifiedPaths": [
+          "fixture.html"
+        ],
+        "passed": true
+      },
+      "executor": {
+        "binaryName": "claude",
+        "cliVersion": "2.1.218 (Claude Code)",
+        "effort": "provider-default",
+        "requestedModel": "haiku",
+        "resolvedModel": "claude-haiku-4-5-20251001",
+        "versionSource": "operator-probed-cli"
+      },
+      "executorFamily": "claude-code",
+      "executorLabel": "Claude Code",
+      "finalSourcePath": "final-sources/claude-haiku-inline.html",
+      "id": "claude-haiku-inline",
+      "mechanism": "inline",
+      "primary": {
+        "closedDeterministicFailureCount": 4,
+        "closedDeterministicFailures": [
+          {
+            "checkName": "page-lang-missing",
+            "count": 1,
+            "criterionId": "a11y.language.page-lang",
+            "selector": "html",
+            "viewport": "desktop"
+          },
+          {
+            "checkName": "page-lang-missing",
+            "count": 1,
+            "criterionId": "a11y.language.page-lang",
+            "selector": "html",
+            "viewport": "mobile"
+          },
+          {
+            "checkName": "placeholder-leak",
+            "count": 1,
+            "criterionId": "content.placeholder.unrendered",
+            "selector": "main > section > div:nth-of-type(3) > p",
+            "viewport": "desktop"
+          },
+          {
+            "checkName": "placeholder-leak",
+            "count": 1,
+            "criterionId": "content.placeholder.unrendered",
+            "selector": "main > section > div:nth-of-type(3) > p",
+            "viewport": "mobile"
+          }
+        ],
+        "closureRate": 1,
+        "deterministicClosure": true,
+        "finalDeterministicFailureCount": 0,
+        "finalDeterministicFailures": [],
+        "initialDeterministicFailureCount": 4,
+        "initialDeterministicFailures": [
+          {
+            "checkName": "page-lang-missing",
+            "count": 1,
+            "criterionId": "a11y.language.page-lang",
+            "selector": "html",
+            "viewport": "desktop"
+          },
+          {
+            "checkName": "page-lang-missing",
+            "count": 1,
+            "criterionId": "a11y.language.page-lang",
+            "selector": "html",
+            "viewport": "mobile"
+          },
+          {
+            "checkName": "placeholder-leak",
+            "count": 1,
+            "criterionId": "content.placeholder.unrendered",
+            "selector": "main > section > div:nth-of-type(3) > p",
+            "viewport": "desktop"
+          },
+          {
+            "checkName": "placeholder-leak",
+            "count": 1,
+            "criterionId": "content.placeholder.unrendered",
+            "selector": "main > section > div:nth-of-type(3) > p",
+            "viewport": "mobile"
+          }
+        ],
+        "newlyIntroducedDeterministicFailureCount": 0,
+        "newlyIntroducedDeterministicFailures": [],
+        "passedBoth": true,
+        "preservation": {
+          "metrics": {
+            "requiredFeatureCount": 15,
+            "visibleControlCount": 3,
+            "visibleFeatureCount": 15,
+            "visibleHeadingCount": 2,
+            "visibleImageCount": 1,
+            "visibleTextCharacters": 223
+          },
+          "passed": true,
+          "violations": []
+        }
+      },
+      "provenance": {
+        "agentPassCount": 1,
+        "auditSchemaVersion": "0.2",
+        "commonTaskSha256": "da27190af2e604ac18fcbb56e05e090b6ddc3d1f5f3b6a94d68337c83a434fc3",
+        "copyStyleSha256": "a75edc98ba6805bb9ad224517ceca7c0e02e5b3381cc830954cc7e2f6b7936ca",
+        "deliveryStanzaSha256": "ee8fe5054c891475e168c9040da550c056aac1a729c427ecffc90b7f583a63f0",
+        "externalCommandSha256": "d62d4ce0900e5cb6563d04d7bdbe6ad57ac9a0f07ddb9693bc454233eb5b37a7",
+        "finalReauditCount": 1,
+        "finalSourceSha256": "250d8b76922afac5199936777795e3b6e6cb666f1ea83270990bd1e64c8720b5",
+        "fixtureSha256": "57de93ef55620530ecec4a71d29be033da5984fd39e7fd21382a5752ea00c3ee",
+        "harnessBuildSha256": "7ae285c834681a201e388048357874d84e77a46c9fcfdd014e8922761e8701f6",
+        "harnessConfigSha256": "57822d5b008d7d6273789c27128267b8dec93540212f4cff902a1f2e70b13c22",
+        "harnessVersion": "0.6.1",
+        "preservationOracleSha256": "e6ad1b73951d269bb35b61d752d6053e407c4f53a9c8aebbbf78af8302e1dbfe",
+        "privateTranscriptSha256": "e5ceca95eaefc72bc2d65cff4cf6206ec7639ebd0b2a70e07cce7cbfc257e3c2",
+        "protocolSha256": "145a5706ce350bc4f37b7e900a549afbaf11804707f9a03522ccf0fe927ec7b3",
+        "scoreFormulaVersion": "epistemic-criterion-max-v2",
+        "startingSourceSha256": "57de93ef55620530ecec4a71d29be033da5984fd39e7fd21382a5752ea00c3ee"
+      },
+      "secondary": {
+        "final": {
+          "advisoryScore": {
+            "band": "strong",
+            "formulaVersion": "epistemic-criterion-max-v2",
+            "max": 100,
+            "value": 100
+          },
+          "deterministicRiskCount": 0,
+          "heuristicFindingCount": 0,
+          "needsReviewCount": 0
+        },
+        "initial": {
+          "advisoryScore": {
+            "band": "needs-work",
+            "formulaVersion": "epistemic-criterion-max-v2",
+            "max": 100,
+            "value": 60
+          },
+          "deterministicRiskCount": 0,
+          "heuristicFindingCount": 0,
+          "needsReviewCount": 0
+        },
+        "measurementLabel": "secondary/advisory, formula-bound"
+      },
+      "terminalStatus": "completed"
+    },
+    {
+      "acceptedAttemptIndex": 1,
+      "attempts": [
+        {
+          "endedAt": "2026-07-24T00:17:34.795Z",
+          "exitStatus": 0,
+          "index": 1,
+          "operationalFailureKind": null,
+          "privateTranscriptSha256": "ee657a71f83e346f7c0344a0f1dc7f382e397492c4698084491d336c81ac5e0b",
+          "resolvedModel": "claude-haiku-4-5-20251001",
+          "retryReason": null,
+          "signal": null,
+          "startedAt": "2026-07-24T00:17:07.072Z",
+          "status": "completed",
+          "timedOut": false,
+          "usage": {
+            "cachedInputTokens": 77702,
+            "costUsd": 0.0725692,
+            "inputTokens": 33,
+            "outputTokens": 1578,
+            "totalTokens": 1611
+          },
+          "wallTimeMs": 27723
+        }
+      ],
+      "audit": {
+        "baselineFinishedAt": "2026-07-24T00:17:07.055Z",
+        "baselineStartedAt": "2026-07-24T00:17:06.796Z",
+        "baselineStatus": "success",
+        "finalFinishedAt": "2026-07-24T00:17:35.536Z",
+        "finalStartedAt": "2026-07-24T00:17:35.291Z",
+        "finalStatus": "success"
+      },
+      "commandDescriptor": {
+        "deliveryMechanism": "skill",
+        "effort": "provider-default",
+        "executable": "claude",
+        "invocationMode": "noninteractive-stream-json",
+        "promptInputMode": "common-task-then-delivery-stanza",
+        "requestedModel": "haiku"
+      },
+      "editBoundary": {
+        "modifiedPaths": [
+          "fixture.html"
+        ],
+        "passed": true
+      },
+      "executor": {
+        "binaryName": "claude",
+        "cliVersion": "2.1.218 (Claude Code)",
+        "effort": "provider-default",
+        "requestedModel": "haiku",
+        "resolvedModel": "claude-haiku-4-5-20251001",
+        "versionSource": "operator-probed-cli"
+      },
+      "executorFamily": "claude-code",
+      "executorLabel": "Claude Code",
+      "finalSourcePath": "final-sources/claude-haiku-skill.html",
+      "id": "claude-haiku-skill",
+      "mechanism": "skill",
+      "primary": {
+        "closedDeterministicFailureCount": 4,
+        "closedDeterministicFailures": [
+          {
+            "checkName": "page-lang-missing",
+            "count": 1,
+            "criterionId": "a11y.language.page-lang",
+            "selector": "html",
+            "viewport": "desktop"
+          },
+          {
+            "checkName": "page-lang-missing",
+            "count": 1,
+            "criterionId": "a11y.language.page-lang",
+            "selector": "html",
+            "viewport": "mobile"
+          },
+          {
+            "checkName": "placeholder-leak",
+            "count": 1,
+            "criterionId": "content.placeholder.unrendered",
+            "selector": "main > section > div:nth-of-type(3) > p",
+            "viewport": "desktop"
+          },
+          {
+            "checkName": "placeholder-leak",
+            "count": 1,
+            "criterionId": "content.placeholder.unrendered",
+            "selector": "main > section > div:nth-of-type(3) > p",
+            "viewport": "mobile"
+          }
+        ],
+        "closureRate": 1,
+        "deterministicClosure": true,
+        "finalDeterministicFailureCount": 0,
+        "finalDeterministicFailures": [],
+        "initialDeterministicFailureCount": 4,
+        "initialDeterministicFailures": [
+          {
+            "checkName": "page-lang-missing",
+            "count": 1,
+            "criterionId": "a11y.language.page-lang",
+            "selector": "html",
+            "viewport": "desktop"
+          },
+          {
+            "checkName": "page-lang-missing",
+            "count": 1,
+            "criterionId": "a11y.language.page-lang",
+            "selector": "html",
+            "viewport": "mobile"
+          },
+          {
+            "checkName": "placeholder-leak",
+            "count": 1,
+            "criterionId": "content.placeholder.unrendered",
+            "selector": "main > section > div:nth-of-type(3) > p",
+            "viewport": "desktop"
+          },
+          {
+            "checkName": "placeholder-leak",
+            "count": 1,
+            "criterionId": "content.placeholder.unrendered",
+            "selector": "main > section > div:nth-of-type(3) > p",
+            "viewport": "mobile"
+          }
+        ],
+        "newlyIntroducedDeterministicFailureCount": 0,
+        "newlyIntroducedDeterministicFailures": [],
+        "passedBoth": true,
+        "preservation": {
+          "metrics": {
+            "requiredFeatureCount": 15,
+            "visibleControlCount": 3,
+            "visibleFeatureCount": 15,
+            "visibleHeadingCount": 2,
+            "visibleImageCount": 1,
+            "visibleTextCharacters": 223
+          },
+          "passed": true,
+          "violations": []
+        }
+      },
+      "provenance": {
+        "agentPassCount": 1,
+        "auditSchemaVersion": "0.2",
+        "commonTaskSha256": "da27190af2e604ac18fcbb56e05e090b6ddc3d1f5f3b6a94d68337c83a434fc3",
+        "copyStyleSha256": "a75edc98ba6805bb9ad224517ceca7c0e02e5b3381cc830954cc7e2f6b7936ca",
+        "deliveryStanzaSha256": "673f02b64f9f2e341e7c58e2eca9b10af7b18f3ac206a97850874d8059c942d9",
+        "externalCommandSha256": "ab634a7bc92b1fcee168d230a6f7bf60a8af872733be9ea8b9c8a1a9bf14d8e2",
+        "finalReauditCount": 1,
+        "finalSourceSha256": "aa80e9d0ff84e69b1569c083a7c075ae86ef537d530c67267a34e10f542bab7e",
+        "fixtureSha256": "57de93ef55620530ecec4a71d29be033da5984fd39e7fd21382a5752ea00c3ee",
+        "harnessBuildSha256": "7ae285c834681a201e388048357874d84e77a46c9fcfdd014e8922761e8701f6",
+        "harnessConfigSha256": "57822d5b008d7d6273789c27128267b8dec93540212f4cff902a1f2e70b13c22",
+        "harnessVersion": "0.6.1",
+        "preservationOracleSha256": "e6ad1b73951d269bb35b61d752d6053e407c4f53a9c8aebbbf78af8302e1dbfe",
+        "privateTranscriptSha256": "ee657a71f83e346f7c0344a0f1dc7f382e397492c4698084491d336c81ac5e0b",
+        "protocolSha256": "145a5706ce350bc4f37b7e900a549afbaf11804707f9a03522ccf0fe927ec7b3",
+        "scoreFormulaVersion": "epistemic-criterion-max-v2",
+        "startingSourceSha256": "57de93ef55620530ecec4a71d29be033da5984fd39e7fd21382a5752ea00c3ee"
+      },
+      "secondary": {
+        "final": {
+          "advisoryScore": {
+            "band": "strong",
+            "formulaVersion": "epistemic-criterion-max-v2",
+            "max": 100,
+            "value": 100
+          },
+          "deterministicRiskCount": 0,
+          "heuristicFindingCount": 0,
+          "needsReviewCount": 0
+        },
+        "initial": {
+          "advisoryScore": {
+            "band": "needs-work",
+            "formulaVersion": "epistemic-criterion-max-v2",
+            "max": 100,
+            "value": 60
+          },
+          "deterministicRiskCount": 0,
+          "heuristicFindingCount": 0,
+          "needsReviewCount": 0
+        },
+        "measurementLabel": "secondary/advisory, formula-bound"
+      },
+      "terminalStatus": "completed"
+    },
+    {
+      "acceptedAttemptIndex": 1,
+      "attempts": [
+        {
+          "endedAt": "2026-07-24T00:18:01.465Z",
+          "exitStatus": 0,
+          "index": 1,
+          "operationalFailureKind": null,
+          "privateTranscriptSha256": "81a95bddae5679bad9882d78bd059bb36045bc54776214768ec200185306264d",
+          "resolvedModel": "claude-haiku-4-5-20251001",
+          "retryReason": null,
+          "signal": null,
+          "startedAt": "2026-07-24T00:17:39.688Z",
+          "status": "completed",
+          "timedOut": false,
+          "usage": {
+            "cachedInputTokens": 77685,
+            "costUsd": 0.07262649999999998,
+            "inputTokens": 33,
+            "outputTokens": 1578,
+            "totalTokens": 1611
+          },
+          "wallTimeMs": 21777
+        }
+      ],
+      "audit": {
+        "baselineFinishedAt": "2026-07-24T00:17:39.670Z",
+        "baselineStartedAt": "2026-07-24T00:17:39.411Z",
+        "baselineStatus": "success",
+        "finalFinishedAt": "2026-07-24T00:18:02.222Z",
+        "finalStartedAt": "2026-07-24T00:18:01.962Z",
+        "finalStatus": "success"
+      },
+      "commandDescriptor": {
+        "deliveryMechanism": "no-pack",
+        "effort": "provider-default",
+        "executable": "claude",
+        "invocationMode": "noninteractive-stream-json",
+        "promptInputMode": "common-task-then-delivery-stanza",
+        "requestedModel": "haiku"
+      },
+      "editBoundary": {
+        "modifiedPaths": [
+          "fixture.html"
+        ],
+        "passed": true
+      },
+      "executor": {
+        "binaryName": "claude",
+        "cliVersion": "2.1.218 (Claude Code)",
+        "effort": "provider-default",
+        "requestedModel": "haiku",
+        "resolvedModel": "claude-haiku-4-5-20251001",
+        "versionSource": "operator-probed-cli"
+      },
+      "executorFamily": "claude-code",
+      "executorLabel": "Claude Code",
+      "finalSourcePath": "final-sources/claude-haiku-no-pack.html",
+      "id": "claude-haiku-no-pack",
+      "mechanism": "no-pack",
+      "primary": {
+        "closedDeterministicFailureCount": 4,
+        "closedDeterministicFailures": [
+          {
+            "checkName": "page-lang-missing",
+            "count": 1,
+            "criterionId": "a11y.language.page-lang",
+            "selector": "html",
+            "viewport": "desktop"
+          },
+          {
+            "checkName": "page-lang-missing",
+            "count": 1,
+            "criterionId": "a11y.language.page-lang",
+            "selector": "html",
+            "viewport": "mobile"
+          },
+          {
+            "checkName": "placeholder-leak",
+            "count": 1,
+            "criterionId": "content.placeholder.unrendered",
+            "selector": "main > section > div:nth-of-type(3) > p",
+            "viewport": "desktop"
+          },
+          {
+            "checkName": "placeholder-leak",
+            "count": 1,
+            "criterionId": "content.placeholder.unrendered",
+            "selector": "main > section > div:nth-of-type(3) > p",
+            "viewport": "mobile"
+          }
+        ],
+        "closureRate": 1,
+        "deterministicClosure": true,
+        "finalDeterministicFailureCount": 0,
+        "finalDeterministicFailures": [],
+        "initialDeterministicFailureCount": 4,
+        "initialDeterministicFailures": [
+          {
+            "checkName": "page-lang-missing",
+            "count": 1,
+            "criterionId": "a11y.language.page-lang",
+            "selector": "html",
+            "viewport": "desktop"
+          },
+          {
+            "checkName": "page-lang-missing",
+            "count": 1,
+            "criterionId": "a11y.language.page-lang",
+            "selector": "html",
+            "viewport": "mobile"
+          },
+          {
+            "checkName": "placeholder-leak",
+            "count": 1,
+            "criterionId": "content.placeholder.unrendered",
+            "selector": "main > section > div:nth-of-type(3) > p",
+            "viewport": "desktop"
+          },
+          {
+            "checkName": "placeholder-leak",
+            "count": 1,
+            "criterionId": "content.placeholder.unrendered",
+            "selector": "main > section > div:nth-of-type(3) > p",
+            "viewport": "mobile"
+          }
+        ],
+        "newlyIntroducedDeterministicFailureCount": 0,
+        "newlyIntroducedDeterministicFailures": [],
+        "passedBoth": true,
+        "preservation": {
+          "metrics": {
+            "requiredFeatureCount": 15,
+            "visibleControlCount": 3,
+            "visibleFeatureCount": 15,
+            "visibleHeadingCount": 2,
+            "visibleImageCount": 1,
+            "visibleTextCharacters": 223
+          },
+          "passed": true,
+          "violations": []
+        }
+      },
+      "provenance": {
+        "agentPassCount": 1,
+        "auditSchemaVersion": "0.2",
+        "commonTaskSha256": "da27190af2e604ac18fcbb56e05e090b6ddc3d1f5f3b6a94d68337c83a434fc3",
+        "copyStyleSha256": "a75edc98ba6805bb9ad224517ceca7c0e02e5b3381cc830954cc7e2f6b7936ca",
+        "deliveryStanzaSha256": "20794078fc95d3bd61be7a71114672cc3133ce9910e2459d557e4d9666260561",
+        "externalCommandSha256": "7b515ea98a89b96dfc662d65bc0571f8b2ba9d214ca9ad6ddc1cf087a8e5bad3",
+        "finalReauditCount": 1,
+        "finalSourceSha256": "2f642580b6339873bf108942494121968c24a57a2b92ef9d2c4755bea1795ab2",
+        "fixtureSha256": "57de93ef55620530ecec4a71d29be033da5984fd39e7fd21382a5752ea00c3ee",
+        "harnessBuildSha256": "7ae285c834681a201e388048357874d84e77a46c9fcfdd014e8922761e8701f6",
+        "harnessConfigSha256": "57822d5b008d7d6273789c27128267b8dec93540212f4cff902a1f2e70b13c22",
+        "harnessVersion": "0.6.1",
+        "preservationOracleSha256": "e6ad1b73951d269bb35b61d752d6053e407c4f53a9c8aebbbf78af8302e1dbfe",
+        "privateTranscriptSha256": "81a95bddae5679bad9882d78bd059bb36045bc54776214768ec200185306264d",
+        "protocolSha256": "145a5706ce350bc4f37b7e900a549afbaf11804707f9a03522ccf0fe927ec7b3",
+        "scoreFormulaVersion": "epistemic-criterion-max-v2",
+        "startingSourceSha256": "57de93ef55620530ecec4a71d29be033da5984fd39e7fd21382a5752ea00c3ee"
+      },
+      "secondary": {
+        "final": {
+          "advisoryScore": {
+            "band": "strong",
+            "formulaVersion": "epistemic-criterion-max-v2",
+            "max": 100,
+            "value": 100
+          },
+          "deterministicRiskCount": 0,
+          "heuristicFindingCount": 0,
+          "needsReviewCount": 0
+        },
+        "initial": {
+          "advisoryScore": {
+            "band": "needs-work",
+            "formulaVersion": "epistemic-criterion-max-v2",
+            "max": 100,
+            "value": 60
+          },
+          "deterministicRiskCount": 0,
+          "heuristicFindingCount": 0,
+          "needsReviewCount": 0
+        },
+        "measurementLabel": "secondary/advisory, formula-bound"
+      },
+      "terminalStatus": "completed"
+    },
+    {
+      "acceptedAttemptIndex": 1,
+      "attempts": [
+        {
+          "endedAt": "2026-07-24T00:18:19.237Z",
+          "exitStatus": 0,
+          "index": 1,
+          "operationalFailureKind": null,
+          "privateTranscriptSha256": "7e3e3c0e4c7477f88da782088973229610d11b11d53df10a6db01c1e88299921",
+          "resolvedModel": "claude-sonnet-5",
+          "retryReason": null,
+          "signal": null,
+          "startedAt": "2026-07-24T00:18:07.637Z",
+          "status": "completed",
+          "timedOut": false,
+          "usage": {
+            "cachedInputTokens": 54841,
+            "costUsd": 0.2778563,
+            "inputTokens": 6,
+            "outputTokens": 822,
+            "totalTokens": 828
+          },
+          "wallTimeMs": 11600
+        }
+      ],
+      "audit": {
+        "baselineFinishedAt": "2026-07-24T00:18:07.620Z",
+        "baselineStartedAt": "2026-07-24T00:18:07.360Z",
+        "baselineStatus": "success",
+        "finalFinishedAt": "2026-07-24T00:18:20.003Z",
+        "finalStartedAt": "2026-07-24T00:18:19.737Z",
+        "finalStatus": "success"
+      },
+      "commandDescriptor": {
+        "deliveryMechanism": "inline",
+        "effort": "low",
+        "executable": "claude",
+        "invocationMode": "noninteractive-stream-json",
+        "promptInputMode": "common-task-then-delivery-stanza",
+        "requestedModel": "sonnet"
+      },
+      "editBoundary": {
+        "modifiedPaths": [
+          "fixture.html"
+        ],
+        "passed": true
+      },
+      "executor": {
+        "binaryName": "claude",
+        "cliVersion": "2.1.218 (Claude Code)",
+        "effort": "low",
+        "requestedModel": "sonnet",
+        "resolvedModel": "claude-sonnet-5",
+        "versionSource": "operator-probed-cli"
+      },
+      "executorFamily": "claude-code",
+      "executorLabel": "Claude Code",
+      "finalSourcePath": "final-sources/claude-sonnet-inline.html",
+      "id": "claude-sonnet-inline",
+      "mechanism": "inline",
+      "primary": {
+        "closedDeterministicFailureCount": 4,
+        "closedDeterministicFailures": [
+          {
+            "checkName": "page-lang-missing",
+            "count": 1,
+            "criterionId": "a11y.language.page-lang",
+            "selector": "html",
+            "viewport": "desktop"
+          },
+          {
+            "checkName": "page-lang-missing",
+            "count": 1,
+            "criterionId": "a11y.language.page-lang",
+            "selector": "html",
+            "viewport": "mobile"
+          },
+          {
+            "checkName": "placeholder-leak",
+            "count": 1,
+            "criterionId": "content.placeholder.unrendered",
+            "selector": "main > section > div:nth-of-type(3) > p",
+            "viewport": "desktop"
+          },
+          {
+            "checkName": "placeholder-leak",
+            "count": 1,
+            "criterionId": "content.placeholder.unrendered",
+            "selector": "main > section > div:nth-of-type(3) > p",
+            "viewport": "mobile"
+          }
+        ],
+        "closureRate": 1,
+        "deterministicClosure": true,
+        "finalDeterministicFailureCount": 0,
+        "finalDeterministicFailures": [],
+        "initialDeterministicFailureCount": 4,
+        "initialDeterministicFailures": [
+          {
+            "checkName": "page-lang-missing",
+            "count": 1,
+            "criterionId": "a11y.language.page-lang",
+            "selector": "html",
+            "viewport": "desktop"
+          },
+          {
+            "checkName": "page-lang-missing",
+            "count": 1,
+            "criterionId": "a11y.language.page-lang",
+            "selector": "html",
+            "viewport": "mobile"
+          },
+          {
+            "checkName": "placeholder-leak",
+            "count": 1,
+            "criterionId": "content.placeholder.unrendered",
+            "selector": "main > section > div:nth-of-type(3) > p",
+            "viewport": "desktop"
+          },
+          {
+            "checkName": "placeholder-leak",
+            "count": 1,
+            "criterionId": "content.placeholder.unrendered",
+            "selector": "main > section > div:nth-of-type(3) > p",
+            "viewport": "mobile"
+          }
+        ],
+        "newlyIntroducedDeterministicFailureCount": 0,
+        "newlyIntroducedDeterministicFailures": [],
+        "passedBoth": true,
+        "preservation": {
+          "metrics": {
+            "requiredFeatureCount": 15,
+            "visibleControlCount": 3,
+            "visibleFeatureCount": 15,
+            "visibleHeadingCount": 2,
+            "visibleImageCount": 1,
+            "visibleTextCharacters": 224
+          },
+          "passed": true,
+          "violations": []
+        }
+      },
+      "provenance": {
+        "agentPassCount": 1,
+        "auditSchemaVersion": "0.2",
+        "commonTaskSha256": "da27190af2e604ac18fcbb56e05e090b6ddc3d1f5f3b6a94d68337c83a434fc3",
+        "copyStyleSha256": "a75edc98ba6805bb9ad224517ceca7c0e02e5b3381cc830954cc7e2f6b7936ca",
+        "deliveryStanzaSha256": "ee8fe5054c891475e168c9040da550c056aac1a729c427ecffc90b7f583a63f0",
+        "externalCommandSha256": "1575550c3c62063f9726b8d321bc26cfc30e16d645d60e7b86fe8ecdfc860316",
+        "finalReauditCount": 1,
+        "finalSourceSha256": "bbba85bc8b3b1596f65ce92cd2e4e4fad29a2c87db7084178085c9978835658a",
+        "fixtureSha256": "57de93ef55620530ecec4a71d29be033da5984fd39e7fd21382a5752ea00c3ee",
+        "harnessBuildSha256": "7ae285c834681a201e388048357874d84e77a46c9fcfdd014e8922761e8701f6",
+        "harnessConfigSha256": "57822d5b008d7d6273789c27128267b8dec93540212f4cff902a1f2e70b13c22",
+        "harnessVersion": "0.6.1",
+        "preservationOracleSha256": "e6ad1b73951d269bb35b61d752d6053e407c4f53a9c8aebbbf78af8302e1dbfe",
+        "privateTranscriptSha256": "7e3e3c0e4c7477f88da782088973229610d11b11d53df10a6db01c1e88299921",
+        "protocolSha256": "145a5706ce350bc4f37b7e900a549afbaf11804707f9a03522ccf0fe927ec7b3",
+        "scoreFormulaVersion": "epistemic-criterion-max-v2",
+        "startingSourceSha256": "57de93ef55620530ecec4a71d29be033da5984fd39e7fd21382a5752ea00c3ee"
+      },
+      "secondary": {
+        "final": {
+          "advisoryScore": {
+            "band": "strong",
+            "formulaVersion": "epistemic-criterion-max-v2",
+            "max": 100,
+            "value": 100
+          },
+          "deterministicRiskCount": 0,
+          "heuristicFindingCount": 0,
+          "needsReviewCount": 0
+        },
+        "initial": {
+          "advisoryScore": {
+            "band": "needs-work",
+            "formulaVersion": "epistemic-criterion-max-v2",
+            "max": 100,
+            "value": 60
+          },
+          "deterministicRiskCount": 0,
+          "heuristicFindingCount": 0,
+          "needsReviewCount": 0
+        },
+        "measurementLabel": "secondary/advisory, formula-bound"
+      },
+      "terminalStatus": "completed"
+    },
+    {
+      "acceptedAttemptIndex": 1,
+      "attempts": [
+        {
+          "endedAt": "2026-07-24T00:18:35.672Z",
+          "exitStatus": 0,
+          "index": 1,
+          "operationalFailureKind": null,
+          "privateTranscriptSha256": "d69a28382864e5ef5746f017e1340a26963c58b2fa8a8fab328c64d9734ef263",
+          "resolvedModel": "claude-sonnet-5",
+          "retryReason": null,
+          "signal": null,
+          "startedAt": "2026-07-24T00:18:23.235Z",
+          "status": "completed",
+          "timedOut": false,
+          "usage": {
+            "cachedInputTokens": 60484,
+            "costUsd": 0.23287119999999997,
+            "inputTokens": 6,
+            "outputTokens": 900,
+            "totalTokens": 906
+          },
+          "wallTimeMs": 12437
+        }
+      ],
+      "audit": {
+        "baselineFinishedAt": "2026-07-24T00:18:23.218Z",
+        "baselineStartedAt": "2026-07-24T00:18:22.963Z",
+        "baselineStatus": "success",
+        "finalFinishedAt": "2026-07-24T00:18:36.435Z",
+        "finalStartedAt": "2026-07-24T00:18:36.173Z",
+        "finalStatus": "success"
+      },
+      "commandDescriptor": {
+        "deliveryMechanism": "skill",
+        "effort": "low",
+        "executable": "claude",
+        "invocationMode": "noninteractive-stream-json",
+        "promptInputMode": "common-task-then-delivery-stanza",
+        "requestedModel": "sonnet"
+      },
+      "editBoundary": {
+        "modifiedPaths": [
+          "fixture.html"
+        ],
+        "passed": true
+      },
+      "executor": {
+        "binaryName": "claude",
+        "cliVersion": "2.1.218 (Claude Code)",
+        "effort": "low",
+        "requestedModel": "sonnet",
+        "resolvedModel": "claude-sonnet-5",
+        "versionSource": "operator-probed-cli"
+      },
+      "executorFamily": "claude-code",
+      "executorLabel": "Claude Code",
+      "finalSourcePath": "final-sources/claude-sonnet-skill.html",
+      "id": "claude-sonnet-skill",
+      "mechanism": "skill",
+      "primary": {
+        "closedDeterministicFailureCount": 4,
+        "closedDeterministicFailures": [
+          {
+            "checkName": "page-lang-missing",
+            "count": 1,
+            "criterionId": "a11y.language.page-lang",
+            "selector": "html",
+            "viewport": "desktop"
+          },
+          {
+            "checkName": "page-lang-missing",
+            "count": 1,
+            "criterionId": "a11y.language.page-lang",
+            "selector": "html",
+            "viewport": "mobile"
+          },
+          {
+            "checkName": "placeholder-leak",
+            "count": 1,
+            "criterionId": "content.placeholder.unrendered",
+            "selector": "main > section > div:nth-of-type(3) > p",
+            "viewport": "desktop"
+          },
+          {
+            "checkName": "placeholder-leak",
+            "count": 1,
+            "criterionId": "content.placeholder.unrendered",
+            "selector": "main > section > div:nth-of-type(3) > p",
+            "viewport": "mobile"
+          }
+        ],
+        "closureRate": 1,
+        "deterministicClosure": true,
+        "finalDeterministicFailureCount": 0,
+        "finalDeterministicFailures": [],
+        "initialDeterministicFailureCount": 4,
+        "initialDeterministicFailures": [
+          {
+            "checkName": "page-lang-missing",
+            "count": 1,
+            "criterionId": "a11y.language.page-lang",
+            "selector": "html",
+            "viewport": "desktop"
+          },
+          {
+            "checkName": "page-lang-missing",
+            "count": 1,
+            "criterionId": "a11y.language.page-lang",
+            "selector": "html",
+            "viewport": "mobile"
+          },
+          {
+            "checkName": "placeholder-leak",
+            "count": 1,
+            "criterionId": "content.placeholder.unrendered",
+            "selector": "main > section > div:nth-of-type(3) > p",
+            "viewport": "desktop"
+          },
+          {
+            "checkName": "placeholder-leak",
+            "count": 1,
+            "criterionId": "content.placeholder.unrendered",
+            "selector": "main > section > div:nth-of-type(3) > p",
+            "viewport": "mobile"
+          }
+        ],
+        "newlyIntroducedDeterministicFailureCount": 0,
+        "newlyIntroducedDeterministicFailures": [],
+        "passedBoth": true,
+        "preservation": {
+          "metrics": {
+            "requiredFeatureCount": 15,
+            "visibleControlCount": 3,
+            "visibleFeatureCount": 15,
+            "visibleHeadingCount": 2,
+            "visibleImageCount": 1,
+            "visibleTextCharacters": 224
+          },
+          "passed": true,
+          "violations": []
+        }
+      },
+      "provenance": {
+        "agentPassCount": 1,
+        "auditSchemaVersion": "0.2",
+        "commonTaskSha256": "da27190af2e604ac18fcbb56e05e090b6ddc3d1f5f3b6a94d68337c83a434fc3",
+        "copyStyleSha256": "a75edc98ba6805bb9ad224517ceca7c0e02e5b3381cc830954cc7e2f6b7936ca",
+        "deliveryStanzaSha256": "673f02b64f9f2e341e7c58e2eca9b10af7b18f3ac206a97850874d8059c942d9",
+        "externalCommandSha256": "1d6d29b410821a43212a1db10a92a52a96d7545926d4c228b754221dceb42690",
+        "finalReauditCount": 1,
+        "finalSourceSha256": "bbba85bc8b3b1596f65ce92cd2e4e4fad29a2c87db7084178085c9978835658a",
+        "fixtureSha256": "57de93ef55620530ecec4a71d29be033da5984fd39e7fd21382a5752ea00c3ee",
+        "harnessBuildSha256": "7ae285c834681a201e388048357874d84e77a46c9fcfdd014e8922761e8701f6",
+        "harnessConfigSha256": "57822d5b008d7d6273789c27128267b8dec93540212f4cff902a1f2e70b13c22",
+        "harnessVersion": "0.6.1",
+        "preservationOracleSha256": "e6ad1b73951d269bb35b61d752d6053e407c4f53a9c8aebbbf78af8302e1dbfe",
+        "privateTranscriptSha256": "d69a28382864e5ef5746f017e1340a26963c58b2fa8a8fab328c64d9734ef263",
+        "protocolSha256": "145a5706ce350bc4f37b7e900a549afbaf11804707f9a03522ccf0fe927ec7b3",
+        "scoreFormulaVersion": "epistemic-criterion-max-v2",
+        "startingSourceSha256": "57de93ef55620530ecec4a71d29be033da5984fd39e7fd21382a5752ea00c3ee"
+      },
+      "secondary": {
+        "final": {
+          "advisoryScore": {
+            "band": "strong",
+            "formulaVersion": "epistemic-criterion-max-v2",
+            "max": 100,
+            "value": 100
+          },
+          "deterministicRiskCount": 0,
+          "heuristicFindingCount": 0,
+          "needsReviewCount": 0
+        },
+        "initial": {
+          "advisoryScore": {
+            "band": "needs-work",
+            "formulaVersion": "epistemic-criterion-max-v2",
+            "max": 100,
+            "value": 60
+          },
+          "deterministicRiskCount": 0,
+          "heuristicFindingCount": 0,
+          "needsReviewCount": 0
+        },
+        "measurementLabel": "secondary/advisory, formula-bound"
+      },
+      "terminalStatus": "completed"
+    },
+    {
+      "acceptedAttemptIndex": 1,
+      "attempts": [
+        {
+          "endedAt": "2026-07-24T00:18:51.819Z",
+          "exitStatus": 0,
+          "index": 1,
+          "operationalFailureKind": null,
+          "privateTranscriptSha256": "3500069db0be516fc2d31620826846b8eb30a89f2bc3c80d20e75610d186b2d5",
+          "resolvedModel": "claude-sonnet-5",
+          "retryReason": null,
+          "signal": null,
+          "startedAt": "2026-07-24T00:18:40.485Z",
+          "status": "completed",
+          "timedOut": false,
+          "usage": {
+            "cachedInputTokens": 60474,
+            "costUsd": 0.23090619999999998,
+            "inputTokens": 6,
+            "outputTokens": 780,
+            "totalTokens": 786
+          },
+          "wallTimeMs": 11334
+        }
+      ],
+      "audit": {
+        "baselineFinishedAt": "2026-07-24T00:18:40.469Z",
+        "baselineStartedAt": "2026-07-24T00:18:40.211Z",
+        "baselineStatus": "success",
+        "finalFinishedAt": "2026-07-24T00:18:52.604Z",
+        "finalStartedAt": "2026-07-24T00:18:52.335Z",
+        "finalStatus": "success"
+      },
+      "commandDescriptor": {
+        "deliveryMechanism": "no-pack",
+        "effort": "low",
+        "executable": "claude",
+        "invocationMode": "noninteractive-stream-json",
+        "promptInputMode": "common-task-then-delivery-stanza",
+        "requestedModel": "sonnet"
+      },
+      "editBoundary": {
+        "modifiedPaths": [
+          "fixture.html"
+        ],
+        "passed": true
+      },
+      "executor": {
+        "binaryName": "claude",
+        "cliVersion": "2.1.218 (Claude Code)",
+        "effort": "low",
+        "requestedModel": "sonnet",
+        "resolvedModel": "claude-sonnet-5",
+        "versionSource": "operator-probed-cli"
+      },
+      "executorFamily": "claude-code",
+      "executorLabel": "Claude Code",
+      "finalSourcePath": "final-sources/claude-sonnet-no-pack.html",
+      "id": "claude-sonnet-no-pack",
+      "mechanism": "no-pack",
+      "primary": {
+        "closedDeterministicFailureCount": 4,
+        "closedDeterministicFailures": [
+          {
+            "checkName": "page-lang-missing",
+            "count": 1,
+            "criterionId": "a11y.language.page-lang",
+            "selector": "html",
+            "viewport": "desktop"
+          },
+          {
+            "checkName": "page-lang-missing",
+            "count": 1,
+            "criterionId": "a11y.language.page-lang",
+            "selector": "html",
+            "viewport": "mobile"
+          },
+          {
+            "checkName": "placeholder-leak",
+            "count": 1,
+            "criterionId": "content.placeholder.unrendered",
+            "selector": "main > section > div:nth-of-type(3) > p",
+            "viewport": "desktop"
+          },
+          {
+            "checkName": "placeholder-leak",
+            "count": 1,
+            "criterionId": "content.placeholder.unrendered",
+            "selector": "main > section > div:nth-of-type(3) > p",
+            "viewport": "mobile"
+          }
+        ],
+        "closureRate": 1,
+        "deterministicClosure": true,
+        "finalDeterministicFailureCount": 0,
+        "finalDeterministicFailures": [],
+        "initialDeterministicFailureCount": 4,
+        "initialDeterministicFailures": [
+          {
+            "checkName": "page-lang-missing",
+            "count": 1,
+            "criterionId": "a11y.language.page-lang",
+            "selector": "html",
+            "viewport": "desktop"
+          },
+          {
+            "checkName": "page-lang-missing",
+            "count": 1,
+            "criterionId": "a11y.language.page-lang",
+            "selector": "html",
+            "viewport": "mobile"
+          },
+          {
+            "checkName": "placeholder-leak",
+            "count": 1,
+            "criterionId": "content.placeholder.unrendered",
+            "selector": "main > section > div:nth-of-type(3) > p",
+            "viewport": "desktop"
+          },
+          {
+            "checkName": "placeholder-leak",
+            "count": 1,
+            "criterionId": "content.placeholder.unrendered",
+            "selector": "main > section > div:nth-of-type(3) > p",
+            "viewport": "mobile"
+          }
+        ],
+        "newlyIntroducedDeterministicFailureCount": 0,
+        "newlyIntroducedDeterministicFailures": [],
+        "passedBoth": true,
+        "preservation": {
+          "metrics": {
+            "requiredFeatureCount": 15,
+            "visibleControlCount": 3,
+            "visibleFeatureCount": 15,
+            "visibleHeadingCount": 2,
+            "visibleImageCount": 1,
+            "visibleTextCharacters": 224
+          },
+          "passed": true,
+          "violations": []
+        }
+      },
+      "provenance": {
+        "agentPassCount": 1,
+        "auditSchemaVersion": "0.2",
+        "commonTaskSha256": "da27190af2e604ac18fcbb56e05e090b6ddc3d1f5f3b6a94d68337c83a434fc3",
+        "copyStyleSha256": "a75edc98ba6805bb9ad224517ceca7c0e02e5b3381cc830954cc7e2f6b7936ca",
+        "deliveryStanzaSha256": "20794078fc95d3bd61be7a71114672cc3133ce9910e2459d557e4d9666260561",
+        "externalCommandSha256": "6295569eb440b82e2c3c198b8aad94ec1b2ca6317b51ae367cb15f3d829d26f0",
+        "finalReauditCount": 1,
+        "finalSourceSha256": "bbba85bc8b3b1596f65ce92cd2e4e4fad29a2c87db7084178085c9978835658a",
+        "fixtureSha256": "57de93ef55620530ecec4a71d29be033da5984fd39e7fd21382a5752ea00c3ee",
+        "harnessBuildSha256": "7ae285c834681a201e388048357874d84e77a46c9fcfdd014e8922761e8701f6",
+        "harnessConfigSha256": "57822d5b008d7d6273789c27128267b8dec93540212f4cff902a1f2e70b13c22",
+        "harnessVersion": "0.6.1",
+        "preservationOracleSha256": "e6ad1b73951d269bb35b61d752d6053e407c4f53a9c8aebbbf78af8302e1dbfe",
+        "privateTranscriptSha256": "3500069db0be516fc2d31620826846b8eb30a89f2bc3c80d20e75610d186b2d5",
+        "protocolSha256": "145a5706ce350bc4f37b7e900a549afbaf11804707f9a03522ccf0fe927ec7b3",
+        "scoreFormulaVersion": "epistemic-criterion-max-v2",
+        "startingSourceSha256": "57de93ef55620530ecec4a71d29be033da5984fd39e7fd21382a5752ea00c3ee"
+      },
+      "secondary": {
+        "final": {
+          "advisoryScore": {
+            "band": "strong",
+            "formulaVersion": "epistemic-criterion-max-v2",
+            "max": 100,
+            "value": 100
+          },
+          "deterministicRiskCount": 0,
+          "heuristicFindingCount": 0,
+          "needsReviewCount": 0
+        },
+        "initial": {
+          "advisoryScore": {
+            "band": "needs-work",
+            "formulaVersion": "epistemic-criterion-max-v2",
+            "max": 100,
+            "value": 60
+          },
+          "deterministicRiskCount": 0,
+          "heuristicFindingCount": 0,
+          "needsReviewCount": 0
+        },
+        "measurementLabel": "secondary/advisory, formula-bound"
+      },
+      "terminalStatus": "completed"
+    },
+    {
+      "acceptedAttemptIndex": 1,
+      "attempts": [
+        {
+          "endedAt": "2026-07-24T00:19:09.728Z",
+          "exitStatus": 0,
+          "index": 1,
+          "operationalFailureKind": null,
+          "privateTranscriptSha256": "c2efcd76c6f4d17345047c0d5537fa45ccfb1089deb5d55bbfc455fe5cb08e63",
+          "resolvedModel": "claude-opus-4-8",
+          "retryReason": null,
+          "signal": null,
+          "startedAt": "2026-07-24T00:18:56.834Z",
+          "status": "completed",
+          "timedOut": false,
+          "usage": {
+            "cachedInputTokens": 40138,
+            "costUsd": 0.380972,
+            "inputTokens": 6,
+            "outputTokens": 820,
+            "totalTokens": 826
+          },
+          "wallTimeMs": 12894
+        }
+      ],
+      "audit": {
+        "baselineFinishedAt": "2026-07-24T00:18:56.817Z",
+        "baselineStartedAt": "2026-07-24T00:18:56.559Z",
+        "baselineStatus": "success",
+        "finalFinishedAt": "2026-07-24T00:19:10.490Z",
+        "finalStartedAt": "2026-07-24T00:19:10.225Z",
+        "finalStatus": "success"
+      },
+      "commandDescriptor": {
+        "deliveryMechanism": "inline",
+        "effort": "low",
+        "executable": "claude",
+        "invocationMode": "noninteractive-stream-json",
+        "promptInputMode": "common-task-then-delivery-stanza",
+        "requestedModel": "opus"
+      },
+      "editBoundary": {
+        "modifiedPaths": [
+          "fixture.html"
+        ],
+        "passed": true
+      },
+      "executor": {
+        "binaryName": "claude",
+        "cliVersion": "2.1.218 (Claude Code)",
+        "effort": "low",
+        "requestedModel": "opus",
+        "resolvedModel": "claude-opus-4-8",
+        "versionSource": "operator-probed-cli"
+      },
+      "executorFamily": "claude-code",
+      "executorLabel": "Claude Code",
+      "finalSourcePath": "final-sources/claude-opus-inline.html",
+      "id": "claude-opus-inline",
+      "mechanism": "inline",
+      "primary": {
+        "closedDeterministicFailureCount": 4,
+        "closedDeterministicFailures": [
+          {
+            "checkName": "page-lang-missing",
+            "count": 1,
+            "criterionId": "a11y.language.page-lang",
+            "selector": "html",
+            "viewport": "desktop"
+          },
+          {
+            "checkName": "page-lang-missing",
+            "count": 1,
+            "criterionId": "a11y.language.page-lang",
+            "selector": "html",
+            "viewport": "mobile"
+          },
+          {
+            "checkName": "placeholder-leak",
+            "count": 1,
+            "criterionId": "content.placeholder.unrendered",
+            "selector": "main > section > div:nth-of-type(3) > p",
+            "viewport": "desktop"
+          },
+          {
+            "checkName": "placeholder-leak",
+            "count": 1,
+            "criterionId": "content.placeholder.unrendered",
+            "selector": "main > section > div:nth-of-type(3) > p",
+            "viewport": "mobile"
+          }
+        ],
+        "closureRate": 1,
+        "deterministicClosure": true,
+        "finalDeterministicFailureCount": 0,
+        "finalDeterministicFailures": [],
+        "initialDeterministicFailureCount": 4,
+        "initialDeterministicFailures": [
+          {
+            "checkName": "page-lang-missing",
+            "count": 1,
+            "criterionId": "a11y.language.page-lang",
+            "selector": "html",
+            "viewport": "desktop"
+          },
+          {
+            "checkName": "page-lang-missing",
+            "count": 1,
+            "criterionId": "a11y.language.page-lang",
+            "selector": "html",
+            "viewport": "mobile"
+          },
+          {
+            "checkName": "placeholder-leak",
+            "count": 1,
+            "criterionId": "content.placeholder.unrendered",
+            "selector": "main > section > div:nth-of-type(3) > p",
+            "viewport": "desktop"
+          },
+          {
+            "checkName": "placeholder-leak",
+            "count": 1,
+            "criterionId": "content.placeholder.unrendered",
+            "selector": "main > section > div:nth-of-type(3) > p",
+            "viewport": "mobile"
+          }
+        ],
+        "newlyIntroducedDeterministicFailureCount": 0,
+        "newlyIntroducedDeterministicFailures": [],
+        "passedBoth": true,
+        "preservation": {
+          "metrics": {
+            "requiredFeatureCount": 15,
+            "visibleControlCount": 3,
+            "visibleFeatureCount": 15,
+            "visibleHeadingCount": 2,
+            "visibleImageCount": 1,
+            "visibleTextCharacters": 224
+          },
+          "passed": true,
+          "violations": []
+        }
+      },
+      "provenance": {
+        "agentPassCount": 1,
+        "auditSchemaVersion": "0.2",
+        "commonTaskSha256": "da27190af2e604ac18fcbb56e05e090b6ddc3d1f5f3b6a94d68337c83a434fc3",
+        "copyStyleSha256": "a75edc98ba6805bb9ad224517ceca7c0e02e5b3381cc830954cc7e2f6b7936ca",
+        "deliveryStanzaSha256": "ee8fe5054c891475e168c9040da550c056aac1a729c427ecffc90b7f583a63f0",
+        "externalCommandSha256": "0bab181ff55fbf82574e7df8f6587960e8e47f91bfc0bcd1d674a9cd61063c39",
+        "finalReauditCount": 1,
+        "finalSourceSha256": "bbba85bc8b3b1596f65ce92cd2e4e4fad29a2c87db7084178085c9978835658a",
+        "fixtureSha256": "57de93ef55620530ecec4a71d29be033da5984fd39e7fd21382a5752ea00c3ee",
+        "harnessBuildSha256": "7ae285c834681a201e388048357874d84e77a46c9fcfdd014e8922761e8701f6",
+        "harnessConfigSha256": "57822d5b008d7d6273789c27128267b8dec93540212f4cff902a1f2e70b13c22",
+        "harnessVersion": "0.6.1",
+        "preservationOracleSha256": "e6ad1b73951d269bb35b61d752d6053e407c4f53a9c8aebbbf78af8302e1dbfe",
+        "privateTranscriptSha256": "c2efcd76c6f4d17345047c0d5537fa45ccfb1089deb5d55bbfc455fe5cb08e63",
+        "protocolSha256": "145a5706ce350bc4f37b7e900a549afbaf11804707f9a03522ccf0fe927ec7b3",
+        "scoreFormulaVersion": "epistemic-criterion-max-v2",
+        "startingSourceSha256": "57de93ef55620530ecec4a71d29be033da5984fd39e7fd21382a5752ea00c3ee"
+      },
+      "secondary": {
+        "final": {
+          "advisoryScore": {
+            "band": "strong",
+            "formulaVersion": "epistemic-criterion-max-v2",
+            "max": 100,
+            "value": 100
+          },
+          "deterministicRiskCount": 0,
+          "heuristicFindingCount": 0,
+          "needsReviewCount": 0
+        },
+        "initial": {
+          "advisoryScore": {
+            "band": "needs-work",
+            "formulaVersion": "epistemic-criterion-max-v2",
+            "max": 100,
+            "value": 60
+          },
+          "deterministicRiskCount": 0,
+          "heuristicFindingCount": 0,
+          "needsReviewCount": 0
+        },
+        "measurementLabel": "secondary/advisory, formula-bound"
+      },
+      "terminalStatus": "completed"
+    },
+    {
+      "acceptedAttemptIndex": 1,
+      "attempts": [
+        {
+          "endedAt": "2026-07-24T00:19:32.907Z",
+          "exitStatus": 0,
+          "index": 1,
+          "operationalFailureKind": null,
+          "privateTranscriptSha256": "b9c7fddf26b6e3a297c18c66c5b3bad91324229a2f600879b82b984bfb0c8992",
+          "resolvedModel": "claude-opus-4-8",
+          "retryReason": null,
+          "signal": null,
+          "startedAt": "2026-07-24T00:19:14.701Z",
+          "status": "completed",
+          "timedOut": false,
+          "usage": {
+            "cachedInputTokens": 42134,
+            "costUsd": 0.34996000000000005,
+            "inputTokens": 6,
+            "outputTokens": 1131,
+            "totalTokens": 1137
+          },
+          "wallTimeMs": 18206
+        }
+      ],
+      "audit": {
+        "baselineFinishedAt": "2026-07-24T00:19:14.684Z",
+        "baselineStartedAt": "2026-07-24T00:19:14.428Z",
+        "baselineStatus": "success",
+        "finalFinishedAt": "2026-07-24T00:19:33.649Z",
+        "finalStartedAt": "2026-07-24T00:19:33.398Z",
+        "finalStatus": "success"
+      },
+      "commandDescriptor": {
+        "deliveryMechanism": "skill",
+        "effort": "low",
+        "executable": "claude",
+        "invocationMode": "noninteractive-stream-json",
+        "promptInputMode": "common-task-then-delivery-stanza",
+        "requestedModel": "opus"
+      },
+      "editBoundary": {
+        "modifiedPaths": [
+          "fixture.html"
+        ],
+        "passed": true
+      },
+      "executor": {
+        "binaryName": "claude",
+        "cliVersion": "2.1.218 (Claude Code)",
+        "effort": "low",
+        "requestedModel": "opus",
+        "resolvedModel": "claude-opus-4-8",
+        "versionSource": "operator-probed-cli"
+      },
+      "executorFamily": "claude-code",
+      "executorLabel": "Claude Code",
+      "finalSourcePath": "final-sources/claude-opus-skill.html",
+      "id": "claude-opus-skill",
+      "mechanism": "skill",
+      "primary": {
+        "closedDeterministicFailureCount": 4,
+        "closedDeterministicFailures": [
+          {
+            "checkName": "page-lang-missing",
+            "count": 1,
+            "criterionId": "a11y.language.page-lang",
+            "selector": "html",
+            "viewport": "desktop"
+          },
+          {
+            "checkName": "page-lang-missing",
+            "count": 1,
+            "criterionId": "a11y.language.page-lang",
+            "selector": "html",
+            "viewport": "mobile"
+          },
+          {
+            "checkName": "placeholder-leak",
+            "count": 1,
+            "criterionId": "content.placeholder.unrendered",
+            "selector": "main > section > div:nth-of-type(3) > p",
+            "viewport": "desktop"
+          },
+          {
+            "checkName": "placeholder-leak",
+            "count": 1,
+            "criterionId": "content.placeholder.unrendered",
+            "selector": "main > section > div:nth-of-type(3) > p",
+            "viewport": "mobile"
+          }
+        ],
+        "closureRate": 1,
+        "deterministicClosure": true,
+        "finalDeterministicFailureCount": 0,
+        "finalDeterministicFailures": [],
+        "initialDeterministicFailureCount": 4,
+        "initialDeterministicFailures": [
+          {
+            "checkName": "page-lang-missing",
+            "count": 1,
+            "criterionId": "a11y.language.page-lang",
+            "selector": "html",
+            "viewport": "desktop"
+          },
+          {
+            "checkName": "page-lang-missing",
+            "count": 1,
+            "criterionId": "a11y.language.page-lang",
+            "selector": "html",
+            "viewport": "mobile"
+          },
+          {
+            "checkName": "placeholder-leak",
+            "count": 1,
+            "criterionId": "content.placeholder.unrendered",
+            "selector": "main > section > div:nth-of-type(3) > p",
+            "viewport": "desktop"
+          },
+          {
+            "checkName": "placeholder-leak",
+            "count": 1,
+            "criterionId": "content.placeholder.unrendered",
+            "selector": "main > section > div:nth-of-type(3) > p",
+            "viewport": "mobile"
+          }
+        ],
+        "newlyIntroducedDeterministicFailureCount": 0,
+        "newlyIntroducedDeterministicFailures": [],
+        "passedBoth": true,
+        "preservation": {
+          "metrics": {
+            "requiredFeatureCount": 15,
+            "visibleControlCount": 3,
+            "visibleFeatureCount": 15,
+            "visibleHeadingCount": 2,
+            "visibleImageCount": 1,
+            "visibleTextCharacters": 224
+          },
+          "passed": true,
+          "violations": []
+        }
+      },
+      "provenance": {
+        "agentPassCount": 1,
+        "auditSchemaVersion": "0.2",
+        "commonTaskSha256": "da27190af2e604ac18fcbb56e05e090b6ddc3d1f5f3b6a94d68337c83a434fc3",
+        "copyStyleSha256": "a75edc98ba6805bb9ad224517ceca7c0e02e5b3381cc830954cc7e2f6b7936ca",
+        "deliveryStanzaSha256": "673f02b64f9f2e341e7c58e2eca9b10af7b18f3ac206a97850874d8059c942d9",
+        "externalCommandSha256": "85aa15d6e7a629f26ef309926cc98bcda65034e059155fab476ff8b319a2cb2b",
+        "finalReauditCount": 1,
+        "finalSourceSha256": "bbba85bc8b3b1596f65ce92cd2e4e4fad29a2c87db7084178085c9978835658a",
+        "fixtureSha256": "57de93ef55620530ecec4a71d29be033da5984fd39e7fd21382a5752ea00c3ee",
+        "harnessBuildSha256": "7ae285c834681a201e388048357874d84e77a46c9fcfdd014e8922761e8701f6",
+        "harnessConfigSha256": "57822d5b008d7d6273789c27128267b8dec93540212f4cff902a1f2e70b13c22",
+        "harnessVersion": "0.6.1",
+        "preservationOracleSha256": "e6ad1b73951d269bb35b61d752d6053e407c4f53a9c8aebbbf78af8302e1dbfe",
+        "privateTranscriptSha256": "b9c7fddf26b6e3a297c18c66c5b3bad91324229a2f600879b82b984bfb0c8992",
+        "protocolSha256": "145a5706ce350bc4f37b7e900a549afbaf11804707f9a03522ccf0fe927ec7b3",
+        "scoreFormulaVersion": "epistemic-criterion-max-v2",
+        "startingSourceSha256": "57de93ef55620530ecec4a71d29be033da5984fd39e7fd21382a5752ea00c3ee"
+      },
+      "secondary": {
+        "final": {
+          "advisoryScore": {
+            "band": "strong",
+            "formulaVersion": "epistemic-criterion-max-v2",
+            "max": 100,
+            "value": 100
+          },
+          "deterministicRiskCount": 0,
+          "heuristicFindingCount": 0,
+          "needsReviewCount": 0
+        },
+        "initial": {
+          "advisoryScore": {
+            "band": "needs-work",
+            "formulaVersion": "epistemic-criterion-max-v2",
+            "max": 100,
+            "value": 60
+          },
+          "deterministicRiskCount": 0,
+          "heuristicFindingCount": 0,
+          "needsReviewCount": 0
+        },
+        "measurementLabel": "secondary/advisory, formula-bound"
+      },
+      "terminalStatus": "completed"
+    },
+    {
+      "acceptedAttemptIndex": 1,
+      "attempts": [
+        {
+          "endedAt": "2026-07-24T00:19:57.560Z",
+          "exitStatus": 0,
+          "index": 1,
+          "operationalFailureKind": null,
+          "privateTranscriptSha256": "9ab651ca0b2061770de1b722fca5926f284f0d308ecd94b71a86b934bf8631ba",
+          "resolvedModel": "claude-opus-4-8",
+          "retryReason": null,
+          "signal": null,
+          "startedAt": "2026-07-24T00:19:38.931Z",
+          "status": "completed",
+          "timedOut": false,
+          "usage": {
+            "cachedInputTokens": 41931,
+            "costUsd": 0.3381485,
+            "inputTokens": 6,
+            "outputTokens": 743,
+            "totalTokens": 749
+          },
+          "wallTimeMs": 18630
+        }
+      ],
+      "audit": {
+        "baselineFinishedAt": "2026-07-24T00:19:38.914Z",
+        "baselineStartedAt": "2026-07-24T00:19:38.652Z",
+        "baselineStatus": "success",
+        "finalFinishedAt": "2026-07-24T00:19:58.314Z",
+        "finalStartedAt": "2026-07-24T00:19:58.059Z",
+        "finalStatus": "success"
+      },
+      "commandDescriptor": {
+        "deliveryMechanism": "no-pack",
+        "effort": "low",
+        "executable": "claude",
+        "invocationMode": "noninteractive-stream-json",
+        "promptInputMode": "common-task-then-delivery-stanza",
+        "requestedModel": "opus"
+      },
+      "editBoundary": {
+        "modifiedPaths": [
+          "fixture.html"
+        ],
+        "passed": true
+      },
+      "executor": {
+        "binaryName": "claude",
+        "cliVersion": "2.1.218 (Claude Code)",
+        "effort": "low",
+        "requestedModel": "opus",
+        "resolvedModel": "claude-opus-4-8",
+        "versionSource": "operator-probed-cli"
+      },
+      "executorFamily": "claude-code",
+      "executorLabel": "Claude Code",
+      "finalSourcePath": "final-sources/claude-opus-no-pack.html",
+      "id": "claude-opus-no-pack",
+      "mechanism": "no-pack",
+      "primary": {
+        "closedDeterministicFailureCount": 4,
+        "closedDeterministicFailures": [
+          {
+            "checkName": "page-lang-missing",
+            "count": 1,
+            "criterionId": "a11y.language.page-lang",
+            "selector": "html",
+            "viewport": "desktop"
+          },
+          {
+            "checkName": "page-lang-missing",
+            "count": 1,
+            "criterionId": "a11y.language.page-lang",
+            "selector": "html",
+            "viewport": "mobile"
+          },
+          {
+            "checkName": "placeholder-leak",
+            "count": 1,
+            "criterionId": "content.placeholder.unrendered",
+            "selector": "main > section > div:nth-of-type(3) > p",
+            "viewport": "desktop"
+          },
+          {
+            "checkName": "placeholder-leak",
+            "count": 1,
+            "criterionId": "content.placeholder.unrendered",
+            "selector": "main > section > div:nth-of-type(3) > p",
+            "viewport": "mobile"
+          }
+        ],
+        "closureRate": 1,
+        "deterministicClosure": true,
+        "finalDeterministicFailureCount": 0,
+        "finalDeterministicFailures": [],
+        "initialDeterministicFailureCount": 4,
+        "initialDeterministicFailures": [
+          {
+            "checkName": "page-lang-missing",
+            "count": 1,
+            "criterionId": "a11y.language.page-lang",
+            "selector": "html",
+            "viewport": "desktop"
+          },
+          {
+            "checkName": "page-lang-missing",
+            "count": 1,
+            "criterionId": "a11y.language.page-lang",
+            "selector": "html",
+            "viewport": "mobile"
+          },
+          {
+            "checkName": "placeholder-leak",
+            "count": 1,
+            "criterionId": "content.placeholder.unrendered",
+            "selector": "main > section > div:nth-of-type(3) > p",
+            "viewport": "desktop"
+          },
+          {
+            "checkName": "placeholder-leak",
+            "count": 1,
+            "criterionId": "content.placeholder.unrendered",
+            "selector": "main > section > div:nth-of-type(3) > p",
+            "viewport": "mobile"
+          }
+        ],
+        "newlyIntroducedDeterministicFailureCount": 0,
+        "newlyIntroducedDeterministicFailures": [],
+        "passedBoth": true,
+        "preservation": {
+          "metrics": {
+            "requiredFeatureCount": 15,
+            "visibleControlCount": 3,
+            "visibleFeatureCount": 15,
+            "visibleHeadingCount": 2,
+            "visibleImageCount": 1,
+            "visibleTextCharacters": 224
+          },
+          "passed": true,
+          "violations": []
+        }
+      },
+      "provenance": {
+        "agentPassCount": 1,
+        "auditSchemaVersion": "0.2",
+        "commonTaskSha256": "da27190af2e604ac18fcbb56e05e090b6ddc3d1f5f3b6a94d68337c83a434fc3",
+        "copyStyleSha256": "a75edc98ba6805bb9ad224517ceca7c0e02e5b3381cc830954cc7e2f6b7936ca",
+        "deliveryStanzaSha256": "20794078fc95d3bd61be7a71114672cc3133ce9910e2459d557e4d9666260561",
+        "externalCommandSha256": "32e7fa94d33eb917f6f9219e947e2b0d8e1869be80cf0fb2fced8b6dfb1240a3",
+        "finalReauditCount": 1,
+        "finalSourceSha256": "bbba85bc8b3b1596f65ce92cd2e4e4fad29a2c87db7084178085c9978835658a",
+        "fixtureSha256": "57de93ef55620530ecec4a71d29be033da5984fd39e7fd21382a5752ea00c3ee",
+        "harnessBuildSha256": "7ae285c834681a201e388048357874d84e77a46c9fcfdd014e8922761e8701f6",
+        "harnessConfigSha256": "57822d5b008d7d6273789c27128267b8dec93540212f4cff902a1f2e70b13c22",
+        "harnessVersion": "0.6.1",
+        "preservationOracleSha256": "e6ad1b73951d269bb35b61d752d6053e407c4f53a9c8aebbbf78af8302e1dbfe",
+        "privateTranscriptSha256": "9ab651ca0b2061770de1b722fca5926f284f0d308ecd94b71a86b934bf8631ba",
+        "protocolSha256": "145a5706ce350bc4f37b7e900a549afbaf11804707f9a03522ccf0fe927ec7b3",
+        "scoreFormulaVersion": "epistemic-criterion-max-v2",
+        "startingSourceSha256": "57de93ef55620530ecec4a71d29be033da5984fd39e7fd21382a5752ea00c3ee"
+      },
+      "secondary": {
+        "final": {
+          "advisoryScore": {
+            "band": "strong",
+            "formulaVersion": "epistemic-criterion-max-v2",
+            "max": 100,
+            "value": 100
+          },
+          "deterministicRiskCount": 0,
+          "heuristicFindingCount": 0,
+          "needsReviewCount": 0
+        },
+        "initial": {
+          "advisoryScore": {
+            "band": "needs-work",
+            "formulaVersion": "epistemic-criterion-max-v2",
+            "max": 100,
+            "value": 60
+          },
+          "deterministicRiskCount": 0,
+          "heuristicFindingCount": 0,
+          "needsReviewCount": 0
+        },
+        "measurementLabel": "secondary/advisory, formula-bound"
+      },
+      "terminalStatus": "completed"
+    },
+    {
+      "acceptedAttemptIndex": 1,
+      "attempts": [
+        {
+          "endedAt": "2026-07-24T00:20:58.598Z",
+          "exitStatus": 0,
+          "index": 1,
+          "operationalFailureKind": null,
+          "privateTranscriptSha256": "22b5e608a3a0ef39af0ffa8b4c620da945df0a5dd27b753dfd93ce218b6b6152",
+          "resolvedModel": "gpt-5.6-sol",
+          "retryReason": null,
+          "signal": null,
+          "startedAt": "2026-07-24T00:20:15.265Z",
+          "status": "completed",
+          "timedOut": false,
+          "usage": {
+            "cachedInputTokens": 72960,
+            "inputTokens": 102325,
+            "outputTokens": 564,
+            "totalTokens": 102889
+          },
+          "wallTimeMs": 43333
+        }
+      ],
+      "audit": {
+        "baselineFinishedAt": "2026-07-24T00:20:15.248Z",
+        "baselineStartedAt": "2026-07-24T00:20:14.988Z",
+        "baselineStatus": "success",
+        "finalFinishedAt": "2026-07-24T00:20:59.751Z",
+        "finalStartedAt": "2026-07-24T00:20:59.164Z",
+        "finalStatus": "success"
+      },
+      "commandDescriptor": {
+        "deliveryMechanism": "inline",
+        "effort": "low",
+        "executable": "codex",
+        "invocationMode": "exec-jsonl",
+        "promptInputMode": "common-task-then-delivery-stanza",
+        "requestedModel": "gpt-5.6-sol"
+      },
+      "editBoundary": {
+        "modifiedPaths": [
+          "fixture.html"
+        ],
+        "passed": true
+      },
+      "executor": {
+        "binaryName": "codex",
+        "cliVersion": "0.145.0",
+        "effort": "low",
+        "requestedModel": "gpt-5.6-sol",
+        "resolvedModel": "gpt-5.6-sol",
+        "versionSource": "operator-probed-cli"
+      },
+      "executorFamily": "codex-cli",
+      "executorLabel": "Codex CLI",
+      "finalSourcePath": "final-sources/codex-gpt-5-6-sol-inline.html",
+      "id": "codex-gpt-5-6-sol-inline",
+      "mechanism": "inline",
+      "primary": {
+        "closedDeterministicFailureCount": 4,
+        "closedDeterministicFailures": [
+          {
+            "checkName": "page-lang-missing",
+            "count": 1,
+            "criterionId": "a11y.language.page-lang",
+            "selector": "html",
+            "viewport": "desktop"
+          },
+          {
+            "checkName": "page-lang-missing",
+            "count": 1,
+            "criterionId": "a11y.language.page-lang",
+            "selector": "html",
+            "viewport": "mobile"
+          },
+          {
+            "checkName": "placeholder-leak",
+            "count": 1,
+            "criterionId": "content.placeholder.unrendered",
+            "selector": "main > section > div:nth-of-type(3) > p",
+            "viewport": "desktop"
+          },
+          {
+            "checkName": "placeholder-leak",
+            "count": 1,
+            "criterionId": "content.placeholder.unrendered",
+            "selector": "main > section > div:nth-of-type(3) > p",
+            "viewport": "mobile"
+          }
+        ],
+        "closureRate": 1,
+        "deterministicClosure": true,
+        "finalDeterministicFailureCount": 0,
+        "finalDeterministicFailures": [],
+        "initialDeterministicFailureCount": 4,
+        "initialDeterministicFailures": [
+          {
+            "checkName": "page-lang-missing",
+            "count": 1,
+            "criterionId": "a11y.language.page-lang",
+            "selector": "html",
+            "viewport": "desktop"
+          },
+          {
+            "checkName": "page-lang-missing",
+            "count": 1,
+            "criterionId": "a11y.language.page-lang",
+            "selector": "html",
+            "viewport": "mobile"
+          },
+          {
+            "checkName": "placeholder-leak",
+            "count": 1,
+            "criterionId": "content.placeholder.unrendered",
+            "selector": "main > section > div:nth-of-type(3) > p",
+            "viewport": "desktop"
+          },
+          {
+            "checkName": "placeholder-leak",
+            "count": 1,
+            "criterionId": "content.placeholder.unrendered",
+            "selector": "main > section > div:nth-of-type(3) > p",
+            "viewport": "mobile"
+          }
+        ],
+        "newlyIntroducedDeterministicFailureCount": 0,
+        "newlyIntroducedDeterministicFailures": [],
+        "passedBoth": true,
+        "preservation": {
+          "metrics": {
+            "requiredFeatureCount": 15,
+            "visibleControlCount": 3,
+            "visibleFeatureCount": 15,
+            "visibleHeadingCount": 2,
+            "visibleImageCount": 1,
+            "visibleTextCharacters": 224
+          },
+          "passed": true,
+          "violations": []
+        }
+      },
+      "provenance": {
+        "agentPassCount": 1,
+        "auditSchemaVersion": "0.2",
+        "commonTaskSha256": "da27190af2e604ac18fcbb56e05e090b6ddc3d1f5f3b6a94d68337c83a434fc3",
+        "copyStyleSha256": "a75edc98ba6805bb9ad224517ceca7c0e02e5b3381cc830954cc7e2f6b7936ca",
+        "deliveryStanzaSha256": "b962e5a6280a5f137d410853b4f825f7744e1c5151a1235bf87a34b9074ff438",
+        "externalCommandSha256": "5cf1cb5cc0ea9d61bd8635872d6a1cb0eb925efcd5e2c5cf07950d7e6a271a34",
+        "finalReauditCount": 1,
+        "finalSourceSha256": "bbba85bc8b3b1596f65ce92cd2e4e4fad29a2c87db7084178085c9978835658a",
+        "fixtureSha256": "57de93ef55620530ecec4a71d29be033da5984fd39e7fd21382a5752ea00c3ee",
+        "harnessBuildSha256": "7ae285c834681a201e388048357874d84e77a46c9fcfdd014e8922761e8701f6",
+        "harnessConfigSha256": "57822d5b008d7d6273789c27128267b8dec93540212f4cff902a1f2e70b13c22",
+        "harnessVersion": "0.6.1",
+        "preservationOracleSha256": "e6ad1b73951d269bb35b61d752d6053e407c4f53a9c8aebbbf78af8302e1dbfe",
+        "privateTranscriptSha256": "22b5e608a3a0ef39af0ffa8b4c620da945df0a5dd27b753dfd93ce218b6b6152",
+        "protocolSha256": "145a5706ce350bc4f37b7e900a549afbaf11804707f9a03522ccf0fe927ec7b3",
+        "scoreFormulaVersion": "epistemic-criterion-max-v2",
+        "startingSourceSha256": "57de93ef55620530ecec4a71d29be033da5984fd39e7fd21382a5752ea00c3ee"
+      },
+      "secondary": {
+        "final": {
+          "advisoryScore": {
+            "band": "strong",
+            "formulaVersion": "epistemic-criterion-max-v2",
+            "max": 100,
+            "value": 100
+          },
+          "deterministicRiskCount": 0,
+          "heuristicFindingCount": 0,
+          "needsReviewCount": 0
+        },
+        "initial": {
+          "advisoryScore": {
+            "band": "needs-work",
+            "formulaVersion": "epistemic-criterion-max-v2",
+            "max": 100,
+            "value": 60
+          },
+          "deterministicRiskCount": 0,
+          "heuristicFindingCount": 0,
+          "needsReviewCount": 0
+        },
+        "measurementLabel": "secondary/advisory, formula-bound"
+      },
+      "terminalStatus": "completed"
+    },
+    {
+      "acceptedAttemptIndex": 1,
+      "attempts": [
+        {
+          "endedAt": "2026-07-24T00:21:45.699Z",
+          "exitStatus": 0,
+          "index": 1,
+          "operationalFailureKind": null,
+          "privateTranscriptSha256": "74f9cc842773e9e41425fd43f859cc42245a49f2e6af63696cf315d513d462b0",
+          "resolvedModel": "gpt-5.6-sol",
+          "retryReason": null,
+          "signal": null,
+          "startedAt": "2026-07-24T00:21:26.064Z",
+          "status": "completed",
+          "timedOut": false,
+          "usage": {
+            "cachedInputTokens": 75008,
+            "inputTokens": 105582,
+            "outputTokens": 553,
+            "totalTokens": 106135
+          },
+          "wallTimeMs": 19635
+        }
+      ],
+      "audit": {
+        "baselineFinishedAt": "2026-07-24T00:21:26.045Z",
+        "baselineStartedAt": "2026-07-24T00:21:25.793Z",
+        "baselineStatus": "success",
+        "finalFinishedAt": "2026-07-24T00:21:46.465Z",
+        "finalStartedAt": "2026-07-24T00:21:46.205Z",
+        "finalStatus": "success"
+      },
+      "commandDescriptor": {
+        "deliveryMechanism": "skill",
+        "effort": "low",
+        "executable": "codex",
+        "invocationMode": "exec-jsonl",
+        "promptInputMode": "common-task-then-delivery-stanza",
+        "requestedModel": "gpt-5.6-sol"
+      },
+      "editBoundary": {
+        "modifiedPaths": [
+          "fixture.html"
+        ],
+        "passed": true
+      },
+      "executor": {
+        "binaryName": "codex",
+        "cliVersion": "0.145.0",
+        "effort": "low",
+        "requestedModel": "gpt-5.6-sol",
+        "resolvedModel": "gpt-5.6-sol",
+        "versionSource": "operator-probed-cli"
+      },
+      "executorFamily": "codex-cli",
+      "executorLabel": "Codex CLI",
+      "finalSourcePath": "final-sources/codex-gpt-5-6-sol-skill.html",
+      "id": "codex-gpt-5-6-sol-skill",
+      "mechanism": "skill",
+      "primary": {
+        "closedDeterministicFailureCount": 4,
+        "closedDeterministicFailures": [
+          {
+            "checkName": "page-lang-missing",
+            "count": 1,
+            "criterionId": "a11y.language.page-lang",
+            "selector": "html",
+            "viewport": "desktop"
+          },
+          {
+            "checkName": "page-lang-missing",
+            "count": 1,
+            "criterionId": "a11y.language.page-lang",
+            "selector": "html",
+            "viewport": "mobile"
+          },
+          {
+            "checkName": "placeholder-leak",
+            "count": 1,
+            "criterionId": "content.placeholder.unrendered",
+            "selector": "main > section > div:nth-of-type(3) > p",
+            "viewport": "desktop"
+          },
+          {
+            "checkName": "placeholder-leak",
+            "count": 1,
+            "criterionId": "content.placeholder.unrendered",
+            "selector": "main > section > div:nth-of-type(3) > p",
+            "viewport": "mobile"
+          }
+        ],
+        "closureRate": 1,
+        "deterministicClosure": true,
+        "finalDeterministicFailureCount": 0,
+        "finalDeterministicFailures": [],
+        "initialDeterministicFailureCount": 4,
+        "initialDeterministicFailures": [
+          {
+            "checkName": "page-lang-missing",
+            "count": 1,
+            "criterionId": "a11y.language.page-lang",
+            "selector": "html",
+            "viewport": "desktop"
+          },
+          {
+            "checkName": "page-lang-missing",
+            "count": 1,
+            "criterionId": "a11y.language.page-lang",
+            "selector": "html",
+            "viewport": "mobile"
+          },
+          {
+            "checkName": "placeholder-leak",
+            "count": 1,
+            "criterionId": "content.placeholder.unrendered",
+            "selector": "main > section > div:nth-of-type(3) > p",
+            "viewport": "desktop"
+          },
+          {
+            "checkName": "placeholder-leak",
+            "count": 1,
+            "criterionId": "content.placeholder.unrendered",
+            "selector": "main > section > div:nth-of-type(3) > p",
+            "viewport": "mobile"
+          }
+        ],
+        "newlyIntroducedDeterministicFailureCount": 0,
+        "newlyIntroducedDeterministicFailures": [],
+        "passedBoth": true,
+        "preservation": {
+          "metrics": {
+            "requiredFeatureCount": 15,
+            "visibleControlCount": 3,
+            "visibleFeatureCount": 15,
+            "visibleHeadingCount": 2,
+            "visibleImageCount": 1,
+            "visibleTextCharacters": 224
+          },
+          "passed": true,
+          "violations": []
+        }
+      },
+      "provenance": {
+        "agentPassCount": 1,
+        "auditSchemaVersion": "0.2",
+        "commonTaskSha256": "da27190af2e604ac18fcbb56e05e090b6ddc3d1f5f3b6a94d68337c83a434fc3",
+        "copyStyleSha256": "a75edc98ba6805bb9ad224517ceca7c0e02e5b3381cc830954cc7e2f6b7936ca",
+        "deliveryStanzaSha256": "29012c754afc948268fbd9304ab01efbb7393a8466dc02925c5200e67ff7e12a",
+        "externalCommandSha256": "be22dd0e910600f9654f65216e51ee5ed8af8173b30f2d609e63c5454325ce35",
+        "finalReauditCount": 1,
+        "finalSourceSha256": "bbba85bc8b3b1596f65ce92cd2e4e4fad29a2c87db7084178085c9978835658a",
+        "fixtureSha256": "57de93ef55620530ecec4a71d29be033da5984fd39e7fd21382a5752ea00c3ee",
+        "harnessBuildSha256": "7ae285c834681a201e388048357874d84e77a46c9fcfdd014e8922761e8701f6",
+        "harnessConfigSha256": "57822d5b008d7d6273789c27128267b8dec93540212f4cff902a1f2e70b13c22",
+        "harnessVersion": "0.6.1",
+        "preservationOracleSha256": "e6ad1b73951d269bb35b61d752d6053e407c4f53a9c8aebbbf78af8302e1dbfe",
+        "privateTranscriptSha256": "74f9cc842773e9e41425fd43f859cc42245a49f2e6af63696cf315d513d462b0",
+        "protocolSha256": "145a5706ce350bc4f37b7e900a549afbaf11804707f9a03522ccf0fe927ec7b3",
+        "scoreFormulaVersion": "epistemic-criterion-max-v2",
+        "startingSourceSha256": "57de93ef55620530ecec4a71d29be033da5984fd39e7fd21382a5752ea00c3ee"
+      },
+      "secondary": {
+        "final": {
+          "advisoryScore": {
+            "band": "strong",
+            "formulaVersion": "epistemic-criterion-max-v2",
+            "max": 100,
+            "value": 100
+          },
+          "deterministicRiskCount": 0,
+          "heuristicFindingCount": 0,
+          "needsReviewCount": 0
+        },
+        "initial": {
+          "advisoryScore": {
+            "band": "needs-work",
+            "formulaVersion": "epistemic-criterion-max-v2",
+            "max": 100,
+            "value": 60
+          },
+          "deterministicRiskCount": 0,
+          "heuristicFindingCount": 0,
+          "needsReviewCount": 0
+        },
+        "measurementLabel": "secondary/advisory, formula-bound"
+      },
+      "terminalStatus": "completed"
+    },
+    {
+      "acceptedAttemptIndex": 1,
+      "attempts": [
+        {
+          "endedAt": "2026-07-24T00:22:12.803Z",
+          "exitStatus": 0,
+          "index": 1,
+          "operationalFailureKind": null,
+          "privateTranscriptSha256": "18fbdfc297119499840718be41146fa5f2b71275f43c3e7f5845f6b78f481f36",
+          "resolvedModel": "gpt-5.6-sol",
+          "retryReason": null,
+          "signal": null,
+          "startedAt": "2026-07-24T00:21:50.142Z",
+          "status": "completed",
+          "timedOut": false,
+          "usage": {
+            "cachedInputTokens": 70912,
+            "inputTokens": 100699,
+            "outputTokens": 527,
+            "totalTokens": 101226
+          },
+          "wallTimeMs": 22661
+        }
+      ],
+      "audit": {
+        "baselineFinishedAt": "2026-07-24T00:21:50.125Z",
+        "baselineStartedAt": "2026-07-24T00:21:49.874Z",
+        "baselineStatus": "success",
+        "finalFinishedAt": "2026-07-24T00:22:13.557Z",
+        "finalStartedAt": "2026-07-24T00:22:13.295Z",
+        "finalStatus": "success"
+      },
+      "commandDescriptor": {
+        "deliveryMechanism": "no-pack",
+        "effort": "low",
+        "executable": "codex",
+        "invocationMode": "exec-jsonl",
+        "promptInputMode": "common-task-then-delivery-stanza",
+        "requestedModel": "gpt-5.6-sol"
+      },
+      "editBoundary": {
+        "modifiedPaths": [
+          "fixture.html"
+        ],
+        "passed": true
+      },
+      "executor": {
+        "binaryName": "codex",
+        "cliVersion": "0.145.0",
+        "effort": "low",
+        "requestedModel": "gpt-5.6-sol",
+        "resolvedModel": "gpt-5.6-sol",
+        "versionSource": "operator-probed-cli"
+      },
+      "executorFamily": "codex-cli",
+      "executorLabel": "Codex CLI",
+      "finalSourcePath": "final-sources/codex-gpt-5-6-sol-no-pack.html",
+      "id": "codex-gpt-5-6-sol-no-pack",
+      "mechanism": "no-pack",
+      "primary": {
+        "closedDeterministicFailureCount": 4,
+        "closedDeterministicFailures": [
+          {
+            "checkName": "page-lang-missing",
+            "count": 1,
+            "criterionId": "a11y.language.page-lang",
+            "selector": "html",
+            "viewport": "desktop"
+          },
+          {
+            "checkName": "page-lang-missing",
+            "count": 1,
+            "criterionId": "a11y.language.page-lang",
+            "selector": "html",
+            "viewport": "mobile"
+          },
+          {
+            "checkName": "placeholder-leak",
+            "count": 1,
+            "criterionId": "content.placeholder.unrendered",
+            "selector": "main > section > div:nth-of-type(3) > p",
+            "viewport": "desktop"
+          },
+          {
+            "checkName": "placeholder-leak",
+            "count": 1,
+            "criterionId": "content.placeholder.unrendered",
+            "selector": "main > section > div:nth-of-type(3) > p",
+            "viewport": "mobile"
+          }
+        ],
+        "closureRate": 1,
+        "deterministicClosure": true,
+        "finalDeterministicFailureCount": 0,
+        "finalDeterministicFailures": [],
+        "initialDeterministicFailureCount": 4,
+        "initialDeterministicFailures": [
+          {
+            "checkName": "page-lang-missing",
+            "count": 1,
+            "criterionId": "a11y.language.page-lang",
+            "selector": "html",
+            "viewport": "desktop"
+          },
+          {
+            "checkName": "page-lang-missing",
+            "count": 1,
+            "criterionId": "a11y.language.page-lang",
+            "selector": "html",
+            "viewport": "mobile"
+          },
+          {
+            "checkName": "placeholder-leak",
+            "count": 1,
+            "criterionId": "content.placeholder.unrendered",
+            "selector": "main > section > div:nth-of-type(3) > p",
+            "viewport": "desktop"
+          },
+          {
+            "checkName": "placeholder-leak",
+            "count": 1,
+            "criterionId": "content.placeholder.unrendered",
+            "selector": "main > section > div:nth-of-type(3) > p",
+            "viewport": "mobile"
+          }
+        ],
+        "newlyIntroducedDeterministicFailureCount": 0,
+        "newlyIntroducedDeterministicFailures": [],
+        "passedBoth": true,
+        "preservation": {
+          "metrics": {
+            "requiredFeatureCount": 15,
+            "visibleControlCount": 3,
+            "visibleFeatureCount": 15,
+            "visibleHeadingCount": 2,
+            "visibleImageCount": 1,
+            "visibleTextCharacters": 223
+          },
+          "passed": true,
+          "violations": []
+        }
+      },
+      "provenance": {
+        "agentPassCount": 1,
+        "auditSchemaVersion": "0.2",
+        "commonTaskSha256": "da27190af2e604ac18fcbb56e05e090b6ddc3d1f5f3b6a94d68337c83a434fc3",
+        "copyStyleSha256": "a75edc98ba6805bb9ad224517ceca7c0e02e5b3381cc830954cc7e2f6b7936ca",
+        "deliveryStanzaSha256": "20794078fc95d3bd61be7a71114672cc3133ce9910e2459d557e4d9666260561",
+        "externalCommandSha256": "5cd619855de385ed9c16096582fc405f9ef50cb545f93a6eb0c0a85be5379072",
+        "finalReauditCount": 1,
+        "finalSourceSha256": "250d8b76922afac5199936777795e3b6e6cb666f1ea83270990bd1e64c8720b5",
+        "fixtureSha256": "57de93ef55620530ecec4a71d29be033da5984fd39e7fd21382a5752ea00c3ee",
+        "harnessBuildSha256": "7ae285c834681a201e388048357874d84e77a46c9fcfdd014e8922761e8701f6",
+        "harnessConfigSha256": "57822d5b008d7d6273789c27128267b8dec93540212f4cff902a1f2e70b13c22",
+        "harnessVersion": "0.6.1",
+        "preservationOracleSha256": "e6ad1b73951d269bb35b61d752d6053e407c4f53a9c8aebbbf78af8302e1dbfe",
+        "privateTranscriptSha256": "18fbdfc297119499840718be41146fa5f2b71275f43c3e7f5845f6b78f481f36",
+        "protocolSha256": "145a5706ce350bc4f37b7e900a549afbaf11804707f9a03522ccf0fe927ec7b3",
+        "scoreFormulaVersion": "epistemic-criterion-max-v2",
+        "startingSourceSha256": "57de93ef55620530ecec4a71d29be033da5984fd39e7fd21382a5752ea00c3ee"
+      },
+      "secondary": {
+        "final": {
+          "advisoryScore": {
+            "band": "strong",
+            "formulaVersion": "epistemic-criterion-max-v2",
+            "max": 100,
+            "value": 100
+          },
+          "deterministicRiskCount": 0,
+          "heuristicFindingCount": 0,
+          "needsReviewCount": 0
+        },
+        "initial": {
+          "advisoryScore": {
+            "band": "needs-work",
+            "formulaVersion": "epistemic-criterion-max-v2",
+            "max": 100,
+            "value": 60
+          },
+          "deterministicRiskCount": 0,
+          "heuristicFindingCount": 0,
+          "needsReviewCount": 0
+        },
+        "measurementLabel": "secondary/advisory, formula-bound"
+      },
+      "terminalStatus": "completed"
+    }
+  ],
+  "comparability": {
+    "agentPassCount": 1,
+    "auditSchemaVersion": "0.2",
+    "commonTaskSha256": "da27190af2e604ac18fcbb56e05e090b6ddc3d1f5f3b6a94d68337c83a434fc3",
+    "copyStyleSha256": "a75edc98ba6805bb9ad224517ceca7c0e02e5b3381cc830954cc7e2f6b7936ca",
+    "finalReauditCount": 1,
+    "fixtureSha256": "57de93ef55620530ecec4a71d29be033da5984fd39e7fd21382a5752ea00c3ee",
+    "harnessBuildSha256": "7ae285c834681a201e388048357874d84e77a46c9fcfdd014e8922761e8701f6",
+    "harnessConfigSha256": "57822d5b008d7d6273789c27128267b8dec93540212f4cff902a1f2e70b13c22",
+    "harnessVersion": "0.6.1",
+    "preservationOracleSha256": "e6ad1b73951d269bb35b61d752d6053e407c4f53a9c8aebbbf78af8302e1dbfe",
+    "protocolSha256": "145a5706ce350bc4f37b7e900a549afbaf11804707f9a03522ccf0fe927ec7b3",
+    "scoreFormulaVersion": "epistemic-criterion-max-v2"
+  },
+  "limitations": [
+    "One project-authored synthetic fixture.",
+    "One run per cell and no variance estimate.",
+    "Snapshot-specific CLI and resolved model versions.",
+    "Provider-specific project-instruction and skill discovery.",
+    "Only defects detectable by the pinned Harness checks.",
+    "Advisory score and band are formula-bound secondary measurements.",
+    "No causal comparison among delivery mechanisms, executors, or models.",
+    "No generalization to real applications, general agent obedience, design quality, accessibility, or standards compliance."
+  ],
+  "protocolVersion": "obedience-v1",
+  "recordedAt": "2026-07-24T00:23:44.946Z",
+  "schemaVersion": "obedience-v1/results/v1",
+  "snapshotDate": "2026-07-24"
+}
