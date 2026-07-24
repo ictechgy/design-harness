@@ -10,6 +10,7 @@ import {
   REPO_ROOT,
   canonicalJson,
   deliveryStanzaFor,
+  expectedExecutableFor,
   readCommonInputs,
   resolvedModelMatches,
   sha256
@@ -547,6 +548,12 @@ async function validateCell({
     `${path}.commandDescriptor`,
     issues
   );
+  expectEqual(
+    cell.commandDescriptor?.executable,
+    cell.executor?.binaryName,
+    `${path}.commandDescriptor.executable`,
+    issues
+  );
   validateAttempts(cell, path, issues);
   validateEditBoundary(cell.editBoundary, `${path}.editBoundary`, issues);
   validateProvenance(cell, comparability, path, issues);
@@ -626,6 +633,12 @@ function validateExecutor(executor, expected, terminalStatus, path, issues) {
     issues
   );
   expectPattern(executor.binaryName, SAFE_SLUG_PATTERN, `${path}.binaryName`, issues);
+  expectEqual(
+    executor.binaryName,
+    expectedExecutableFor(expected),
+    `${path}.binaryName`,
+    issues
+  );
   expectNonEmptyString(executor.cliVersion, `${path}.cliVersion`, issues);
   expectPattern(
     executor.versionSource,
@@ -673,6 +686,12 @@ function validateCommandDescriptor(descriptor, expected, path, issues) {
   }
   exactKeys(descriptor, SAFE_COMMAND_DESCRIPTOR_KEYS, path, issues);
   expectPattern(descriptor.executable, SAFE_SLUG_PATTERN, `${path}.executable`, issues);
+  expectEqual(
+    descriptor.executable,
+    expectedExecutableFor(expected),
+    `${path}.executable`,
+    issues
+  );
   expectPattern(
     descriptor.invocationMode,
     SAFE_SLUG_PATTERN,

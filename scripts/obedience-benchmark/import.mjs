@@ -23,6 +23,7 @@ import {
   canonicalJson,
   deliveryStanzaFor,
   expectedDeliveryForCell,
+  expectedExecutableFor,
   isPathInside,
   readCommonInputs,
   resolvedModelMatches,
@@ -890,6 +891,11 @@ function validateOperatorEvidence(evidence) {
     );
     validateEvidenceExecutor(cell.executor, expected);
     validateEvidenceCommand(cell.commandDescriptor, expected);
+    equal(
+      cell.commandDescriptor.executable,
+      cell.executor.binaryName,
+      `${expected.id} commandDescriptor.executable`
+    );
     validateEvidenceEditBoundary(cell.editBoundary, expected.id);
     validateEvidenceAttempts(cell, expected);
   }
@@ -899,6 +905,11 @@ function validateEvidenceExecutor(executor, expected) {
   const label = `${expected.id} executor`;
   exactKeys(executor, SAFE_EXECUTOR_KEYS, label);
   safeSlug(executor.binaryName, `${label}.binaryName`);
+  equal(
+    executor.binaryName,
+    expectedExecutableFor(expected),
+    `${label}.binaryName`
+  );
   nonEmpty(executor.cliVersion, `${label}.cliVersion`);
   safeSlug(executor.versionSource, `${label}.versionSource`);
   equal(executor.requestedModel, expected.requestedModel, `${label}.requestedModel`);
@@ -944,6 +955,11 @@ function validateEvidenceCommand(descriptor, expected) {
   const label = `${expected.id} commandDescriptor`;
   exactKeys(descriptor, SAFE_COMMAND_KEYS, label);
   safeSlug(descriptor.executable, `${label}.executable`);
+  equal(
+    descriptor.executable,
+    expectedExecutableFor(expected),
+    `${label}.executable`
+  );
   safeSlug(descriptor.invocationMode, `${label}.invocationMode`);
   equal(
     descriptor.promptInputMode,

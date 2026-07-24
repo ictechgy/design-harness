@@ -68,6 +68,21 @@ export const MATRIX = Object.freeze(
 
 export const CELL_BY_ID = new Map(MATRIX.map((cell) => [cell.id, cell]));
 
+const EXECUTABLE_BY_EXECUTOR_FAMILY = Object.freeze({
+  "claude-code": "claude",
+  "codex-cli": "codex"
+});
+
+export function expectedExecutableFor(cell) {
+  const executable = EXECUTABLE_BY_EXECUTOR_FAMILY[cell?.executorFamily];
+  if (executable === undefined) {
+    throw new Error(
+      `Unsupported obedience benchmark executor family: ${String(cell?.executorFamily)}`
+    );
+  }
+  return executable;
+}
+
 export function sha256(value) {
   return createHash("sha256").update(value).digest("hex");
 }

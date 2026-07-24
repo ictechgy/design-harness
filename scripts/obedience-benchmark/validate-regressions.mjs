@@ -353,6 +353,29 @@ try {
       }
     },
     {
+      name: "executor-family substitution",
+      expectedIssue: "executor.binaryName must equal \"claude\"",
+      mutate(results) {
+        const cell = results.cells[0];
+        cell.executor.binaryName = "codex";
+        cell.commandDescriptor.executable = "codex";
+        cell.provenance.externalCommandSha256 = sha256(
+          canonicalJson(cell.commandDescriptor)
+        );
+      }
+    },
+    {
+      name: "executor-command mismatch",
+      expectedIssue: "commandDescriptor.executable must equal \"claude\"",
+      mutate(results) {
+        const cell = results.cells[0];
+        cell.commandDescriptor.executable = "codex";
+        cell.provenance.externalCommandSha256 = sha256(
+          canonicalJson(cell.commandDescriptor)
+        );
+      }
+    },
+    {
       name: "edit-boundary escape",
       expectedIssue: "must be the only allowed edit path fixture.html",
       mutate(results) {
