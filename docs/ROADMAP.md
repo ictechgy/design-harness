@@ -118,7 +118,7 @@ Repair acceptance: strict additional-only/selector-only/combined schema and proj
 
 ## v0.5e — guide hex literals (COMPLETE 2026-07-21)
 
-Reins-side repair, later released in v0.6.0 with v0.5c (measurement repair, #36) and v0.5d (report-copy honesty, #37). Zero new detector, criterion, schema, or enum change.
+Guidance-side repair, later released in v0.6.0 with v0.5c (measurement repair, #36) and v0.5d (report-copy honesty, #37). Zero new detector, criterion, schema, or enum change.
 
 Goal: hand the model CSS-usable color literals in the generation guide. `summarizeTokenGroup` in `packages/core/src/guide-compiler.ts` emitted a semantic color's DTCG `$value` verbatim, so the model-facing markdown carried `accent={"alpha":1,"colorSpace":"srgb","components":[0.12,0.38,0.82]}` — a normalized float triplet no model can write into CSS. It now renders `accent=#1F61D1` (`#RRGGBB`, or `#RRGGBBAA` when `alpha < 1`).
 
@@ -154,7 +154,7 @@ The following retain their prior item numbers for traceability. Item 4 has moved
    - Matching guidance-pack lines (same registry entries): limit palette to 2–3 chromatic hue families with clear lightness contrast; keep density restrained (high complexity is the largest measured appeal penalty); align block edges to shared grid lines.
    - Deferred to backlog: whitespace-ratio band (single-study threshold), alignment/grid-quality metric.
 4. **`design-harness loop` — RELEASED in v0.6.1.** Contract: `--until deterministic-failures==0 --max-iters 3 --agent-cmd '<non-interactive command>'`; a fresh output root; baseline plus at most N commands/N additional audits; partial-first exit `2`; consecutive deterministic-failure fingerprint no-progress detection; per-iteration artifacts; sanitized `loop-summary.json`; exits `0/1/2/3`. The explicit command inherits caller permissions/environment and receives no sandbox or network boundary. Heuristic risks and `needs-review` findings never gate the loop.
-5. **Obedience benchmark before any "reins" marketing** — per-agent (Claude tiers + Codex) × delivery mechanism (inline AGENTS.md section vs skill vs no pack), repair-and-rescore protocol; publish in `docs/benchmarks/`.
+5. **Obedience benchmark before any agent-control marketing** — per-agent (Claude tiers + Codex) × delivery mechanism (inline AGENTS.md section vs skill vs no pack), repair-and-rescore protocol; publish in `docs/benchmarks/`.
 6. **Midjourney art-direction workflow** — `docs/midjourney-reference-lab/art-direction.md`, manual first (explore → distill tokens → seed design-guide.yaml); a CLI command only after the owner has used the manual workflow on a real project. Images stay local-only.
 
 ## v0.7 — Korean LLM judge + private beta (UNSCHEDULED)
@@ -167,7 +167,7 @@ The following retain their prior item numbers for traceability. Item 4 has moved
 
 ## Surface horizons (web → app → beyond) — NOT milestones
 
-Principles and enforcement: ADR-002 (`docs/adr/ADR-002-surface-extensibility-principles.md`, `check:core-purity`). Evidence and per-item citations: `docs/research/2026-07-surface-extensibility-evidence.md`. Nothing here is buildable without its gates passing AND the owner scheduling it into a milestone; this section exists so architecture decisions never foreclose these paths. Expansion gates (all required per surface): a real file-contract consumer asks for it · v0.5 reins loop proven on web · evidence-layer contract shipped · that surface's open questions resolved by hands-on probe.
+Principles and enforcement: ADR-002 (`docs/adr/ADR-002-surface-extensibility-principles.md`, `check:core-purity`). Evidence and per-item citations: `docs/research/2026-07-surface-extensibility-evidence.md`. Nothing here is buildable without its gates passing AND the owner scheduling it into a milestone; this section exists so architecture decisions never foreclose these paths. Expansion gates (all required per surface): a real file-contract consumer asks for it · v0.5 bounded deterministic-failure loop proven on web · evidence-layer contract shipped · that surface's open questions resolved by hands-on probe.
 
 - **Tier 0 — reachable today, zero capture code** (demonstrations, not new surfaces): Storybook story iframes (`/iframe.html?id=…`; needs a component-mode check profile — page-scoped checks misfire on bare components); design-system docs/marketing pages; PWA as plain web; React Native Web / Expo web builds (audits the web projection, never claims about the native binary); in-page data-viz (input side; any Chartability-derived check family is heuristic/needs-review tier, CC-BY-SA 3.0 diligence).
 - **Tier 1 — small adapter, localhost preserved**: Playwright device-emulation profile (responsive layout math only; report copy must never imply real-device or iOS-Safari-engine claims); Electron/WebView2 via local CDP endpoint (Chromium DOM → near-100% check transfer; widening the input contract to ws://localhost needs its own ADR).
@@ -192,7 +192,7 @@ Principles and enforcement: ADR-002 (`docs/adr/ADR-002-surface-extensibility-pri
 
 ## Watch list (no action)
 
-Markup AI (ex-Acrolinx) agent distribution via MCP/Cursor/GitHub Actions — main "reins" convergence threat; HIG Doctor packaging pattern (audit CLI + MCP + skills); WCAG 3.0 draft (~174 outcomes, CR ≥ Q4 2027); Chrome DevTools MCP as user-side capture alternative (docs note only).
+Markup AI (ex-Acrolinx) agent distribution via MCP/Cursor/GitHub Actions — main agent-guidance convergence threat; HIG Doctor packaging pattern (audit CLI + MCP + skills); WCAG 3.0 draft (~174 outcomes, CR ≥ Q4 2027); Chrome DevTools MCP as user-side capture alternative (docs note only).
 
 ## Cut list (with why)
 

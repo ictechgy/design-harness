@@ -527,6 +527,41 @@ try {
       mutate(_results, context) {
         context.roadmapSuffix = "\nThis proves agents obey.\n";
       }
+    },
+    {
+      name: "unquoted reins ROADMAP claim",
+      expectedIssue:
+        "may mention “reins” only inside the exact blocked-claims statement",
+      mutate(_results, context) {
+        context.roadmapSuffix = "\nThe benchmark gives agents reins.\n";
+      }
+    },
+    {
+      name: "straight-quoted mixed-case reins ROADMAP claim",
+      expectedIssue:
+        "may mention “reins” only inside the exact blocked-claims statement",
+      mutate(_results, context) {
+        context.roadmapSuffix =
+          '\nThe benchmark gives agents "ReInS".\n';
+      }
+    },
+    {
+      name: "curly-quoted lowercase reins report claim",
+      expectedIssue:
+        "may mention “reins” only inside the exact blocked-claims statement",
+      mutate(_results, context) {
+        context.reportOverride =
+          `${canonicalReport}\nThe benchmark gives agents “reins”.\n`;
+      }
+    },
+    {
+      name: "curly-quoted uppercase reins report claim",
+      expectedIssue:
+        "may mention “reins” only inside the exact blocked-claims statement",
+      mutate(_results, context) {
+        context.reportOverride =
+          `${canonicalReport}\nThe benchmark gives agents “REINS”.\n`;
+      }
     }
   ];
 
