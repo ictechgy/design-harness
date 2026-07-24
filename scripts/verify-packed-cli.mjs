@@ -218,10 +218,16 @@ async function assertPositivePackedLoop(consumerDir, expectedPlaywrightVersion) 
   const fixturePath = join(consumerDir, "positive-loop-fixture.html");
   const helperPath = join(consumerDir, "positive-loop-helper.mjs");
   const invocationLogPath = join(consumerDir, "positive-loop-helper.jsonl");
+  const colorGuidePath = join(consumerDir, "packed-color-guide.yaml");
+  const colorGoodFixturePath = join(consumerDir, "packed-color-good.html");
+  const colorBadFixturePath = join(consumerDir, "packed-color-bad.html");
   const outDir = join(repoRoot, "runs", "packed-loop");
   await rm(outDir, { recursive: true, force: true });
   await Promise.all([
     writeFile(fixturePath, missingLangFixture()),
+    writeFile(colorGuidePath, packedGuideYaml()),
+    writeFile(colorGoodFixturePath, packedColorFixture("#1A66CC")),
+    writeFile(colorBadFixturePath, packedColorFixture("#C026D3")),
     writeFile(
       helperPath,
       positiveLoopHelperSource({ fixturePath, invocationLogPath })
@@ -230,16 +236,22 @@ async function assertPositivePackedLoop(consumerDir, expectedPlaywrightVersion) 
   ]);
 
   assertPathInside(consumerDir, helperPath, "Positive loop helper escaped the temporary consumer");
+  const fixturePaths = new Map([
+    ["/fixture", fixturePath],
+    ["/color-good", colorGoodFixturePath],
+    ["/color-bad", colorBadFixturePath]
+  ]);
   const server = createServer(async (request, response) => {
     try {
       const requestUrl = new URL(request.url ?? "/", `http://${request.headers.host ?? "127.0.0.1"}`);
-      if (requestUrl.pathname !== "/fixture") {
+      const servedFixturePath = fixturePaths.get(requestUrl.pathname);
+      if (!servedFixturePath) {
         response.writeHead(404, { "content-type": "text/plain; charset=utf-8", connection: "close" });
         response.end("Not found");
         return;
       }
       response.writeHead(200, { "content-type": "text/html; charset=utf-8", connection: "close" });
-      response.end(await readFile(fixturePath));
+      response.end(await readFile(servedFixturePath));
     } catch (error) {
       response.writeHead(500, { "content-type": "text/plain; charset=utf-8", connection: "close" });
       response.end(error instanceof Error ? error.message : String(error));
@@ -252,7 +264,13 @@ async function assertPositivePackedLoop(consumerDir, expectedPlaywrightVersion) 
     if (!address || typeof address !== "object") {
       throw new Error("Positive packed loop server did not expose a TCP address.");
     }
-    const url = `http://127.0.0.1:${address.port}/fixture`;
+    const serverOrigin = `http://127.0.0.1:${address.port}`;
+    await assertPositivePackedColorAudits({
+      consumerDir,
+      serverOrigin,
+      colorGuidePath
+    });
+    const url = `${serverOrigin}/fixture`;
     const agentCommand = [process.execPath, helperPath].map(quoteCommandArgument).join(" ");
     if (agentCommand.includes(repoRoot)) {
       throw new Error("Positive packed loop helper command referenced the checkout.");
@@ -292,6 +310,86 @@ async function assertPositivePackedLoop(consumerDir, expectedPlaywrightVersion) 
     await close(server);
     if (server.listening) {
       throw new Error("Positive packed loop server remained listening after cleanup.");
+    }
+  }
+}
+
+async function assertPositivePackedColorAudits({
+  consumerDir,
+  serverOrigin,
+  colorGuidePath
+}) {
+  const expectedAllowedColors = [
+    { red: 255, green: 255, blue: 255, alpha: 255 },
+    { red: 242, green: 242, blue: 242, alpha: 255 },
+    { red: 20, green: 20, blue: 20, alpha: 255 },
+    { red: 26, green: 102, blue: 204, alpha: 255 }
+  ];
+  for (const scenario of [
+    { name: "good", expectedFindingsPerViewport: 0 },
+    { name: "bad", expectedFindingsPerViewport: 1 }
+  ]) {
+    const outDir = join(consumerDir, `packed-color-${scenario.name}-out`);
+    const result = await runPnpm([
+      "exec",
+      "design-harness",
+      "audit",
+      "--url",
+      `${serverOrigin}/color-${scenario.name}`,
+      "--out",
+      outDir,
+      "--guide",
+      colorGuidePath
+    ], { cwd: consumerDir, capture: true, allowFailure: true });
+    if (result.code !== 0) {
+      throw new Error(
+        `Packed color ${scenario.name} audit exited ${result.code}.\n${result.stdout}\n${result.stderr}`
+      );
+    }
+
+    const audit = JSON.parse(await readFile(join(outDir, "audit.json"), "utf8"));
+    const summaries = audit.evidenceAssets
+      .filter((asset) => asset.id.startsWith("measurement-"))
+      .flatMap((asset) => asset.data?.colorAdherence ? [asset.data.colorAdherence] : []);
+    const findings = audit.findings.filter((finding) => finding.checkName === "off-palette-color");
+    if (
+      audit.status !== "success"
+      || summaries.length !== audit.viewportPresets.length
+      || findings.length !== scenario.expectedFindingsPerViewport * audit.viewportPresets.length
+      || audit.findings.length !== findings.length
+      || audit.failedChecks.some((check) => check.endsWith(":off-palette-color"))
+    ) {
+      throw new Error(`Packed color ${scenario.name} audit contract drifted.`);
+    }
+    for (const summary of summaries) {
+      const expectedViolations = scenario.expectedFindingsPerViewport;
+      if (
+        summary.policyId !== "color-adherence-v1"
+        || JSON.stringify(summary.allowedColors) !== JSON.stringify(expectedAllowedColors)
+        || summary.candidateSlotCount
+          !== summary.evaluatedSlotCount + summary.ignoredSlotCount + summary.skippedSlotCount
+        || summary.violatingSlotCount !== expectedViolations
+        || summary.distinctViolationGroupCount !== expectedViolations
+        || summary.emittedGroupCount !== expectedViolations
+        || summary.truncatedGroupCount !== 0
+      ) {
+        throw new Error(
+          `Packed color ${scenario.name} summary drifted:\n${JSON.stringify(summary, null, 2)}`
+        );
+      }
+    }
+    if (scenario.name === "bad" && findings.some((finding) => (
+      finding.criterionId !== "visual.color.project-contract"
+      || finding.determinism !== "deterministic"
+      || finding.resultKind !== "risk"
+      || finding.severity !== "low"
+      || finding.confidence !== "high"
+      || finding.selector !== "#palette-sample"
+      || finding.observed?.property !== "border-right-color"
+      || JSON.stringify(finding.observed?.unexpectedColor)
+        !== JSON.stringify({ red: 192, green: 38, blue: 211, alpha: 255 })
+    ))) {
+      throw new Error("Packed bad color audit did not isolate the off-palette border.");
     }
   }
 }
@@ -492,6 +590,19 @@ async function assertPackedReadme(consumerDir) {
   ) {
     throw new Error("Packed CLI README omitted the decoded additionalAllowedFamilies value/kind or ignoreSelectors contract.");
   }
+  if (
+    !readme.includes("audit.color.ignoreSelectors")
+    || !readme.includes("off-palette-color")
+    || !/exact rendered-color adherence for semantic srgb colors/iu.test(words)
+    || !/does not prove source-token use/iu.test(words)
+    || !/palette-distance scoring/iu.test(words)
+    || /Palette spacing adherence/iu.test(words)
+  ) {
+    throw new Error(
+      "Packed CLI README omitted the rendered-color project-contract boundary "
+      + "or retained the old palette/spacing out-of-scope claim."
+    );
+  }
 }
 
 async function assertPackedGuideCommands(consumerDir) {
@@ -521,9 +632,16 @@ async function assertPackedGuideCommands(consumerDir) {
     throw new Error("Packed guide compile omitted token ownership provenance.");
   }
   for (const [path, snapshot] of first) {
-    if (snapshot.source.includes("Rogue") || snapshot.source.includes("additionalAllowedFamilies")) {
-      throw new Error(`Packed guide leaked audit-only font families into generation output: ${path}`);
+    if (
+      snapshot.source.includes("Rogue")
+      || snapshot.source.includes("additionalAllowedFamilies")
+      || snapshot.source.includes(".third-party-color-widget")
+    ) {
+      throw new Error(`Packed guide leaked audit-only values into generation output: ${path}`);
     }
+  }
+  if (JSON.parse(first.get("design.tokens.json").source).audit !== undefined) {
+    throw new Error("Packed guide leaked the audit subtree into generated token JSON.");
   }
 
   await runPnpm(command, { cwd: consumerDir, capture: true });
@@ -702,6 +820,22 @@ function positiveLoopHelperSource({ fixturePath, invocationLogPath }) {
   ].join("\n");
 }
 
+function packedColorFixture(borderColor) {
+  return [
+    "<!doctype html>",
+    "<html lang=\"en\">",
+    "<head>",
+    "  <meta charset=\"utf-8\">",
+    "  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">",
+    "  <title>Design Harness packed color smoke</title>",
+    `  <style>body{margin:0;padding:2rem;background:#F2F2F2;color:#141414;font:16px/1.5 Inter,sans-serif}main{max-width:40rem;padding:2rem;background:#FFFFFF;border-right:4px solid ${borderColor}}</style>`,
+    "</head>",
+    "<body><main id=\"palette-sample\"><h1>Packed color smoke</h1><p>Consumer-local rendered color fixture.</p></main></body>",
+    "</html>",
+    ""
+  ].join("\n");
+}
+
 function missingLangFixture() {
   return [
     "<!doctype html>",
@@ -822,6 +956,9 @@ function packedGuideYaml() {
     "    additionalAllowedFamilies:",
     "      - value: Rogue",
     "        kind: named",
+    "  color:",
+    "    ignoreSelectors:",
+    "      - .third-party-color-widget",
     "prohibitions: [generic-card-grid]",
     "signatureElement: Use one compact status rail.",
     ""

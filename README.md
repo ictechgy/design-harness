@@ -229,7 +229,7 @@ Implemented:
 - Markdown report generation,
 - source-backed criteria registry,
 - parser-free rendered-copy analysis through the programmatic API and explicit `--copy` CLI path,
-- explicit guide compile/check and audit-time font-family contract checking,
+- explicit guide compile/check plus audit-time computed font-family and rendered-color project-contract checking,
 - contrast measurement that fails closed on unsupported ancestor paint effects,
 - criterion-bounded advisory scoring and explicit capped-finding cardinality,
 - a bounded `design-harness loop` gated only by deterministic failures,

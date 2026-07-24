@@ -3,44 +3,59 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Font family adherence error-boundary fixture</title>
+    <title>Color adherence error-boundary fixture</title>
     <style>
       body {
         margin: 0;
         padding: 2rem;
         color: #14171C;
-        background: #ffffff;
+        background: #FAFAF7;
         font-family: "Inter", sans-serif;
       }
       main {
         max-width: 36rem;
+        padding: 1rem;
+        background: #FFFFFF;
+      }
+      .slot-bundle {
+        position: absolute;
+        inset: 0 auto auto 0;
+        width: 1px;
+        height: 1px;
+        background: #FFFFFF;
+        border: 1px solid #FFFFFF;
       }
     </style>
   </head>
   <body>
     <main id="fixture-root">
-      <h1>Font evidence boundary</h1>
-      <p data-font-target>This control remains available to unrelated measurements.</p>
+      <h1>Color evidence boundary</h1>
+      <p>Unrelated viewport measurements remain available when color evidence fails.</p>
     </main>
     <script>
       const scenario = new URLSearchParams(window.location.search).get("scenario");
       const root = document.querySelector("#fixture-root");
-      const target = document.querySelector("[data-font-target]");
 
       if (scenario === "candidate-limit" && root) {
         const fragment = document.createDocumentFragment();
-        for (let index = 0; index < 2001; index += 1) {
-          const paragraph = document.createElement("p");
-          paragraph.textContent = `Bounded candidate ${index + 1}`;
-          fragment.append(paragraph);
+        for (let index = 0; index < 1001; index += 1) {
+          const element = document.createElement("div");
+          element.className = "slot-bundle";
+          element.setAttribute("aria-hidden", "true");
+          fragment.append(element);
         }
         root.append(fragment);
-      } else if (scenario === "computed-family-limit" && target instanceof HTMLElement) {
-        target.style.fontFamily = `"${"x".repeat(1100)}", sans-serif`;
+      } else if (scenario === "computed-color") {
+        Object.defineProperty(document.documentElement, "getBoundingClientRect", {
+          configurable: true,
+          value() {
+            throw new Error("fixture root geometry failure");
+          }
+        });
       } else if (scenario === "selector-evaluation") {
         const closest = Element.prototype.closest;
         Element.prototype.closest = function (selector) {
-          if (selector === ".third-party-widget") {
+          if (selector === ".third-party-color-widget") {
             throw new Error("fixture selector evaluation failure");
           }
           return closest.call(this, selector);

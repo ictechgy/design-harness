@@ -47,13 +47,6 @@ prohibitions:
   - generic-card-grid
 signatureElement: "Use a compact outlined status rail as the recurring product signature."
 audit:
-  fontFamily:
-    additionalAllowedFamilies:
-      - { value: "Pretendard Fallback", kind: named }
-      - { value: ui-monospace, kind: generic }
-      - { value: system-ui, kind: named }
-    ignoreSelectors:
-      - ".third-party-widget"
   color:
     ignoreSelectors:
-      - ".third-party-color-widget"
+      - "["

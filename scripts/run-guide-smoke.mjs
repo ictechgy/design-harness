@@ -42,6 +42,13 @@ async function assertGoldenProject() {
   assert(before.get("CLAUDE.md").source.includes("@AGENTS.md"), "Claude import was not generated");
   const tokenDocument = JSON.parse(before.get("design.tokens.json").source);
   assert(tokenDocument.$extensions?.["dev.design-harness"]?.sourceHash, "token ownership provenance missing");
+  assert(tokenDocument.audit === undefined, "audit overlay leaked into generated token JSON");
+  for (const [path, artifact] of before) {
+    assert(
+      !artifact.source.includes(".third-party-color-widget"),
+      `color audit selector leaked into generated artifact: ${path}`
+    );
+  }
 
   const second = await runGuide(target, "compile");
   assert(second.code === 0, `second guide compile failed:\n${second.stderr}`);

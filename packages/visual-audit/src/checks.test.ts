@@ -107,6 +107,60 @@ describe("findingsFromMeasurements", () => {
     expect(findings[0]?.recommendation).toContain("third-party content");
   });
 
+  it("emits bounded deterministic project-contract risks from off-palette groups", () => {
+    const findings = findingsFromMeasurements({
+      ...baseMeasurements,
+      colorAdherence: {
+        policyId: "color-adherence-v1",
+        allowedColors: [
+          { red: 20, green: 20, blue: 26, alpha: 255 },
+          { red: 255, green: 255, blue: 255, alpha: 255 }
+        ],
+        candidateSlotCount: 5,
+        evaluatedSlotCount: 3,
+        ignoredSlotCount: 1,
+        ignoredByReason: { "selector-exception": 1 },
+        skippedSlotCount: 1,
+        skippedByReason: { "unsupported-color": 1 },
+        violatingSlotCount: 2,
+        distinctViolationGroupCount: 1,
+        emittedGroupCount: 1,
+        truncatedGroupCount: 0,
+        groups: [{
+          property: "border-right-color",
+          unexpectedColor: { red: 192, green: 38, blue: 211, alpha: 255 },
+          rawComputedValues: ["rgb(192, 38, 211)"],
+          affectedSlotCount: 2,
+          selectors: ["#first", "#second"],
+          regions: [
+            { x: 10, y: 20, width: 200, height: 24 },
+            { x: 10, y: 50, width: 200, height: 24 }
+          ],
+          sampleCount: 2,
+          omittedSampleCount: 0
+        }]
+      }
+    }, ["measurement-desktop"]);
+
+    expect(findings).toHaveLength(1);
+    expect(findings[0]).toMatchObject({
+      id: "finding-desktop-off-palette-color-1",
+      checkName: "off-palette-color",
+      criterionId: "visual.color.project-contract",
+      category: "visual-polish",
+      severity: "low",
+      confidence: "high",
+      determinism: "deterministic",
+      resultKind: "risk",
+      humanReviewRecommended: false,
+      selector: "#first",
+      evidenceRefs: ["measurement-desktop"]
+    });
+    expect(findings[0]?.problem).toContain("rendered border-right-color value");
+    expect(findings[0]?.problem).not.toMatch(/good design|uses? (a )?token in (the )?source/iu);
+    expect(findings[0]?.recommendation).toContain("audit.color.ignoreSelectors");
+  });
+
 
   it("detects likely blank renders", () => {
     const findings = findingsFromMeasurements(

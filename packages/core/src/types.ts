@@ -117,8 +117,13 @@ export interface DesignGuideFontFamilyAudit {
   ignoreSelectors?: string[];
 }
 
+export interface DesignGuideColorAudit {
+  ignoreSelectors: string[];
+}
+
 export interface DesignGuideAudit {
-  fontFamily: DesignGuideFontFamilyAudit;
+  fontFamily?: DesignGuideFontFamilyAudit;
+  color?: DesignGuideColorAudit;
 }
 
 export interface DesignGuide {
@@ -140,6 +145,19 @@ export interface FontFamilyAdherencePolicy {
   allowedFamilies: AllowedFontFamily[];
   ignoreSelectors: string[];
   policyId: "font-family-adherence-v1";
+}
+
+export interface Rgba8Color {
+  red: number;
+  green: number;
+  blue: number;
+  alpha: number;
+}
+
+export interface ColorAdherencePolicy {
+  allowedColors: Rgba8Color[];
+  ignoreSelectors: string[];
+  policyId: "color-adherence-v1";
 }
 
 export const COPY_SURFACES = ["button", "error", "marketing", "body"] as const;

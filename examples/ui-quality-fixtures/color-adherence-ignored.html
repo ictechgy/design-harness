@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Color adherence ignored fixture</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 2rem;
+        color: #14171C;
+        background: #FAFAF7;
+        font-family: "Inter", sans-serif;
+      }
+      main {
+        max-width: 36rem;
+        padding: 1rem;
+        background: #FFFFFF;
+      }
+      .approved-control {
+        border-right: 4px solid #1F61D1;
+      }
+      .third-party-color-widget {
+        color: #000000;
+        background: #FFFFFF;
+        border: 1px solid #000000;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Account overview</h1>
+      <p class="approved-control">This evaluated control uses only project color tokens.</p>
+      <div class="third-party-color-widget">
+        <p>This vendor subtree deliberately uses unapproved black paint.</p>
+      </div>
+    </main>
+  </body>
+</html>

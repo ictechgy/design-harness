@@ -575,6 +575,14 @@ describe("criteria registry", () => {
       confidence: "high",
       humanReviewRecommended: false
     });
+    expect(findingMetadataForCheck("off-palette-color")).toMatchObject({
+      criterionId: "visual.color.project-contract",
+      determinism: "deterministic",
+      resultKind: "risk",
+      runtime: "computed-style",
+      confidence: "high",
+      humanReviewRecommended: false
+    });
   });
 
   it("locks the parser-free copy criteria metadata", () => {

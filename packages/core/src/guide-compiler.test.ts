@@ -63,6 +63,9 @@ describe("pure guide compiler", () => {
     const selectorOnly = structuredClone(base);
     selectorOnly.audit = { fontFamily: { ignoreSelectors: [".third-party-widget"] } };
 
+    const colorSelectorOnly = structuredClone(base);
+    colorSelectorOnly.audit = { color: { ignoreSelectors: [".paint-vendor"] } };
+
     const additionalOnlyA = structuredClone(base);
     additionalOnlyA.audit = {
       fontFamily: {
@@ -85,7 +88,8 @@ describe("pure guide compiler", () => {
     };
 
     const combined = structuredClone(additionalOnlyA);
-    combined.audit!.fontFamily.ignoreSelectors = ["[data-vendor-shell]"];
+    combined.audit!.fontFamily!.ignoreSelectors = ["[data-vendor-shell]"];
+    combined.audit!.color = { ignoreSelectors: ["[data-brand-paint]"] };
 
     const tokenOverlap = structuredClone(base);
     tokenOverlap.audit = {
@@ -94,15 +98,22 @@ describe("pure guide compiler", () => {
       }
     };
 
-    const overlays = [selectorOnly, additionalOnlyA, additionalOnlyB, combined, tokenOverlap];
+    const overlays = [
+      selectorOnly,
+      colorSelectorOnly,
+      additionalOnlyA,
+      additionalOnlyB,
+      combined,
+      tokenOverlap
+    ];
     for (const overlay of overlays) {
       expect(compileDesignGuide(overlay)).toEqual(compiledBase);
     }
     expect(compiledBase.markdown).not.toMatch(
-      /third-party-widget|Pretendard Fallback|ui-monospace|Apple SD Gothic Neo|Space Grotesk Fallback/u
+      /third-party-widget|paint-vendor|data-brand-paint|Pretendard Fallback|ui-monospace|Apple SD Gothic Neo|Space Grotesk Fallback/u
     );
     expect(compiledBase.designTokensJson).not.toMatch(
-      /third-party-widget|Pretendard Fallback|ui-monospace|Apple SD Gothic Neo|Space Grotesk Fallback/u
+      /third-party-widget|paint-vendor|data-brand-paint|Pretendard Fallback|ui-monospace|Apple SD Gothic Neo|Space Grotesk Fallback/u
     );
 
     const copyStyle = createExampleCopyStyle();

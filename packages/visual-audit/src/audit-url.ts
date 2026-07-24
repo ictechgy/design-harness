@@ -8,6 +8,7 @@ import {
   type AuditNotice,
   type AuditResult,
   type CopyStyle,
+  type ColorAdherencePolicy,
   type EvidenceAsset,
   type Finding,
   type FontFamilyAdherencePolicy,
@@ -20,6 +21,7 @@ import { analyzeCopy, copyAuditCapabilityNotices } from "@design-harness/copy-au
 import { chromium, errors } from "playwright";
 import {
   collectViewportMeasurements,
+  type ColorAdherenceMeasurementError,
   type FontFamilyMeasurementError,
   type ViewportCollectionResult,
   type ViewportMeasurementConfig
@@ -27,6 +29,11 @@ import {
 import { createRenderFailureFinding, findingsFromMeasurements, type ViewportMeasurements } from "./checks.js";
 import { BrowserUnavailableError } from "./errors.js";
 import { findingSamplesTruncatedNotice } from "./finding-coverage.js";
+import {
+  analyzeColorAdherence,
+  type ColorAdherenceAnalysisError,
+  type ColorAdherenceSummary
+} from "./color-adherence.js";
 import {
   analyzeFontFamilyAdherence,
   type FontFamilyAdherenceAnalysisError
@@ -46,6 +53,7 @@ export interface AuditUrlOptions {
   viewportPresets?: ViewportPreset[];
   copyStyle?: CopyStyle;
   fontFamilyPolicy?: FontFamilyAdherencePolicy;
+  colorPolicy?: ColorAdherencePolicy;
   launchBrowser?: () => Promise<BrowserHandle>;
 }
 
@@ -99,7 +107,11 @@ export async function auditUrl(options: AuditUrlOptions): Promise<AuditUrlResult
   const runId = options.runId ?? createRunId(startedAt);
   const timeoutMs = options.timeoutMs ?? 15_000;
   const viewportPresets = options.viewportPresets ?? DEFAULT_VIEWPORT_PRESETS;
-  const measurementConfig = viewportMeasurementConfig(options.copyStyle, options.fontFamilyPolicy);
+  const measurementConfig = viewportMeasurementConfig(
+    options.copyStyle,
+    options.fontFamilyPolicy,
+    options.colorPolicy
+  );
   const screenshotsDir = join(options.outDir, "screenshots");
   const evidenceAssets: EvidenceAsset[] = [];
   const measurementRecords: MeasurementRecord[] = [];
@@ -252,6 +264,31 @@ export async function auditUrl(options: AuditUrlOptions): Promise<AuditUrlResult
               ));
             }
           }
+          if (options.colorPolicy) {
+            const colorFailure = applyColorAdherence(collection, options.colorPolicy);
+            if (colorFailure) {
+              stripColorAdherenceEvidence(measurement);
+              failedChecks.push(`${viewport.name}:off-palette-color`);
+              const details = colorAdherenceFailureDetails(viewport.name, colorFailure);
+              noticeCandidates.push({
+                code: "color-adherence-measurement-failed",
+                message: "Rendered color adherence could not be evaluated for this viewport.",
+                viewport: viewport.name,
+                details
+              });
+              viewportEvidenceRefs.push(addFailureEvidence(
+                evidenceAssets,
+                viewport.name,
+                "off-palette-color",
+                details
+              ));
+            } else if (measurement.colorAdherence?.skippedSlotCount) {
+              noticeCandidates.push(colorAdherenceSkippedNotice(
+                viewport.name,
+                measurement.colorAdherence
+              ));
+            }
+          }
           const measurementEvidenceId = `measurement-${viewport.name}`;
           evidenceAssets.push({
             id: measurementEvidenceId,
@@ -381,6 +418,11 @@ type FontFamilyScopedFailure =
   | FontFamilyAdherenceAnalysisError
   | { code: "missing-collection-result" };
 
+type ColorAdherenceScopedFailure =
+  | ColorAdherenceMeasurementError
+  | ColorAdherenceAnalysisError
+  | { code: "missing-collection-result" };
+
 function applyFontFamilyAdherence(
   collection: ViewportCollectionResult,
   policy: FontFamilyAdherencePolicy
@@ -410,6 +452,51 @@ function stripFontFamilyEvidence(measurement: ViewportMeasurements): void {
   }
 }
 
+function applyColorAdherence(
+  collection: ViewportCollectionResult,
+  policy: ColorAdherencePolicy
+): ColorAdherenceScopedFailure | undefined {
+  if (collection.colorAdherenceError) {
+    return collection.colorAdherenceError;
+  }
+  if (
+    collection.colorAdherenceCandidates === undefined
+    || !collection.colorAdherenceCollection
+  ) {
+    return { code: "missing-collection-result" };
+  }
+  const result = analyzeColorAdherence(
+    collection.colorAdherenceCandidates,
+    policy,
+    collection.colorAdherenceCollection
+  );
+  if (!result.ok) {
+    return result.error;
+  }
+  collection.measurements.colorAdherence = result.summary;
+  return undefined;
+}
+
+function stripColorAdherenceEvidence(measurement: ViewportMeasurements): void {
+  delete measurement.colorAdherence;
+}
+
+function colorAdherenceSkippedNotice(
+  viewport: string,
+  summary: ColorAdherenceSummary
+): AuditNotice {
+  return {
+    code: "color-adherence-slots-skipped",
+    message: `Skipped ${summary.skippedSlotCount} rendered color slot(s) whose value could not be compared exactly; no off-palette finding was emitted for them.`,
+    viewport,
+    details: {
+      viewport,
+      skippedSlotCount: summary.skippedSlotCount,
+      skippedByReason: summary.skippedByReason
+    }
+  };
+}
+
 function fontFamilyFailureDetails(
   viewport: string,
   failure: FontFamilyScopedFailure
@@ -436,18 +523,50 @@ function fontFamilyFailureDetails(
   };
 }
 
+function colorAdherenceFailureDetails(
+  viewport: string,
+  failure: ColorAdherenceScopedFailure
+): Record<string, unknown> {
+  return {
+    viewport,
+    reasonCode: failure.code,
+    ...("selectorIndex" in failure && failure.selectorIndex !== undefined
+      ? { selectorIndex: failure.selectorIndex }
+      : {}),
+    ...("elementIndex" in failure && failure.elementIndex !== undefined
+      ? { elementIndex: failure.elementIndex }
+      : {}),
+    ...("candidateCount" in failure && failure.candidateCount !== undefined
+      ? { candidateCount: failure.candidateCount }
+      : {}),
+    ...("valueLength" in failure && failure.valueLength !== undefined
+      ? { valueLength: failure.valueLength }
+      : {}),
+    ...("limit" in failure && failure.limit !== undefined
+      ? { limit: failure.limit }
+      : {})
+  };
+}
+
 function viewportMeasurementConfig(
   copyStyle: CopyStyle | undefined,
-  fontFamilyPolicy: FontFamilyAdherencePolicy | undefined
+  fontFamilyPolicy: FontFamilyAdherencePolicy | undefined,
+  colorPolicy: ColorAdherencePolicy | undefined
 ): ViewportMeasurementConfig | undefined {
   const surfaceMapping = copyStyle?.surfaceMapping;
-  if (!surfaceMapping && !fontFamilyPolicy) {
+  if (!surfaceMapping && !fontFamilyPolicy && !colorPolicy) {
     return undefined;
   }
   return {
     ...(surfaceMapping ? { surfaceMapping } : {}),
     ...(fontFamilyPolicy ? {
       fontFamily: { ignoreSelectors: [...fontFamilyPolicy.ignoreSelectors] }
+    } : {}),
+    ...(colorPolicy ? {
+      color: {
+        allowedColors: colorPolicy.allowedColors.map((color) => ({ ...color })),
+        ignoreSelectors: [...colorPolicy.ignoreSelectors]
+      }
     } : {})
   };
 }

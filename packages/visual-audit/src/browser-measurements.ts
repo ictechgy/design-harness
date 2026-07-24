@@ -1,5 +1,16 @@
-import type { AuditNotice, CopyStyleSurfaceRule, LayoutMetrics } from "@design-harness/core";
+import type {
+  AuditNotice,
+  CopyStyleSurfaceRule,
+  LayoutMetrics,
+  Rgba8Color
+} from "@design-harness/core";
 import type { FindingCoverage, FindingCoverageEntry, ViewportMeasurements } from "./checks.js";
+import type {
+  ColorAdherenceCandidate,
+  ColorAdherenceCollectionCounts,
+  ColorAdherenceSkipReason,
+  ColorPaintProperty
+} from "./color-adherence.js";
 import {
   computeContrastRisks,
   computeTapTargetRisks,
@@ -15,6 +26,9 @@ export interface ViewportCollectionResult {
   findingCoverage?: FindingCoverage;
   fontFamilyCollection?: FontFamilyCollectionCounts;
   fontFamilyError?: FontFamilyMeasurementError;
+  colorAdherenceCandidates?: ColorAdherenceCandidate[];
+  colorAdherenceCollection?: ColorAdherenceCollectionCounts;
+  colorAdherenceError?: ColorAdherenceMeasurementError;
 }
 
 /**
@@ -34,6 +48,10 @@ export interface ViewportMeasurementConfig {
   fontFamily?: {
     ignoreSelectors: string[];
   };
+  color?: {
+    allowedColors: Rgba8Color[];
+    ignoreSelectors: string[];
+  };
 }
 
 export interface FontFamilyCollectionCounts {
@@ -50,6 +68,15 @@ export interface FontFamilyMeasurementError {
   limit?: number;
 }
 
+export interface ColorAdherenceMeasurementError {
+  code: "invalid-selector" | "selector-evaluation" | "candidate-limit" | "computed-color";
+  selectorIndex?: number;
+  elementIndex?: number;
+  candidateCount?: number;
+  valueLength?: number;
+  limit?: number;
+}
+
 export async function collectViewportMeasurements(page: {
   evaluate: <T>(pageFunction: ((arg?: unknown) => T | Promise<T>), arg?: unknown) => Promise<T>;
 }, config?: ViewportMeasurementConfig): Promise<ViewportCollectionResult> {
@@ -57,6 +84,8 @@ export async function collectViewportMeasurements(page: {
     const MAX_TEXT_INVENTORY_TEXT_LENGTH = 2_000;
     const MAX_FONT_FAMILY_CANDIDATES = 2_000;
     const MAX_COMPUTED_FONT_FAMILY_LENGTH = 1_024;
+    const MAX_COLOR_ADHERENCE_SLOTS = 5_000;
+    const MAX_COMPUTED_COLOR_LENGTH = 256;
     const MAX_BROWSER_FINDING_SAMPLES = 10;
     const FINDING_MATERIALIZATION_LIMIT = 5;
     const measurementConfig = rawConfig && typeof rawConfig === "object"
@@ -68,6 +97,10 @@ export async function collectViewportMeasurements(page: {
     const fontFamilyEnabled = measurementConfig?.fontFamily !== undefined;
     const fontFamilyIgnoreSelectors = Array.isArray(measurementConfig?.fontFamily?.ignoreSelectors)
       ? measurementConfig.fontFamily.ignoreSelectors
+      : [];
+    const colorAdherenceEnabled = measurementConfig?.color !== undefined;
+    const colorAdherenceIgnoreSelectors = Array.isArray(measurementConfig?.color?.ignoreSelectors)
+      ? measurementConfig.color.ignoreSelectors
       : [];
     const notices: AuditNotice[] = [];
     const unusableMatcherKeys = new Set<string>();
@@ -164,9 +197,11 @@ export async function collectViewportMeasurements(page: {
     let fontFamilyError: FontFamilyMeasurementError | undefined;
     let evaluatedFontFamilyElementCount = 0;
     let ignoredFontFamilyElementCount = 0;
+    let colorAdherenceError: ColorAdherenceMeasurementError | undefined;
 
     prepareSurfaceMatchers();
     prepareFontFamilySelectors();
+    prepareColorAdherenceSelectors();
 
     const textElements = Array.from(document.body.querySelectorAll<HTMLElement>("body *"))
       .filter((element) => {
@@ -290,6 +325,7 @@ export async function collectViewportMeasurements(page: {
     const movingContentControlRiskCollection = collectMovingContentControlRisks();
     const movingContentControlRisks = movingContentControlRiskCollection.samples;
     const textInventory = collectTextInventory();
+    const colorAdherenceCollectionResult = collectColorAdherenceCandidates();
     const textLength = document.body.innerText.trim().length;
     const likelyBlank = textLength === 0 && textElements.length === 0;
     const emittedHeadingIssues = likelyBlank
@@ -441,7 +477,12 @@ export async function collectViewportMeasurements(page: {
           ignoredElementCount: ignoredFontFamilyElementCount
         }
       } : {}),
-      ...(fontFamilyError ? { fontFamilyError } : {})
+      ...(fontFamilyError ? { fontFamilyError } : {}),
+      ...(colorAdherenceEnabled && colorAdherenceError === undefined ? {
+        colorAdherenceCandidates: colorAdherenceCollectionResult.candidates,
+        colorAdherenceCollection: colorAdherenceCollectionResult.counts
+      } : {}),
+      ...(colorAdherenceError ? { colorAdherenceError } : {})
     };
 
     function materializedSampleCount(samples: unknown[]): number {
@@ -610,6 +651,135 @@ export async function collectViewportMeasurements(page: {
       return items.map(({ fontFamily: _fontFamily, ...item }) => item);
     }
 
+    function collectColorAdherenceCandidates(): {
+      candidates: ColorAdherenceCandidate[];
+      counts: ColorAdherenceCollectionCounts;
+    } {
+      const candidates: ColorAdherenceCandidate[] = [];
+      let candidateSlotCount = 0;
+      let ignoredSlotCount = 0;
+      let skippedSlotCount = 0;
+      const skippedByReason: Partial<Record<ColorAdherenceSkipReason, number>> = {};
+      if (!colorAdherenceEnabled || colorAdherenceError) {
+        return {
+          candidates,
+          counts: {
+            candidateSlotCount,
+            ignoredSlotCount,
+            skippedSlotCount,
+            skippedByReason
+          }
+        };
+      }
+
+      const elements = [
+        document.documentElement,
+        document.body,
+        ...Array.from(document.body.querySelectorAll("*"))
+      ];
+      for (const [elementIndex, element] of elements.entries()) {
+        if (!(element instanceof HTMLElement)) {
+          continue;
+        }
+        let visibleInViewport = false;
+        try {
+          visibleInViewport = isColorPaintVisibleInViewport(element);
+        } catch {
+          colorAdherenceError = { code: "computed-color", elementIndex };
+          break;
+        }
+        if (!visibleInViewport) {
+          continue;
+        }
+
+        let ignored = false;
+        try {
+          ignored = colorAdherenceIgnoreSelectors.some(
+            (selector) => element.closest(selector) !== null
+          );
+        } catch {
+          colorAdherenceError = { code: "selector-evaluation", elementIndex };
+          break;
+        }
+
+        let sample: ReturnType<typeof sampleElement>;
+        let slots: Array<{ property: ColorPaintProperty; value: string }>;
+        try {
+          const style = window.getComputedStyle(element);
+          sample = sampleElement(element);
+          slots = [];
+          if (rendersOwnText(element)) {
+            slots.push({
+              property: "color",
+              value: style.webkitTextFillColor || style.color
+            });
+          }
+          if (style.backgroundImage === "none") {
+            slots.push({ property: "background-color", value: style.backgroundColor });
+          }
+          if (style.borderImageSource === "none") {
+            for (const border of [
+              ["border-top-color", style.borderTopColor, style.borderTopWidth, style.borderTopStyle],
+              ["border-right-color", style.borderRightColor, style.borderRightWidth, style.borderRightStyle],
+              ["border-bottom-color", style.borderBottomColor, style.borderBottomWidth, style.borderBottomStyle],
+              ["border-left-color", style.borderLeftColor, style.borderLeftWidth, style.borderLeftStyle]
+            ] as const) {
+              if (
+                Number.parseFloat(border[2]) > 0
+                && border[3] !== "none"
+                && border[3] !== "hidden"
+              ) {
+                slots.push({ property: border[0], value: border[1] });
+              }
+            }
+          }
+        } catch {
+          colorAdherenceError = { code: "computed-color", elementIndex };
+          break;
+        }
+
+        if (candidateSlotCount + slots.length > MAX_COLOR_ADHERENCE_SLOTS) {
+          colorAdherenceError = {
+            code: "candidate-limit",
+            candidateCount: candidateSlotCount + slots.length,
+            limit: MAX_COLOR_ADHERENCE_SLOTS
+          };
+          break;
+        }
+        candidateSlotCount += slots.length;
+        if (ignored) {
+          ignoredSlotCount += slots.length;
+          continue;
+        }
+
+        for (const slot of slots) {
+          const valueLength = [...slot.value].length;
+          if (valueLength > MAX_COMPUTED_COLOR_LENGTH) {
+            skippedSlotCount += 1;
+            skippedByReason["computed-color-too-long"] =
+              (skippedByReason["computed-color-too-long"] ?? 0) + 1;
+            continue;
+          }
+          candidates.push({
+            selector: sample.selector,
+            region: sample.region,
+            property: slot.property,
+            value: slot.value
+          });
+        }
+      }
+
+      return {
+        candidates,
+        counts: {
+          candidateSlotCount,
+          ignoredSlotCount,
+          skippedSlotCount,
+          skippedByReason
+        }
+      };
+    }
+
     function prepareFontFamilySelectors(): void {
       if (!fontFamilyEnabled) {
         return;
@@ -619,6 +789,20 @@ export async function collectViewportMeasurements(page: {
           document.documentElement.matches(selector);
         } catch {
           fontFamilyError = { code: "invalid-selector", selectorIndex };
+          return;
+        }
+      }
+    }
+
+    function prepareColorAdherenceSelectors(): void {
+      if (!colorAdherenceEnabled) {
+        return;
+      }
+      for (const [selectorIndex, selector] of colorAdherenceIgnoreSelectors.entries()) {
+        try {
+          document.documentElement.matches(selector);
+        } catch {
+          colorAdherenceError = { code: "invalid-selector", selectorIndex };
           return;
         }
       }
@@ -916,6 +1100,44 @@ export async function collectViewportMeasurements(page: {
       const style = window.getComputedStyle(element);
       const rect = element.getBoundingClientRect();
       return style.display !== "none" && style.visibility !== "hidden" && rect.width > 0 && rect.height > 0;
+    }
+
+    function isElementVisibleInViewport(element: Element): element is HTMLElement {
+      if (!(element instanceof HTMLElement) || !isElementVisible(element)) {
+        return false;
+      }
+      const rect = element.getBoundingClientRect();
+      return rect.bottom > 0
+        && rect.right > 0
+        && rect.top < window.innerHeight
+        && rect.left < window.innerWidth;
+    }
+
+    function isColorPaintVisibleInViewport(element: HTMLElement): boolean {
+      const style = window.getComputedStyle(element);
+      const rect = element.getBoundingClientRect();
+      if (
+        style.display === "none"
+        || style.visibility !== "visible"
+        || rect.width <= 0
+        || rect.height <= 0
+        || rect.bottom <= 0
+        || rect.right <= 0
+        || rect.top >= window.innerHeight
+        || rect.left >= window.innerWidth
+      ) {
+        return false;
+      }
+
+      let current: HTMLElement | null = element;
+      while (current) {
+        const currentOpacity = Number(window.getComputedStyle(current).opacity);
+        if (Number.isFinite(currentOpacity) && currentOpacity === 0) {
+          return false;
+        }
+        current = current.parentElement;
+      }
+      return true;
     }
 
     function accessibleNameFor(element: HTMLElement): string {

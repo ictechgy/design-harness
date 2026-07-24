@@ -7,6 +7,7 @@ import {
   createExampleAuditResult,
   createExampleMetadata,
   createMinimalCopyStyle,
+  projectColorAdherencePolicy,
   projectFontFamilyAdherencePolicy
 } from "@design-harness/core";
 import { BrowserUnavailableError, type AuditUrlOptions } from "@design-harness/visual-audit";
@@ -44,6 +45,7 @@ describe("runCli", () => {
     expect(runLoop).not.toHaveBeenCalled();
     expect(audit.mock.calls[0]?.[0]).not.toHaveProperty("copyStyle");
     expect(audit.mock.calls[0]?.[0]).not.toHaveProperty("fontFamilyPolicy");
+    expect(audit.mock.calls[0]?.[0]).not.toHaveProperty("colorPolicy");
     expect(audit.mock.calls[0]?.[0]).not.toHaveProperty("guide");
     expect(audit.mock.calls[0]?.[0]).not.toHaveProperty("designGuide");
     expect(writeArtifacts).toHaveBeenCalledOnce();
@@ -76,6 +78,7 @@ describe("runCli", () => {
     expect(loadDesignGuide.mock.invocationCallOrder[0]).toBeLessThan(loadCopyStyle.mock.invocationCallOrder[0]);
     expect(audit).toHaveBeenCalledOnce();
     expect(audit.mock.calls[0]?.[0].fontFamilyPolicy).toEqual(projectFontFamilyAdherencePolicy(guide));
+    expect(audit.mock.calls[0]?.[0].colorPolicy).toEqual(projectColorAdherencePolicy(guide));
     expect(audit.mock.calls[0]?.[0].copyStyle).toBe(copyStyle);
     expect(audit.mock.calls[0]?.[0]).not.toHaveProperty("guide");
     expect(audit.mock.calls[0]?.[0]).not.toHaveProperty("designGuide");
@@ -274,7 +277,8 @@ describe("runCli", () => {
       timeoutMs: 2500,
       cwd: "/project",
       copyStyle,
-      fontFamilyPolicy: projectFontFamilyAdherencePolicy(guide)
+      fontFamilyPolicy: projectFontFamilyAdherencePolicy(guide),
+      colorPolicy: projectColorAdherencePolicy(guide)
     });
     expect(audit).not.toHaveBeenCalled();
     expect(writeArtifacts).not.toHaveBeenCalled();
@@ -319,6 +323,7 @@ describe("runCli", () => {
 
     await expect(runCli(baseLoopArgv, dependencies)).resolves.toBe(3);
 
+    expect(runLoop.mock.calls[0]?.[0]).not.toHaveProperty("colorPolicy");
     expect(stderr).toHaveBeenCalledWith(expect.stringContaining("condition was reached"));
   });
 

@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://design-harness.dev/schemas/design-guide.schema.json",
   "title": "DesignGuide",
-  "description": "Closed authoring envelope for the Design Harness v0.5a generation profile and optional v0.5b audit policy.",
+  "description": "Closed authoring envelope for the Design Harness generation profile and optional project-contract audit policies.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -55,10 +55,28 @@
     "audit": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "fontFamily"
-      ],
+      "minProperties": 1,
       "properties": {
+        "color": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "ignoreSelectors"
+          ],
+          "properties": {
+            "ignoreSelectors": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 32,
+              "uniqueItems": true,
+              "items": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256
+              }
+            }
+          }
+        },
         "fontFamily": {
           "type": "object",
           "additionalProperties": false,

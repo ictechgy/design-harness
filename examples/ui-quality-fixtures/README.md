@@ -17,6 +17,12 @@ Small pages used to calibrate source-backed criteria and report wording.
 - `font-family-adherence-real-stack-bad.html`: a declared `Rogue` family plus one deliberately undeclared `Rogue Fallback` companion.
 - `font-family-adherence-ignored.html`: one vendor mismatch under the configured selector exception plus an evaluated control.
 - `font-family-adherence-errors.html`: query-selected hostile candidate, computed-value, and selector-evaluation boundaries for the live smoke.
+- `color-adherence-good.html`: direct text, background, and painted-border slots use only colors projected from the guide.
+- `color-adherence-bad.html`: the good fixture with only its right-border color changed to one off-palette value.
+- `color-adherence-root-bad.html`: one off-palette document-element background proves root paint is included.
+- `color-adherence-ignored.html`: off-palette vendor paint under the configured selector exception plus an evaluated control.
+- `color-adherence-incomplete.html`: one unsupported `display-p3` background slot that must be skipped without fabricating a mismatch.
+- `color-adherence-errors.html`: query-selected hostile candidate, computed-geometry, and selector-evaluation boundaries for the live smoke.
 - `midjourney-derived/scanability-good.html`: hand-authored dense-dashboard scanability fixture.
 - `midjourney-derived/scanability-bad.html`: hand-authored dense-dashboard scanability stress fixture.
 - `midjourney-derived/state-and-color-good.html`: hand-authored checklist and color hierarchy fixture that should preserve clear state meaning.

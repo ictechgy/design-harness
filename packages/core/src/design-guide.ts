@@ -1,16 +1,20 @@
 import { SLOP_FINGERPRINT_CATALOG } from "./generated/slop-fingerprints.js";
 import type {
   AllowedFontFamily,
+  ColorAdherencePolicy,
   DesignGuide,
+  DtcgColorValue,
   DtcgColorSemanticGroup,
   DtcgDimensionGroup,
   DtcgFontFamilyGroup,
   FontFamilyAdherencePolicy,
-  FontFamilyKind
+  FontFamilyKind,
+  Rgba8Color
 } from "./types.js";
 
 export const DESIGN_GUIDE_PROFILE_ID = "design-guide-v0.5a-1" as const;
 export const FONT_FAMILY_ADHERENCE_POLICY_ID = "font-family-adherence-v1" as const;
+export const COLOR_ADHERENCE_POLICY_ID = "color-adherence-v1" as const;
 export const GUIDE_CATALOG_VERSION = SLOP_FINGERPRINT_CATALOG.catalogVersion;
 
 export const CSS_GENERIC_FONT_FAMILY_VALUES = [
@@ -119,7 +123,7 @@ export function projectFontFamilyAdherencePolicy(designGuide: DesignGuide): Font
     }
   }
 
-  for (const family of designGuide.audit?.fontFamily.additionalAllowedFamilies ?? []) {
+  for (const family of designGuide.audit?.fontFamily?.additionalAllowedFamilies ?? []) {
     const identity = fontFamilyComparisonIdentity(family.value, family.kind);
     if (!seen.has(identity)) {
       seen.add(identity);
@@ -129,9 +133,50 @@ export function projectFontFamilyAdherencePolicy(designGuide: DesignGuide): Font
 
   return {
     allowedFamilies,
-    ignoreSelectors: [...(designGuide.audit?.fontFamily.ignoreSelectors ?? [])],
+    ignoreSelectors: [...(designGuide.audit?.fontFamily?.ignoreSelectors ?? [])],
     policyId: FONT_FAMILY_ADHERENCE_POLICY_ID
   };
+}
+
+export function projectColorAdherencePolicy(designGuide: DesignGuide): ColorAdherencePolicy {
+  assertDesignGuideProfile(designGuide);
+  const allowedColors: Rgba8Color[] = [];
+  const seen = new Set<string>();
+
+  for (const [name, token] of Object.entries(designGuide.tokens.color.semantic)) {
+    if (name === "$type" || typeof token === "string") {
+      continue;
+    }
+    const color = dtcgColorToRgba8(token.$value);
+    const identity = rgba8ColorIdentity(color);
+    if (!seen.has(identity)) {
+      seen.add(identity);
+      allowedColors.push(color);
+    }
+  }
+
+  return {
+    allowedColors,
+    ignoreSelectors: [...(designGuide.audit?.color?.ignoreSelectors ?? [])],
+    policyId: COLOR_ADHERENCE_POLICY_ID
+  };
+}
+
+export function dtcgColorToRgba8(value: DtcgColorValue): Rgba8Color {
+  return {
+    red: normalizedColorComponentToByte(value.components[0]),
+    green: normalizedColorComponentToByte(value.components[1]),
+    blue: normalizedColorComponentToByte(value.components[2]),
+    alpha: normalizedColorComponentToByte(value.alpha ?? 1)
+  };
+}
+
+export function rgba8ColorIdentity(value: Rgba8Color): string {
+  return `${value.red},${value.green},${value.blue},${value.alpha}`;
+}
+
+function normalizedColorComponentToByte(value: number): number {
+  return Math.round(Math.max(0, Math.min(1, value)) * 255);
 }
 
 export function classifyFontFamily(value: string): FontFamilyKind {
@@ -151,13 +196,27 @@ function validateAudit(value: unknown, path: string, issues: DesignGuideProfileI
     issues.push(invalid(path, "must be an object"));
     return;
   }
-  checkExactKeys(value, ["fontFamily"], path, issues);
-  const fontFamily = hasOwn(value, "fontFamily") ? value.fontFamily : undefined;
+  checkExactKeys(value, ["fontFamily", "color"], path, issues, ["fontFamily", "color"]);
+  if (!hasOwn(value, "fontFamily") && !hasOwn(value, "color")) {
+    issues.push(invalid(path, "must contain fontFamily or color"));
+  }
+  if (hasOwn(value, "fontFamily")) {
+    validateFontFamilyAudit(value.fontFamily, `${path}.fontFamily`, issues);
+  }
+  if (hasOwn(value, "color")) {
+    validateColorAudit(value.color, `${path}.color`, issues);
+  }
+}
+
+function validateFontFamilyAudit(
+  fontFamily: unknown,
+  fontFamilyPath: string,
+  issues: DesignGuideProfileIssue[]
+): void {
   if (!isRecord(fontFamily)) {
-    issues.push(invalid(`${path}.fontFamily`, "must be an object"));
+    issues.push(invalid(fontFamilyPath, "must be an object"));
     return;
   }
-  const fontFamilyPath = `${path}.fontFamily`;
   checkExactKeys(
     fontFamily,
     ["additionalAllowedFamilies", "ignoreSelectors"],
@@ -178,6 +237,23 @@ function validateAudit(value: unknown, path: string, issues: DesignGuideProfileI
   if (hasOwn(fontFamily, "ignoreSelectors")) {
     validateIgnoreSelectors(fontFamily.ignoreSelectors, `${fontFamilyPath}.ignoreSelectors`, issues);
   }
+}
+
+function validateColorAudit(
+  color: unknown,
+  colorPath: string,
+  issues: DesignGuideProfileIssue[]
+): void {
+  if (!isRecord(color)) {
+    issues.push(invalid(colorPath, "must be an object"));
+    return;
+  }
+  checkExactKeys(color, ["ignoreSelectors"], colorPath, issues);
+  if (!hasOwn(color, "ignoreSelectors")) {
+    issues.push(invalid(`${colorPath}.ignoreSelectors`, "must contain 1..32 unique selectors"));
+    return;
+  }
+  validateIgnoreSelectors(color.ignoreSelectors, `${colorPath}.ignoreSelectors`, issues);
 }
 
 function validateAdditionalAllowedFamilies(

@@ -5,10 +5,13 @@ import {
   createExampleDesignGuide,
   CSS_GENERIC_FONT_FAMILY_VALUES,
   DesignGuideProfileError,
+  dtcgColorToRgba8,
   foldAsciiCase,
   fontFamilyComparisonIdentity,
   loadSchema,
+  projectColorAdherencePolicy,
   projectFontFamilyAdherencePolicy,
+  rgba8ColorIdentity,
   SCHEMA_VERSION,
   validateSchema
 } from "./index.js";
@@ -25,7 +28,16 @@ describe("Design Guide Profile v0.5a-1", () => {
       properties: {
         schemaVersion: { const: "0.2" },
         audit: {
+          additionalProperties: false,
+          minProperties: 1,
           properties: {
+            color: {
+              additionalProperties: false,
+              required: ["ignoreSelectors"],
+              properties: {
+                ignoreSelectors: { minItems: 1, maxItems: 32, uniqueItems: true }
+              }
+            },
             fontFamily: {
               additionalProperties: false,
               minProperties: 1,
@@ -84,7 +96,7 @@ describe("Design Guide Profile v0.5a-1", () => {
 
     const invalidCases: Array<[unknown, string]> = [];
     invalidCases.push([{ ...createExampleDesignGuide(), audit: null }, "$.audit"]);
-    invalidCases.push([{ ...createExampleDesignGuide(), audit: {} }, "$.audit.fontFamily"]);
+    invalidCases.push([{ ...createExampleDesignGuide(), audit: {} }, "$.audit"]);
     invalidCases.push([{
       ...createExampleDesignGuide(),
       audit: { fontFamily: {} }
@@ -137,6 +149,50 @@ describe("Design Guide Profile v0.5a-1", () => {
     const browserInvalidSelector = createExampleDesignGuide();
     browserInvalidSelector.audit = { fontFamily: { ignoreSelectors: ["["] } };
     expect(() => assertDesignGuideProfile(browserInvalidSelector)).not.toThrow();
+  });
+
+  it("accepts the separate selector-only color audit overlay and enforces its closed bounds", () => {
+    const colorOnly = createExampleDesignGuide();
+    colorOnly.audit = {
+      color: { ignoreSelectors: [".third-party-widget", "[data-vendor-shell]"] }
+    };
+    expect(validateSchema("design-guide", colorOnly)).toEqual({ valid: true, issues: [] });
+    expect(() => assertDesignGuideProfile(colorOnly)).not.toThrow();
+
+    const combined = createExampleDesignGuide();
+    combined.audit = {
+      fontFamily: { ignoreSelectors: [".font-vendor"] },
+      color: { ignoreSelectors: [".paint-vendor"] }
+    };
+    expect(validateSchema("design-guide", combined)).toEqual({ valid: true, issues: [] });
+    expect(() => assertDesignGuideProfile(combined)).not.toThrow();
+
+    const browserInvalid = createExampleDesignGuide();
+    browserInvalid.audit = { color: { ignoreSelectors: ["["] } };
+    expect(() => assertDesignGuideProfile(browserInvalid)).not.toThrow();
+
+    const invalidCases: Array<[unknown, string]> = [
+      [{ ...createExampleDesignGuide(), audit: { color: {} } }, "$.audit.color.ignoreSelectors"],
+      [{
+        ...createExampleDesignGuide(),
+        audit: { color: { ignoreSelectors: [], extra: true } }
+      }, "$.audit.color.extra"],
+      [{
+        ...createExampleDesignGuide(),
+        audit: { color: { ignoreSelectors: [".vendor", ".vendor"] } }
+      }, "$.audit.color.ignoreSelectors[1]"],
+      [{
+        ...createExampleDesignGuide(),
+        audit: { color: { ignoreSelectors: [".safe\u202ebody"] } }
+      }, "$.audit.color.ignoreSelectors[0]"],
+      [{
+        ...createExampleDesignGuide(),
+        audit: { color: { ignoreSelectors: Array.from({ length: 33 }, (_, index) => `.x-${index}`) } }
+      }, "$.audit.color.ignoreSelectors"]
+    ];
+    for (const [value, path] of invalidCases) {
+      expectProfileIssue(value, path, "invalid-profile");
+    }
   });
 
   it("enforces exact bounded additional-family entries with safe decoded values", () => {
@@ -294,6 +350,53 @@ describe("Design Guide Profile v0.5a-1", () => {
       allowedFamilies: expect.arrayContaining([{ value: "JetBrains Mono", kind: "named" }]),
       ignoreSelectors: [],
       policyId: "font-family-adherence-v1"
+    });
+  });
+
+  it("projects an exact deduplicated RGBA8 color policy from semantic generation tokens", () => {
+    const guide = createExampleDesignGuide();
+    guide.tokens.color.semantic.background = {
+      $value: {
+        colorSpace: "srgb",
+        components: [1, 0.5, 0],
+        alpha: 0.501
+      }
+    };
+    guide.tokens.color.semantic["background-muted"] = {
+      $value: {
+        colorSpace: "srgb",
+        components: [1, 0.5, 0],
+        alpha: 0.501
+      }
+    };
+    guide.audit = { color: { ignoreSelectors: [".third-party-widget"] } };
+
+    expect(projectColorAdherencePolicy(guide)).toEqual({
+      allowedColors: [
+        { red: 255, green: 128, blue: 0, alpha: 128 },
+        { red: 20, green: 20, blue: 26, alpha: 255 },
+        { red: 26, green: 89, blue: 242, alpha: 255 }
+      ],
+      ignoreSelectors: [".third-party-widget"],
+      policyId: "color-adherence-v1"
+    });
+    expect(rgba8ColorIdentity({ red: 255, green: 128, blue: 0, alpha: 128 })).toBe(
+      "255,128,0,128"
+    );
+    expect(dtcgColorToRgba8({
+      colorSpace: "srgb",
+      components: [-0.1, 0.5, 1.1],
+      alpha: 0.501
+    })).toEqual({ red: 0, green: 128, blue: 255, alpha: 128 });
+
+    const withoutOverlay = createExampleDesignGuide();
+    expect(projectColorAdherencePolicy(withoutOverlay)).toMatchObject({
+      allowedColors: expect.arrayContaining([
+        { red: 255, green: 255, blue: 255, alpha: 255 },
+        { red: 20, green: 20, blue: 26, alpha: 255 }
+      ]),
+      ignoreSelectors: [],
+      policyId: "color-adherence-v1"
     });
   });
 

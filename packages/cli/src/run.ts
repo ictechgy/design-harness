@@ -1,5 +1,7 @@
 import {
+  projectColorAdherencePolicy,
   projectFontFamilyAdherencePolicy,
+  type ColorAdherencePolicy,
   type CopyStyle,
   type DesignGuide,
   type FontFamilyAdherencePolicy
@@ -96,6 +98,9 @@ export async function runCli(argv: string[], dependencies: RunCliDependencies = 
       if (prepared.fontFamilyPolicy) {
         loopInput.fontFamilyPolicy = prepared.fontFamilyPolicy;
       }
+      if (prepared.colorPolicy) {
+        loopInput.colorPolicy = prepared.colorPolicy;
+      }
       const loopDependencies: LoopRunDependencies = {};
       if (dependencies.audit) {
         loopDependencies.audit = dependencies.audit;
@@ -132,6 +137,9 @@ export async function runCli(argv: string[], dependencies: RunCliDependencies = 
     if (prepared.fontFamilyPolicy) {
       auditOptions.fontFamilyPolicy = prepared.fontFamilyPolicy;
     }
+    if (prepared.colorPolicy) {
+      auditOptions.colorPolicy = prepared.colorPolicy;
+    }
 
     const result = await (dependencies.audit ?? auditUrl)(auditOptions);
     await (dependencies.writeArtifacts ?? writeAuditArtifacts)({
@@ -162,6 +170,7 @@ interface PreparedAuditConfiguration {
   invocationCwd?: string;
   copyStyle?: CopyStyle;
   fontFamilyPolicy?: FontFamilyAdherencePolicy;
+  colorPolicy?: ColorAdherencePolicy;
 }
 
 async function prepareAuditConfiguration(
@@ -179,10 +188,13 @@ async function prepareAuditConfiguration(
   const fontFamilyPolicy = designGuide
     ? projectFontFamilyAdherencePolicy(designGuide)
     : undefined;
+  const colorPolicy = designGuide
+    ? projectColorAdherencePolicy(designGuide)
+    : undefined;
   const copyStyle = args.copyStylePath
     ? await (dependencies.loadCopyStyle ?? loadCopyStyleFile)(args.copyStylePath, { cwd: invocationCwd })
     : undefined;
-  return { url, invocationCwd, copyStyle, fontFamilyPolicy };
+  return { url, invocationCwd, copyStyle, fontFamilyPolicy, colorPolicy };
 }
 
 function renderGuideResult(

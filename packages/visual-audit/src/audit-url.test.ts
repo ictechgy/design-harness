@@ -7,6 +7,7 @@ import {
   SCHEMA_VERSION,
   assertAuditResultIntegrity,
   type AuditNotice,
+  type ColorAdherencePolicy,
   type CopyStyle,
   type FontFamilyAdherencePolicy,
   type ViewportPreset
@@ -713,6 +714,248 @@ describe("auditUrl font-family adherence", () => {
   });
 });
 
+describe("auditUrl rendered color adherence", () => {
+  it("omits color collection config and evidence when no guide policy is supplied", async () => {
+    const measurement = measurementFor("desktop");
+    const options: FakeBrowserOptions = {
+      measurement,
+      measurementArgs: []
+    };
+
+    const result = await auditUrl({
+      url: "http://localhost:3000",
+      outDir: await tempDir(),
+      viewportPresets: [viewport],
+      launchBrowser: async () => fakeBrowser(options)
+    });
+
+    const measurementEvidence = result.auditResult.evidenceAssets.find(
+      (asset) => asset.id === "measurement-desktop"
+    );
+    expect(options.measurementArgs).toEqual([undefined]);
+    expect(measurementEvidence?.data).not.toHaveProperty("colorAdherence");
+    expect(result.auditResult.findings.some(
+      (finding) => finding.checkName === "off-palette-color"
+    )).toBe(false);
+    expect(result.auditResult.failedChecks).not.toContain("desktop:off-palette-color");
+  });
+
+  it("records exact summary evidence and a project-contract risk for an unexpected paint slot", async () => {
+    const measurement = measurementFor("desktop");
+    const options: FakeBrowserOptions = {
+      measurement,
+      measurementArgs: [],
+      collectionResults: [{
+        measurements: measurement,
+        notices: [],
+        colorAdherenceCandidates: [{
+          selector: "#palette-sample",
+          region: { x: 20, y: 30, width: 180, height: 40 },
+          property: "border-right-color",
+          value: "rgb(192, 38, 211)"
+        }],
+        colorAdherenceCollection: {
+          candidateSlotCount: 1,
+          ignoredSlotCount: 0,
+          skippedSlotCount: 0,
+          skippedByReason: {}
+        }
+      }]
+    };
+
+    const result = await auditUrl({
+      url: "http://localhost:3000",
+      outDir: await tempDir(),
+      viewportPresets: [viewport],
+      colorPolicy: colorAdherencePolicy(),
+      launchBrowser: async () => fakeBrowser(options)
+    });
+
+    expect(options.measurementArgs).toEqual([{
+      color: {
+        allowedColors: colorAdherencePolicy().allowedColors,
+        ignoreSelectors: [".third-party-color-widget"]
+      }
+    }]);
+    const measurementEvidence = result.auditResult.evidenceAssets.find(
+      (asset) => asset.id === "measurement-desktop"
+    );
+    expect(measurementEvidence?.data?.colorAdherence).toMatchObject({
+      policyId: "color-adherence-v1",
+      candidateSlotCount: 1,
+      evaluatedSlotCount: 1,
+      ignoredSlotCount: 0,
+      skippedSlotCount: 0,
+      violatingSlotCount: 1,
+      distinctViolationGroupCount: 1,
+      emittedGroupCount: 1,
+      truncatedGroupCount: 0,
+      groups: [{
+        property: "border-right-color",
+        unexpectedColor: { red: 192, green: 38, blue: 211, alpha: 255 },
+        affectedSlotCount: 1,
+        sampleCount: 1,
+        omittedSampleCount: 0
+      }]
+    });
+    expect(result.auditResult.findings).toEqual([
+      expect.objectContaining({
+        checkName: "off-palette-color",
+        criterionId: "visual.color.project-contract",
+        severity: "low",
+        confidence: "high",
+        determinism: "deterministic",
+        resultKind: "risk",
+        selector: "#palette-sample"
+      })
+    ]);
+    expect(result.auditResult.status).toBe("success");
+    expect(() => assertAuditResultIntegrity(result.auditResult)).not.toThrow();
+  });
+
+  it("reports unsupported computed colors as explicit skips without fabricating a finding", async () => {
+    const measurement = measurementFor("desktop");
+    const result = await auditUrl({
+      url: "http://localhost:3000",
+      outDir: await tempDir(),
+      viewportPresets: [viewport],
+      colorPolicy: colorAdherencePolicy(),
+      launchBrowser: async () => fakeBrowser({
+        measurement,
+        collectionResults: [{
+          measurements: measurement,
+          notices: [],
+          colorAdherenceCandidates: [{
+            selector: "#wide-gamut",
+            region: { x: 20, y: 30, width: 180, height: 40 },
+            property: "background-color",
+            value: "color(display-p3 1 0 0)"
+          }],
+          colorAdherenceCollection: {
+            candidateSlotCount: 1,
+            ignoredSlotCount: 0,
+            skippedSlotCount: 0,
+            skippedByReason: {}
+          }
+        }]
+      })
+    });
+
+    const measurementEvidence = result.auditResult.evidenceAssets.find(
+      (asset) => asset.id === "measurement-desktop"
+    );
+    expect(measurementEvidence?.data?.colorAdherence).toMatchObject({
+      candidateSlotCount: 1,
+      evaluatedSlotCount: 0,
+      ignoredSlotCount: 0,
+      skippedSlotCount: 1,
+      skippedByReason: { "unsupported-color": 1 },
+      violatingSlotCount: 0,
+      groups: []
+    });
+    expect(result.auditResult.findings).toEqual([]);
+    expect(result.auditResult.notices).toEqual([
+      expect.objectContaining({
+        code: "color-adherence-slots-skipped",
+        details: {
+          skippedByReason: { "unsupported-color": 1 },
+          skippedSlotCount: 1,
+          viewport: "desktop"
+        }
+      })
+    ]);
+    expect(result.auditResult.status).toBe("success");
+  });
+
+  it.each([
+    ["browser selector failure", {
+      collection: {
+        colorAdherenceError: { code: "invalid-selector" as const, selectorIndex: 0 }
+      },
+      expectedReason: "invalid-selector"
+    }],
+    ["computed color collection failure", {
+      collection: {
+        colorAdherenceError: { code: "computed-color" as const, elementIndex: 0 }
+      },
+      expectedReason: "computed-color"
+    }],
+    ["candidate limit failure", {
+      collection: {
+        colorAdherenceError: {
+          code: "candidate-limit" as const,
+          candidateCount: 5_001,
+          limit: 5_000
+        }
+      },
+      expectedReason: "candidate-limit"
+    }],
+    ["missing collection result", {
+      collection: {},
+      expectedReason: "missing-collection-result"
+    }],
+    ["collection accounting mismatch", {
+      collection: {
+        colorAdherenceCandidates: [{
+          selector: "#palette-sample",
+          region: { x: 20, y: 30, width: 180, height: 40 },
+          property: "color" as const,
+          value: "rgb(20, 23, 28)"
+        }],
+        colorAdherenceCollection: {
+          candidateSlotCount: 2,
+          ignoredSlotCount: 0,
+          skippedSlotCount: 0,
+          skippedByReason: {}
+        }
+      },
+      expectedReason: "evidence-count-mismatch"
+    }]
+  ])("keeps base measurements but marks only the color check partial on %s", async (_label, scenario) => {
+    const measurement = {
+      ...measurementFor("desktop"),
+      documentScrollWidth: 1500
+    };
+    const result = await auditUrl({
+      url: "http://localhost:3000",
+      outDir: await tempDir(),
+      viewportPresets: [viewport],
+      colorPolicy: colorAdherencePolicy(),
+      launchBrowser: async () => fakeBrowser({
+        measurement,
+        collectionResults: [{
+          measurements: measurement,
+          notices: [],
+          ...scenario.collection
+        }]
+      })
+    });
+
+    const measurementEvidence = result.auditResult.evidenceAssets.find(
+      (asset) => asset.id === "measurement-desktop"
+    );
+    expect(result.auditResult.status).toBe("partial");
+    expect(result.auditResult.failedChecks).toEqual(["desktop:off-palette-color"]);
+    expect(result.auditResult.findings.map((finding) => finding.checkName)).toContain(
+      "horizontal-overflow"
+    );
+    expect(result.auditResult.findings.map((finding) => finding.checkName)).not.toContain(
+      "off-palette-color"
+    );
+    expect(measurementEvidence?.data).not.toHaveProperty("colorAdherence");
+    expect(result.auditResult.notices).toEqual([
+      expect.objectContaining({
+        code: "color-adherence-measurement-failed",
+        details: expect.objectContaining({
+          viewport: "desktop",
+          reasonCode: scenario.expectedReason
+        })
+      })
+    ]);
+    expect(() => assertAuditResultIntegrity(result.auditResult)).not.toThrow();
+  });
+});
+
 describe("auditUrl copy analysis", () => {
   it("analyzes pre-materialized text inventory against its exact evidence asset", async () => {
     const result = await auditUrl({
@@ -1345,6 +1588,19 @@ function fontFamilyPolicy(): FontFamilyAdherencePolicy {
       { value: "sans-serif", kind: "generic" }
     ],
     ignoreSelectors: [".third-party-widget"]
+  };
+}
+
+function colorAdherencePolicy(): ColorAdherencePolicy {
+  return {
+    policyId: "color-adherence-v1",
+    allowedColors: [
+      { red: 250, green: 250, blue: 247, alpha: 255 },
+      { red: 255, green: 255, blue: 255, alpha: 255 },
+      { red: 20, green: 23, blue: 28, alpha: 255 },
+      { red: 31, green: 97, blue: 209, alpha: 255 }
+    ],
+    ignoreSelectors: [".third-party-color-widget"]
   };
 }
 
