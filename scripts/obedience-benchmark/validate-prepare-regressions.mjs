@@ -18,11 +18,15 @@ import {
   MATRIX,
   canonicalJson,
   deliveryStanzaFor,
+  expectedExecutableFor,
   readCanonicalSharedBlock,
   readCommonInputs,
   sha256
 } from "./contract.mjs";
-import { validatePreparedDelivery } from "./import.mjs";
+import {
+  validateOperatorEvidence,
+  validatePreparedDelivery
+} from "./import.mjs";
 import { prepareCellRoots } from "./prepare.mjs";
 
 const temporaryRoot = await mkdtemp(join(tmpdir(), "obedience-v1-prepare-regression-"));
@@ -38,6 +42,7 @@ try {
   assert.equal(manifest.providerExecution, "not-performed");
   assert.deepEqual(manifest.commonInputHashes, inputs.hashes);
   assert.equal(manifest.cells.length, MATRIX.length);
+  validateOperatorEvidence(operatorEvidenceRegressionFixture());
 
   for (const expected of MATRIX) {
     const cellRoot = join(root, "cells", expected.id);
@@ -140,6 +145,49 @@ try {
     /prepared \.git must be a real directory/i
   );
   await rm(inlineGit);
+  await mkdir(inlineGit);
+  await assert.rejects(
+    validatePreparedDelivery(inlineRoot, inline, inputs),
+    /prepared \.git HEAD must be a regular non-symbolic-link file/i
+  );
+
+  const plausibleHead = "ref: refs/heads/main\n";
+  const plausibleConfig = [
+    "[core]",
+    "\trepositoryformatversion = 0",
+    "\tbare = false",
+    ""
+  ].join("\n");
+  const externalHead = join(temporaryRoot, "external-head");
+  await Promise.all([
+    writeFile(externalHead, plausibleHead),
+    writeFile(join(inlineGit, "config"), plausibleConfig)
+  ]);
+  await symlink(externalHead, join(inlineGit, "HEAD"));
+  await assert.rejects(
+    validatePreparedDelivery(inlineRoot, inline, inputs),
+    /prepared \.git HEAD must be a regular non-symbolic-link file/i
+  );
+  await rm(join(inlineGit, "HEAD"));
+  await writeFile(join(inlineGit, "HEAD"), "not a plausible Git HEAD\n");
+  await assert.rejects(
+    validatePreparedDelivery(inlineRoot, inline, inputs),
+    /prepared \.git HEAD is not plausible Git metadata/i
+  );
+  await writeFile(join(inlineGit, "HEAD"), plausibleHead);
+  await writeFile(join(inlineGit, "config"), "not a plausible Git config\n");
+  await assert.rejects(
+    validatePreparedDelivery(inlineRoot, inline, inputs),
+    /prepared \.git config is not plausible Git metadata/i
+  );
+  const externalConfig = join(temporaryRoot, "external-config");
+  await writeFile(externalConfig, plausibleConfig);
+  await rm(join(inlineGit, "config"));
+  await symlink(externalConfig, join(inlineGit, "config"));
+  await assert.rejects(
+    validatePreparedDelivery(inlineRoot, inline, inputs),
+    /prepared \.git config must be a regular non-symbolic-link file/i
+  );
 
   const skill = MATRIX.find((cell) => cell.id === "claude-haiku-skill");
   const skillRoot = join(root, "cells", skill.id);
@@ -223,12 +271,170 @@ try {
     prepareCellRoots(join(process.cwd(), "..scratch")),
     /outside and must not contain the source repository/i
   );
+
+  const noGitDestination = join(temporaryRoot, "prepared-without-git");
+  await mkdir(noGitDestination);
+  const originalPath = process.env.PATH;
+  let noGitPreparation;
+  try {
+    process.env.PATH = "";
+    noGitPreparation = await prepareCellRoots(noGitDestination);
+  } finally {
+    if (originalPath === undefined) {
+      delete process.env.PATH;
+    } else {
+      process.env.PATH = originalPath;
+    }
+  }
+  for (const expected of MATRIX) {
+    const cellRoot = join(noGitPreparation.root, "cells", expected.id);
+    const request = JSON.parse(
+      await readFile(join(cellRoot, "request-metadata.json"), "utf8")
+    );
+    assert.deepEqual(request.git, {
+      initialized: false,
+      reason: "git-unavailable"
+    });
+    await assertMissing(join(cellRoot, ".git"));
+    await validatePreparedDelivery(cellRoot, expected, inputs);
+  }
 } finally {
   await rm(temporaryRoot, { recursive: true, force: true });
 }
 
-console.log("Validated obedience-v1 preparation isolation and delivery matrix.");
+console.log(
+  "Validated obedience-v1 preparation isolation, Git/no-Git delivery, and private retry evidence."
+);
 
 async function assertMissing(path) {
   await assert.rejects(stat(path), (error) => error?.code === "ENOENT");
+}
+
+function operatorEvidenceRegressionFixture() {
+  const cells = Object.fromEntries(
+    MATRIX.map((expected, index) => [
+      expected.id,
+      operatorEvidenceCell(expected, index)
+    ])
+  );
+
+  const successfulRetry = cells[MATRIX[0].id];
+  successfulRetry.attempts = [
+    failedAttempt(successfulRetry.attempts[0], {
+      operationalFailureKind: "authentication",
+      retryReason: "operator-recorded authentication retry",
+      resolvedModel: null
+    }),
+    {
+      ...successfulRetry.attempts[0],
+      index: 2,
+      startedAt: "2026-07-24T00:00:04.000Z",
+      endedAt: "2026-07-24T00:00:05.000Z",
+      privateTranscriptSha256: sha256("private-successful-retry")
+    }
+  ];
+  successfulRetry.acceptedAttemptIndex = 2;
+
+  const exhaustedRetry = cells[MATRIX[1].id];
+  exhaustedRetry.attempts = [
+    failedAttempt(exhaustedRetry.attempts[0], {
+      operationalFailureKind: "transient-tool",
+      retryReason: "operator-recorded transient tool retry"
+    }),
+    failedAttempt(
+      {
+        ...exhaustedRetry.attempts[0],
+        index: 2,
+        startedAt: "2026-07-24T00:01:04.000Z",
+        endedAt: "2026-07-24T00:01:05.000Z",
+        privateTranscriptSha256: sha256("private-exhausted-retry")
+      },
+      {
+        operationalFailureKind: null,
+        retryReason: null
+      }
+    )
+  ];
+  exhaustedRetry.acceptedAttemptIndex = 2;
+
+  const unavailable = cells[MATRIX[2].id];
+  unavailable.executor.resolvedModel = null;
+  unavailable.attempts[0] = {
+    ...unavailable.attempts[0],
+    status: "unavailable",
+    exitStatus: null,
+    resolvedModel: null
+  };
+
+  return {
+    schemaVersion: "obedience-v1/operator-evidence/v1",
+    recordedAt: "2026-07-24T00:59:00.000Z",
+    cells
+  };
+}
+
+function operatorEvidenceCell(expected, index) {
+  const resolvedModel =
+    expected.executorFamily === "codex-cli"
+      ? expected.requestedModel
+      : `claude-${expected.requestedModel}-regression`;
+  const minute = String(index).padStart(2, "0");
+  return {
+    executor: {
+      binaryName: expectedExecutableFor(expected),
+      cliVersion: "regression-1.0.0",
+      versionSource: "operator-path",
+      requestedModel: expected.requestedModel,
+      resolvedModel,
+      effort: expected.effort ?? "provider-default"
+    },
+    commandDescriptor: {
+      executable: expectedExecutableFor(expected),
+      invocationMode: "non-interactive",
+      requestedModel: expected.requestedModel,
+      effort: expected.effort ?? "provider-default",
+      promptInputMode: "common-task-then-delivery-stanza",
+      deliveryMechanism: expected.mechanism
+    },
+    editBoundary: {
+      passed: true,
+      modifiedPaths: []
+    },
+    attempts: [
+      {
+        index: 1,
+        status: "completed",
+        operationalFailureKind: null,
+        retryReason: null,
+        startedAt: `2026-07-24T00:${minute}:02.000Z`,
+        endedAt: `2026-07-24T00:${minute}:03.000Z`,
+        wallTimeMs: 1000,
+        exitStatus: 0,
+        signal: null,
+        timedOut: false,
+        usage: null,
+        privateTranscriptSha256: sha256(`private-${expected.id}`),
+        resolvedModel
+      }
+    ],
+    acceptedAttemptIndex: 1
+  };
+}
+
+function failedAttempt(
+  attempt,
+  {
+    operationalFailureKind,
+    retryReason,
+    resolvedModel = attempt.resolvedModel
+  }
+) {
+  return {
+    ...attempt,
+    status: "error",
+    operationalFailureKind,
+    retryReason,
+    exitStatus: 1,
+    resolvedModel
+  };
 }

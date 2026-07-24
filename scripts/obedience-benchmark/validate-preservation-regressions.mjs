@@ -10,13 +10,25 @@ const [fixture, oracleBytes] = await Promise.all([
   readFile(INPUT_PATHS.preservationOracle, "utf8")
 ]);
 const oracle = JSON.parse(oracleBytes);
+const focusedRepair = fixture
+  .replace("<html>", '<html lang="en">')
+  .replace("Pending orders: {{pendingCount}}", "Pending orders: 12");
 
 function validate(source) {
-  return validatePreservation({ source, oracle, label: "mutation fixture" });
+  return validatePreservation({
+    source,
+    oracle,
+    baselineSource: fixture,
+    label: "mutation fixture"
+  });
+}
+
+function validateStructure(source) {
+  return validatePreservation({ source, oracle, label: "structural fixture" });
 }
 
 function expectReject(name, mutate, expectedCode) {
-  const result = validate(mutate(fixture));
+  const result = validate(mutate(focusedRepair));
   assert.equal(result.ok, false, `${name}: preservation unexpectedly passed`);
   assert.ok(
     result.violations.some((violation) => violation.code === expectedCode),
@@ -41,7 +53,29 @@ function expectOracleReject(name, mutate) {
   );
 }
 
-assert.equal(validate(fixture).ok, true, "controlled baseline fixture must satisfy preservation");
+assert.equal(
+  validateStructure(fixture).ok,
+  true,
+  "controlled baseline fixture must satisfy the structural preservation oracle"
+);
+for (const [name, source] of [
+  ["unchanged baseline", fixture],
+  ["lang-only repair", fixture.replace("<html>", '<html lang="en">')],
+  [
+    "placeholder-only repair",
+    fixture.replace(
+      "Pending orders: {{pendingCount}}",
+      "Pending orders: 12"
+    )
+  ],
+  ["both permitted repairs", focusedRepair]
+]) {
+  assert.equal(
+    validate(source).ok,
+    true,
+    `${name} must satisfy the closed source-delta contract`
+  );
+}
 
 const emptyOracle = validatePreservation({
   source: fixture,
@@ -68,10 +102,29 @@ expectOracleReject("non-integer structure minimum", (value) => {
 expectOracleReject("negative structure minimum", (value) => {
   value.minimumVisibleStructure.minimumFeatureCount = -1;
 });
+expectOracleReject("unexpected top-level key", (value) => {
+  value.requiredFeature = value.requiredFeatures[0];
+});
+expectOracleReject("missing top-level key", (value) => {
+  delete value.forbiddenReplacementText;
+});
+expectOracleReject("unknown feature key", (value) => {
+  value.requiredFeatures[0].selecter =
+    value.requiredFeatures[0].selector;
+});
+expectOracleReject("missing feature selector", (value) => {
+  delete value.requiredFeatures[0].selector;
+});
+expectOracleReject("selector not derived from marker", (value) => {
+  value.requiredFeatures[0].selector = "header";
+});
+expectOracleReject("wrong optional feature type", (value) => {
+  value.requiredFeatures[1].minimumVisibleTextCharacters = "8";
+});
+expectOracleReject("duplicate feature marker", (value) => {
+  value.requiredFeatures.push(structuredClone(value.requiredFeatures[0]));
+});
 
-const focusedRepair = fixture
-  .replace("<html>", '<html lang="en">')
-  .replace("Pending orders: {{pendingCount}}", "Pending orders: 12");
 assert.equal(
   validate(focusedRepair).ok,
   true,
@@ -280,6 +333,72 @@ expectReject(
   "label-relationship-changed"
 );
 
+expectReject(
+  "script element",
+  (source) =>
+    source.replace(
+      "  </body>",
+      "    <script>console.log('unexpected')</script>\n  </body>"
+    ),
+  "script-content-not-allowed"
+);
+
+expectReject(
+  "external stylesheet",
+  (source) =>
+    source.replace(
+      "  </head>",
+      '    <link rel="stylesheet" href="https://example.invalid/hide.css">\n  </head>'
+    ),
+  "external-stylesheet-not-allowed"
+);
+
+expectReject(
+  "stylesheet import",
+  (source) =>
+    source.replace(
+      "    </style>",
+      '      @import url("https://example.invalid/hide.css");\n    </style>'
+    ),
+  "unsupported-css-feature"
+);
+
+expectReject(
+  "scoped stylesheet escape",
+  (source) =>
+    source.replace(
+      "    </style>",
+      "      @scope (body) { main { display: none; } }\n    </style>"
+    ),
+  "unsupported-css-feature"
+);
+
+expectReject(
+  "CSS variable hiding escape",
+  (source) =>
+    source.replace(
+      "      body {\n        margin: 0;",
+      "      body {\n        --hidden-display: none;\n        display: var(--hidden-display);\n        margin: 0;"
+    ),
+  "unsupported-css-feature"
+);
+
+expectReject(
+  "unrelated trailing byte",
+  (source) => `${source}x`,
+  "unexpected-source-delta"
+);
+
+expectReject(
+  "runtime page destruction",
+  (source) =>
+    source.replace(
+      "  </body>",
+      '    <script>document.body.replaceChildren();</script>\n  </body>'
+    ),
+  "script-content-not-allowed"
+);
+
 console.log(
-  "Validated obedience-v1 preservation oracle, 21 source mutations, and four malformed-oracle cases."
+  "Validated obedience-v1 exact repair delta, 28 source mutations, and eleven malformed-oracle cases."
 );
