@@ -16,6 +16,40 @@ const VOID_ELEMENTS = new Set([
 ]);
 
 const NON_VISIBLE_TEXT_ELEMENTS = new Set(["script", "style", "template", "noscript"]);
+const ORACLE_TOP_LEVEL_KEYS = Object.freeze([
+  "fixturePath",
+  "forbiddenReplacementText",
+  "minimumVisibleStructure",
+  "requiredFeatures",
+  "schemaVersion"
+]);
+const REQUIRED_FEATURE_KEYS = Object.freeze([
+  "marker",
+  "selector",
+  "tagName"
+]);
+const OPTIONAL_FEATURE_STRING_KEYS = Object.freeze([
+  "accessibleName",
+  "requiredAlt",
+  "requiredLabelText",
+  "requiredRole",
+  "requiredText",
+  "requiredTextPrefix",
+  "requiredType"
+]);
+const OPTIONAL_FEATURE_INTEGER_KEYS = Object.freeze([
+  "minimumOptionCount",
+  "minimumVisibleTextCharacters"
+]);
+const ALLOWED_FEATURE_KEYS = new Set([
+  ...REQUIRED_FEATURE_KEYS,
+  ...OPTIONAL_FEATURE_STRING_KEYS,
+  ...OPTIONAL_FEATURE_INTEGER_KEYS
+]);
+const BASELINE_HTML_TAG = "<html>";
+const REPAIRED_HTML_TAG = '<html lang="en">';
+const PENDING_COUNT_PLACEHOLDER = "{{pendingCount}}";
+const PENDING_COUNT_PATTERN = /^(?:0|[1-9]\d*)$/;
 
 function decodeEntities(text) {
   return text
@@ -521,9 +555,90 @@ function countMeaningfulCharacters(text) {
   return [...normalizedText(text)].filter((character) => !/\s/.test(character)).length;
 }
 
+function isPlainObject(value) {
+  return (
+    value !== null &&
+    typeof value === "object" &&
+    !Array.isArray(value) &&
+    Object.getPrototypeOf(value) === Object.prototype
+  );
+}
+
+function hasExactKeys(value, expectedKeys) {
+  const actual = Object.keys(value).sort();
+  const expected = [...expectedKeys].sort();
+  return JSON.stringify(actual) === JSON.stringify(expected);
+}
+
+function occurrenceCount(source, needle) {
+  let count = 0;
+  let cursor = 0;
+  while (true) {
+    const found = source.indexOf(needle, cursor);
+    if (found === -1) {
+      return count;
+    }
+    count += 1;
+    cursor = found + needle.length;
+  }
+}
+
+function exactSourceDeltaError(source, baselineSource) {
+  if (typeof baselineSource !== "string") {
+    return {
+      code: "invalid-baseline-source",
+      message: "exact source-delta validation requires a string baselineSource"
+    };
+  }
+  if (
+    occurrenceCount(baselineSource, BASELINE_HTML_TAG) !== 1 ||
+    occurrenceCount(baselineSource, PENDING_COUNT_PLACEHOLDER) !== 1
+  ) {
+    return {
+      code: "invalid-baseline-source",
+      message:
+        "baselineSource must contain exactly one <html> tag and one {{pendingCount}} placeholder"
+    };
+  }
+
+  const htmlVariants = [
+    baselineSource,
+    baselineSource.replace(BASELINE_HTML_TAG, REPAIRED_HTML_TAG)
+  ];
+  for (const variant of htmlVariants) {
+    if (source === variant) {
+      return null;
+    }
+    const placeholderIndex = variant.indexOf(PENDING_COUNT_PLACEHOLDER);
+    const prefix = variant.slice(0, placeholderIndex);
+    const suffix = variant.slice(
+      placeholderIndex + PENDING_COUNT_PLACEHOLDER.length
+    );
+    const valueEnd = source.length - suffix.length;
+    if (
+      source.startsWith(prefix) &&
+      source.endsWith(suffix) &&
+      valueEnd >= prefix.length
+    ) {
+      const pendingCount = source.slice(prefix.length, valueEnd);
+      if (PENDING_COUNT_PATTERN.test(pendingCount)) {
+        return null;
+      }
+    }
+  }
+  return {
+    code: "unexpected-source-delta",
+    message:
+      "final source may differ from fixture.html only by the exact <html lang=\"en\"> insertion and canonical pending-count replacement"
+  };
+}
+
 function oracleShapeError(oracle) {
-  if (!oracle || typeof oracle !== "object" || Array.isArray(oracle)) {
+  if (!isPlainObject(oracle)) {
     return "preservation oracle must be an object";
+  }
+  if (!hasExactKeys(oracle, ORACLE_TOP_LEVEL_KEYS)) {
+    return `preservation oracle must contain exactly keys ${ORACLE_TOP_LEVEL_KEYS.join(", ")}`;
   }
   if (oracle.schemaVersion !== "obedience-v1/preservation-oracle/v1") {
     return "preservation oracle schemaVersion is invalid";
@@ -537,23 +652,66 @@ function oracleShapeError(oracle) {
   ) {
     return "preservation oracle must declare required features";
   }
+  const seenMarkers = new Set();
   for (const requirement of oracle.requiredFeatures) {
-    if (
-      !requirement ||
-      typeof requirement !== "object" ||
-      Array.isArray(requirement) ||
-      typeof requirement.marker !== "string" ||
-      requirement.marker.trim() === "" ||
-      typeof requirement.tagName !== "string" ||
-      requirement.tagName.trim() === ""
-    ) {
+    if (!isPlainObject(requirement)) {
       return "preservation oracle contains a malformed required feature";
+    }
+    const actualKeys = Object.keys(requirement);
+    if (
+      REQUIRED_FEATURE_KEYS.some((key) => !Object.hasOwn(requirement, key)) ||
+      actualKeys.some((key) => !ALLOWED_FEATURE_KEYS.has(key))
+    ) {
+      return "preservation oracle required feature keys are invalid";
+    }
+    if (
+      typeof requirement.marker !== "string" ||
+      !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(requirement.marker)
+    ) {
+      return "preservation oracle feature marker is invalid";
+    }
+    if (seenMarkers.has(requirement.marker)) {
+      return `preservation oracle feature marker ${requirement.marker} is duplicated`;
+    }
+    seenMarkers.add(requirement.marker);
+    if (
+      requirement.selector !==
+      `[data-benchmark-feature="${requirement.marker}"]`
+    ) {
+      return `preservation oracle selector for ${requirement.marker} must be derived exactly from its marker`;
+    }
+    if (
+      typeof requirement.tagName !== "string" ||
+      !/^[a-z][a-z0-9-]*$/.test(requirement.tagName)
+    ) {
+      return `preservation oracle tagName for ${requirement.marker} is invalid`;
+    }
+    for (const key of OPTIONAL_FEATURE_STRING_KEYS) {
+      if (
+        Object.hasOwn(requirement, key) &&
+        (typeof requirement[key] !== "string" ||
+          requirement[key].trim() === "")
+      ) {
+        return `preservation oracle ${key} for ${requirement.marker} must be a non-empty string`;
+      }
+    }
+    for (const key of OPTIONAL_FEATURE_INTEGER_KEYS) {
+      if (
+        Object.hasOwn(requirement, key) &&
+        (!Number.isInteger(requirement[key]) || requirement[key] < 1)
+      ) {
+        return `preservation oracle ${key} for ${requirement.marker} must be a positive integer`;
+      }
+    }
+    if (
+      Object.hasOwn(requirement, "requiredText") &&
+      Object.hasOwn(requirement, "requiredTextPrefix")
+    ) {
+      return `preservation oracle feature ${requirement.marker} may not require both exact text and a text prefix`;
     }
   }
   if (
-    !oracle.minimumVisibleStructure ||
-    typeof oracle.minimumVisibleStructure !== "object" ||
-    Array.isArray(oracle.minimumVisibleStructure)
+    !isPlainObject(oracle.minimumVisibleStructure)
   ) {
     return "preservation oracle minimumVisibleStructure is malformed";
   }
@@ -591,7 +749,12 @@ function oracleShapeError(oracle) {
   return null;
 }
 
-export function validatePreservation({ source, oracle, label = "final source" }) {
+export function validatePreservation({
+  source,
+  oracle,
+  baselineSource,
+  label = "final source"
+}) {
   const violations = [];
   let root;
   if (typeof source !== "string") {
@@ -609,37 +772,90 @@ export function validatePreservation({ source, oracle, label = "final source" })
       metrics: null
     };
   }
+  if (baselineSource !== undefined) {
+    const deltaError = exactSourceDeltaError(source, baselineSource);
+    if (deltaError) {
+      addViolation(
+        violations,
+        null,
+        deltaError.code,
+        `${label}: ${deltaError.message}`
+      );
+    }
+  }
 
   try {
     root = parseHtml(source);
   } catch (error) {
     return {
       ok: false,
-      violations: [{ marker: null, code: "invalid-html", message: `${label}: ${error.message}` }],
-      metrics: null
-    };
-  }
-
-  const allNodes = descendants(root);
-  const styleText = allNodes
-    .filter((node) => node.tagName === "style")
-    .map((node) => node.textParts.join(""))
-    .join("\n");
-  let rules;
-  try {
-    rules = cssRules(styleText);
-  } catch (error) {
-    return {
-      ok: false,
       violations: [
+        ...violations,
         {
           marker: null,
-          code: "invalid-css",
+          code: "invalid-html",
           message: `${label}: ${error.message}`
         }
       ],
       metrics: null
     };
+  }
+
+  const allNodes = descendants(root);
+  if (allNodes.some((node) => node.tagName === "script")) {
+    addViolation(
+      violations,
+      null,
+      "script-content-not-allowed",
+      `${label} may not include executable script content`
+    );
+  }
+  if (
+    allNodes.some(
+      (node) =>
+        node.tagName === "link" &&
+        (node.attributes.get("rel") ?? "")
+          .toLowerCase()
+          .split(/\s+/)
+          .includes("stylesheet")
+    )
+  ) {
+    addViolation(
+      violations,
+      null,
+      "external-stylesheet-not-allowed",
+      `${label} may not load an external stylesheet`
+    );
+  }
+  const styleText = allNodes
+    .filter((node) => node.tagName === "style")
+    .map((node) => node.textParts.join(""))
+    .join("\n");
+  for (const [pattern, description] of [
+    [/@import\b/i, "@import"],
+    [/@scope\b/i, "@scope"],
+    [/(?:--[a-z0-9_-]+\s*:|\bvar\s*\()/i, "CSS custom properties/var()"]
+  ]) {
+    if (pattern.test(styleText)) {
+      addViolation(
+        violations,
+        null,
+        "unsupported-css-feature",
+        `${label} uses unsupported ${description} stylesheet syntax`
+      );
+    }
+  }
+  let rules;
+  try {
+    rules = cssRules(styleText);
+  } catch (error) {
+    addViolation(
+      violations,
+      null,
+      "invalid-css",
+      `${label}: ${error.message}`
+    );
+    rules = [];
   }
   for (const rule of rules) {
     const hidingReason = hidingDeclarationReason(rule.declarations);

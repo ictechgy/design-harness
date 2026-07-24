@@ -1,10 +1,11 @@
 #!/usr/bin/env node
 
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { cp, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import {
+  BENCHMARK_ROOT,
   MATRIX,
   canonicalJson,
   deliveryStanzaFor,
@@ -31,9 +32,16 @@ import {
 } from "./validate.mjs";
 
 const commonInputs = await readCommonInputs();
-const finalSource = commonInputs.fixture.toString("utf8");
+const baselineSource = commonInputs.fixture.toString("utf8");
+const finalSource = baselineSource
+  .replace("<html>", '<html lang="en">')
+  .replace(
+    "Pending orders: {{pendingCount}}",
+    "Pending orders: 12"
+  );
 const preservation = validatePreservation({
   source: finalSource,
+  baselineSource,
   oracle: commonInputs.preservationOracle,
   label: "regression fixture"
 });
@@ -67,7 +75,7 @@ const initialFailures = failureIdentityCounts([
     "main > section > div:nth-of-type(3) > p"
   )
 ]);
-const finalFailures = structuredClone(initialFailures);
+const finalFailures = [];
 const closedFailures = subtractFailureMultisets(
   initialFailures,
   finalFailures
@@ -181,13 +189,13 @@ const cells = MATRIX.map((expected, index) => {
         countFailures(initialFailures),
         countFailures(closedFailures)
       ),
-      deterministicClosure: false,
+      deterministicClosure: true,
       preservation: {
         passed: preservation.ok,
         violations: preservation.violations,
         metrics: preservation.metrics
       },
-      passedBoth: false
+      passedBoth: true
     },
     secondary: {
       measurementLabel: SCORE_MEASUREMENT_LABEL,
@@ -223,9 +231,12 @@ const canonical = {
   limitations: [...LIMITATIONS]
 };
 
-const root = await mkdtemp(join(tmpdir(), "obedience-v1-regressions-"));
+const temporaryRoot = await mkdtemp(
+  join(tmpdir(), "obedience-v1-regressions-")
+);
+const root = join(temporaryRoot, "snapshot");
 try {
-  await mkdir(join(root, "final-sources"), { recursive: true });
+  await cp(BENCHMARK_ROOT, root, { recursive: true });
   await Promise.all(
     MATRIX.map((cell) =>
       writeFile(
@@ -237,13 +248,62 @@ try {
   );
   const roadmap = `${COMPLETION_PHRASE}\n${BLOCKED_CLAIMS_STATEMENT}\n`;
   const canonicalReport = renderReport(canonical);
-  await validatePublicSnapshot({
+  const validateFixtureSnapshot = async ({
+    results,
+    reportSource = renderReport(results),
+    roadmapSource = roadmap,
+    requireCompletion = true
+  }) => {
+    await Promise.all([
+      writeFile(join(root, "results.json"), canonicalJson(results)),
+      writeFile(join(root, "report.md"), reportSource)
+    ]);
+    return validatePublicSnapshot({
+      results,
+      benchmarkRoot: root,
+      reportSource,
+      roadmapSource,
+      commonInputs,
+      requireCompletion
+    });
+  };
+  await validateFixtureSnapshot({
     results: canonical,
-    benchmarkRoot: root,
-    reportSource: canonicalReport,
-    roadmapSource: roadmap,
-    commonInputs
+    reportSource: canonicalReport
   });
+
+  const positiveOperationalVariants = [
+    {
+      name: "successful operational retry",
+      requireCompletion: true,
+      mutate(results) {
+        setRetryOutcome(results.cells[0], "completed");
+      }
+    },
+    {
+      name: "exhausted operational retry",
+      requireCompletion: false,
+      mutate(results) {
+        setRetryOutcome(results.cells[1], "error");
+      }
+    },
+    {
+      name: "unavailable executor with unresolved model",
+      requireCompletion: false,
+      mutate(results) {
+        setUnavailableOutcome(results.cells[2]);
+      }
+    }
+  ];
+  for (const variant of positiveOperationalVariants) {
+    const results = structuredClone(canonical);
+    variant.mutate(results);
+    results.aggregate = recomputeAggregate(results.cells);
+    await validateFixtureSnapshot({
+      results,
+      requireCompletion: variant.requireCompletion
+    });
+  }
 
   const visibleTerminalError = structuredClone(canonical);
   const failedCell = visibleTerminalError.cells[0];
@@ -253,12 +313,8 @@ try {
   visibleTerminalError.aggregate = recomputeAggregate(
     visibleTerminalError.cells
   );
-  await validatePublicSnapshot({
+  await validateFixtureSnapshot({
     results: visibleTerminalError,
-    benchmarkRoot: root,
-    reportSource: renderReport(visibleTerminalError),
-    roadmapSource: roadmap,
-    commonInputs,
     requireCompletion: false
   });
 
@@ -452,7 +508,7 @@ try {
       mutate(results) {
         const primary = results.cells[0].primary;
         primary.finalDeterministicFailures = [
-          ...primary.finalDeterministicFailures,
+          structuredClone(primary.initialDeterministicFailures[0]),
           structuredClone(primary.initialDeterministicFailures[0])
         ];
       }
@@ -483,12 +539,10 @@ try {
     mutation.mutate(results, context);
     const report = context.reportOverride ?? renderReport(results);
     try {
-      await validatePublicSnapshot({
+      await validateFixtureSnapshot({
         results,
-        benchmarkRoot: root,
         reportSource: report,
         roadmapSource: `${roadmap}${context.roadmapSuffix}`,
-        commonInputs
       });
     } catch (error) {
       if (!(error instanceof BenchmarkValidationError)) {
@@ -511,10 +565,10 @@ try {
   }
 
   console.log(
-    `Validated visible terminal-error retention and ${mutations.length} targeted fail-closed mutations.`
+    `Validated ${positiveOperationalVariants.length} operational outcomes, visible terminal-error retention, and ${mutations.length} targeted fail-closed mutations.`
   );
 } finally {
-  await rm(root, { recursive: true, force: true });
+  await rm(temporaryRoot, { recursive: true, force: true });
 }
 
 function deterministicFailure(criterionId, checkName, viewport, selector) {
@@ -540,4 +594,46 @@ function secondaryAudit() {
     heuristicFindingCount: 0,
     needsReviewCount: 0
   };
+}
+
+function setRetryOutcome(cell, terminalStatus) {
+  const original = structuredClone(cell.attempts[0]);
+  const first = {
+    ...original,
+    status: "error",
+    operationalFailureKind: "transient-tool",
+    retryReason: "operator-recorded transient tool retry",
+    endedAt: original.startedAt.replace(".000Z", ".400Z"),
+    wallTimeMs: 400,
+    exitStatus: 1,
+    privateTranscriptSha256: sha256(
+      `${cell.id}-private-first-operational-attempt`
+    ),
+    resolvedModel: null
+  };
+  const second = {
+    ...original,
+    index: 2,
+    status: terminalStatus,
+    startedAt: original.startedAt.replace(".000Z", ".500Z"),
+    wallTimeMs: 500,
+    exitStatus: terminalStatus === "completed" ? 0 : 1,
+    privateTranscriptSha256: sha256(
+      `${cell.id}-private-second-operational-attempt`
+    )
+  };
+  cell.attempts = [first, second];
+  cell.acceptedAttemptIndex = 2;
+  cell.terminalStatus = terminalStatus;
+  cell.provenance.privateTranscriptSha256 =
+    second.privateTranscriptSha256;
+}
+
+function setUnavailableOutcome(cell) {
+  const attempt = cell.attempts[0];
+  attempt.status = "unavailable";
+  attempt.exitStatus = null;
+  attempt.resolvedModel = null;
+  cell.executor.resolvedModel = null;
+  cell.terminalStatus = "unavailable";
 }

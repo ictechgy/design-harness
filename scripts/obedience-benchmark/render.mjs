@@ -52,6 +52,30 @@ export function renderReport(results) {
     `- Cells present: ${display(aggregate.totalCellCount)} / ${MATRIX.length}`,
     `- Operationally completed cells: ${display(aggregate.completedCellCount)} / ${MATRIX.length}`,
     "",
+    "## Method and fixed-v1 source evidence",
+    "",
+    "Executors ran with each disposable cell as their working directory and a",
+    "task-level edit contract. That is working-directory/protocol isolation, not",
+    "an OS sandbox or independently enforced filesystem permission boundary. The",
+    "public `editBoundary` value is derived by the operator and constrained by the",
+    "publication validator to `fixture.html`; it is not an independently observed",
+    "write trace.",
+    "",
+    "For any fixed-v1 cell, publication validation permits only two independently",
+    "optional source differences from the pinned fixture:",
+    "",
+    "- the exact `<html>` tag may become `<html lang=\"en\">`; and",
+    "- the exact `{{pendingCount}}` token may become a canonical non-negative",
+    "  base-10 integer (`0` or a value with no leading zero).",
+    "",
+    "Every other source byte must match. Published final sources and their hashes",
+    "provide replayable source evidence for this boundary.",
+    "",
+    "The structural preservation oracle parses the final HTML source. It provides",
+    "source-backed diagnostic evidence, not a full rendered-DOM capture. The",
+    "separate final Harness re-audit rendered each page at the pinned desktop and",
+    "mobile viewports.",
+    "",
     "## Bounded aggregate",
     "",
     "| Measurement | Count |",
@@ -74,7 +98,7 @@ export function renderReport(results) {
     "",
     "## Per-cell results",
     "",
-    "| Cell | Executor and resolved model | Delivery | Terminal | Attempts | Deterministic failures | Closed | New | Preservation | Closure + preservation | Secondary advisory score | Remaining findings |",
+    "| Cell | Executor, resolved model, and recorded effort | Delivery | Terminal | Attempts | Deterministic failures | Closed | New | Preservation | Closure + preservation | Secondary advisory score | Remaining findings |",
     "|---|---|---|---|---:|---:|---:|---:|---|---|---|---|"
   ];
 
@@ -84,7 +108,7 @@ export function renderReport(results) {
     lines.push(
       [
         `| \`${escapeTable(cell?.id)}\``,
-        `${escapeTable(cell?.executorLabel)}; \`${escapeTable(cell?.executor?.requestedModel)}\` → \`${escapeTable(cell?.executor?.resolvedModel)}\``,
+        `${escapeTable(cell?.executorLabel)}; \`${escapeTable(cell?.executor?.requestedModel)}\` → \`${escapeTable(cell?.executor?.resolvedModel)}\`; effort \`${escapeTable(cell?.executor?.effort)}\``,
         `\`${escapeTable(cell?.mechanism)}\``,
         `\`${escapeTable(cell?.terminalStatus)}\``,
         display(cell?.attempts?.length),
@@ -137,8 +161,10 @@ export function renderReport(results) {
     `| Audit schema / Harness | \`${display(comparability.auditSchemaVersion)}\` / \`${display(comparability.harnessVersion)}\` |`,
     `| Advisory score formula | \`${display(comparability.scoreFormulaVersion)}\` |`,
     `| Executor pass / final re-audit | ${display(comparability.agentPassCount)} / ${display(comparability.finalReauditCount)} |`,
+    `| Recorded effort settings | ${formatEffortSettings(cells)} |`,
     "",
-    "Only executor/model identity and the predeclared delivery mechanism vary.",
+    "Among predeclared execution coordinates, only executor/model identity, its",
+    "recorded effort setting, and the delivery mechanism vary.",
     "Raw commands, transcripts, environment values, credentials, and private",
     "absolute paths are not part of this public record.",
     "",
@@ -191,6 +217,22 @@ function formatPercent(value) {
     return "n/a";
   }
   return `${(value * 100).toFixed(1)}%`;
+}
+
+function formatEffortSettings(cells) {
+  if (!Array.isArray(cells) || cells.length === 0) {
+    return "n/a";
+  }
+  const seen = new Set();
+  const settings = [];
+  for (const cell of cells) {
+    const label = `${display(cell?.executorLabel)} \`${escapeTable(cell?.executor?.requestedModel)}\`: \`${escapeTable(cell?.executor?.effort)}\``;
+    if (!seen.has(label)) {
+      seen.add(label);
+      settings.push(label);
+    }
+  }
+  return settings.join("; ");
 }
 
 function display(value) {

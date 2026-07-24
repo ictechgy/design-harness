@@ -45,10 +45,17 @@ const ADAPTER_CONTRACTS = {
 };
 
 function extractSharedBlock(content, label) {
+  const beginCount = content.split(SHARED_BEGIN).length - 1;
+  const endCount = content.split(SHARED_END).length - 1;
+  if (beginCount !== 1 || endCount !== 1) {
+    throw new Error(
+      `${label}: shared rule markers must contain exactly one begin/end pair; found ${beginCount} begin and ${endCount} end markers.`
+    );
+  }
   const begin = content.indexOf(SHARED_BEGIN);
   const end = content.indexOf(SHARED_END);
-  if (begin === -1 || end === -1 || end < begin) {
-    throw new Error(`${label}: shared rule markers are missing or malformed.`);
+  if (end <= begin) {
+    throw new Error(`${label}: shared rule begin marker must precede the end marker.`);
   }
   return content
     .slice(begin + SHARED_BEGIN.length, end)
@@ -78,11 +85,11 @@ for (const adapter of ADAPTERS) {
       throw new Error(`${skillPath}: missing ${label} contract fragment ${JSON.stringify(fragment)}.`);
     }
   }
+  const block = extractSharedBlock(skill, skillPath);
   if (intentionalDifferences[adapter]?.reason) {
     console.warn(`Adapter parity skipped for ${adapter}: ${intentionalDifferences[adapter].reason}`);
     continue;
   }
-  const block = extractSharedBlock(skill, skillPath);
   if (block !== canonical) {
     const canonicalLines = canonical.split("\n");
     const blockLines = block.split("\n");

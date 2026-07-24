@@ -17,6 +17,30 @@ executors, models, or delivery mechanisms.
 - Cells present: 12 / 12
 - Operationally completed cells: 12 / 12
 
+## Method and fixed-v1 source evidence
+
+Executors ran with each disposable cell as their working directory and a
+task-level edit contract. That is working-directory/protocol isolation, not
+an OS sandbox or independently enforced filesystem permission boundary. The
+public `editBoundary` value is derived by the operator and constrained by the
+publication validator to `fixture.html`; it is not an independently observed
+write trace.
+
+For any fixed-v1 cell, publication validation permits only two independently
+optional source differences from the pinned fixture:
+
+- the exact `<html>` tag may become `<html lang="en">`; and
+- the exact `{{pendingCount}}` token may become a canonical non-negative
+  base-10 integer (`0` or a value with no leading zero).
+
+Every other source byte must match. Published final sources and their hashes
+provide replayable source evidence for this boundary.
+
+The structural preservation oracle parses the final HTML source. It provides
+source-backed diagnostic evidence, not a full rendered-DOM capture. The
+separate final Harness re-audit rendered each page at the pinned desktop and
+mobile viewports.
+
 ## Bounded aggregate
 
 | Measurement | Count |
@@ -39,20 +63,20 @@ measurement result, not a reason to omit or rerun a cell.
 
 ## Per-cell results
 
-| Cell | Executor and resolved model | Delivery | Terminal | Attempts | Deterministic failures | Closed | New | Preservation | Closure + preservation | Secondary advisory score | Remaining findings |
+| Cell | Executor, resolved model, and recorded effort | Delivery | Terminal | Attempts | Deterministic failures | Closed | New | Preservation | Closure + preservation | Secondary advisory score | Remaining findings |
 |---|---|---|---|---:|---:|---:|---:|---|---|---|---|
-| `claude-haiku-inline` | Claude Code; `haiku` → `claude-haiku-4-5-20251001` | `inline` | `completed` | 1 | 4 → 0 | 4 (100.0%) | 0 | pass | yes | 60/100 (needs-work) → 100/100 (strong) | 0 deterministic risk; 0 heuristic; 0 needs-review |
-| `claude-haiku-skill` | Claude Code; `haiku` → `claude-haiku-4-5-20251001` | `skill` | `completed` | 1 | 4 → 0 | 4 (100.0%) | 0 | pass | yes | 60/100 (needs-work) → 100/100 (strong) | 0 deterministic risk; 0 heuristic; 0 needs-review |
-| `claude-haiku-no-pack` | Claude Code; `haiku` → `claude-haiku-4-5-20251001` | `no-pack` | `completed` | 1 | 4 → 0 | 4 (100.0%) | 0 | pass | yes | 60/100 (needs-work) → 100/100 (strong) | 0 deterministic risk; 0 heuristic; 0 needs-review |
-| `claude-sonnet-inline` | Claude Code; `sonnet` → `claude-sonnet-5` | `inline` | `completed` | 1 | 4 → 0 | 4 (100.0%) | 0 | pass | yes | 60/100 (needs-work) → 100/100 (strong) | 0 deterministic risk; 0 heuristic; 0 needs-review |
-| `claude-sonnet-skill` | Claude Code; `sonnet` → `claude-sonnet-5` | `skill` | `completed` | 1 | 4 → 0 | 4 (100.0%) | 0 | pass | yes | 60/100 (needs-work) → 100/100 (strong) | 0 deterministic risk; 0 heuristic; 0 needs-review |
-| `claude-sonnet-no-pack` | Claude Code; `sonnet` → `claude-sonnet-5` | `no-pack` | `completed` | 1 | 4 → 0 | 4 (100.0%) | 0 | pass | yes | 60/100 (needs-work) → 100/100 (strong) | 0 deterministic risk; 0 heuristic; 0 needs-review |
-| `claude-opus-inline` | Claude Code; `opus` → `claude-opus-4-8` | `inline` | `completed` | 1 | 4 → 0 | 4 (100.0%) | 0 | pass | yes | 60/100 (needs-work) → 100/100 (strong) | 0 deterministic risk; 0 heuristic; 0 needs-review |
-| `claude-opus-skill` | Claude Code; `opus` → `claude-opus-4-8` | `skill` | `completed` | 1 | 4 → 0 | 4 (100.0%) | 0 | pass | yes | 60/100 (needs-work) → 100/100 (strong) | 0 deterministic risk; 0 heuristic; 0 needs-review |
-| `claude-opus-no-pack` | Claude Code; `opus` → `claude-opus-4-8` | `no-pack` | `completed` | 1 | 4 → 0 | 4 (100.0%) | 0 | pass | yes | 60/100 (needs-work) → 100/100 (strong) | 0 deterministic risk; 0 heuristic; 0 needs-review |
-| `codex-gpt-5-6-sol-inline` | Codex CLI; `gpt-5.6-sol` → `gpt-5.6-sol` | `inline` | `completed` | 1 | 4 → 0 | 4 (100.0%) | 0 | pass | yes | 60/100 (needs-work) → 100/100 (strong) | 0 deterministic risk; 0 heuristic; 0 needs-review |
-| `codex-gpt-5-6-sol-skill` | Codex CLI; `gpt-5.6-sol` → `gpt-5.6-sol` | `skill` | `completed` | 1 | 4 → 0 | 4 (100.0%) | 0 | pass | yes | 60/100 (needs-work) → 100/100 (strong) | 0 deterministic risk; 0 heuristic; 0 needs-review |
-| `codex-gpt-5-6-sol-no-pack` | Codex CLI; `gpt-5.6-sol` → `gpt-5.6-sol` | `no-pack` | `completed` | 1 | 4 → 0 | 4 (100.0%) | 0 | pass | yes | 60/100 (needs-work) → 100/100 (strong) | 0 deterministic risk; 0 heuristic; 0 needs-review |
+| `claude-haiku-inline` | Claude Code; `haiku` → `claude-haiku-4-5-20251001`; effort `provider-default` | `inline` | `completed` | 1 | 4 → 0 | 4 (100.0%) | 0 | pass | yes | 60/100 (needs-work) → 100/100 (strong) | 0 deterministic risk; 0 heuristic; 0 needs-review |
+| `claude-haiku-skill` | Claude Code; `haiku` → `claude-haiku-4-5-20251001`; effort `provider-default` | `skill` | `completed` | 1 | 4 → 0 | 4 (100.0%) | 0 | pass | yes | 60/100 (needs-work) → 100/100 (strong) | 0 deterministic risk; 0 heuristic; 0 needs-review |
+| `claude-haiku-no-pack` | Claude Code; `haiku` → `claude-haiku-4-5-20251001`; effort `provider-default` | `no-pack` | `completed` | 1 | 4 → 0 | 4 (100.0%) | 0 | pass | yes | 60/100 (needs-work) → 100/100 (strong) | 0 deterministic risk; 0 heuristic; 0 needs-review |
+| `claude-sonnet-inline` | Claude Code; `sonnet` → `claude-sonnet-5`; effort `low` | `inline` | `completed` | 1 | 4 → 0 | 4 (100.0%) | 0 | pass | yes | 60/100 (needs-work) → 100/100 (strong) | 0 deterministic risk; 0 heuristic; 0 needs-review |
+| `claude-sonnet-skill` | Claude Code; `sonnet` → `claude-sonnet-5`; effort `low` | `skill` | `completed` | 1 | 4 → 0 | 4 (100.0%) | 0 | pass | yes | 60/100 (needs-work) → 100/100 (strong) | 0 deterministic risk; 0 heuristic; 0 needs-review |
+| `claude-sonnet-no-pack` | Claude Code; `sonnet` → `claude-sonnet-5`; effort `low` | `no-pack` | `completed` | 1 | 4 → 0 | 4 (100.0%) | 0 | pass | yes | 60/100 (needs-work) → 100/100 (strong) | 0 deterministic risk; 0 heuristic; 0 needs-review |
+| `claude-opus-inline` | Claude Code; `opus` → `claude-opus-4-8`; effort `low` | `inline` | `completed` | 1 | 4 → 0 | 4 (100.0%) | 0 | pass | yes | 60/100 (needs-work) → 100/100 (strong) | 0 deterministic risk; 0 heuristic; 0 needs-review |
+| `claude-opus-skill` | Claude Code; `opus` → `claude-opus-4-8`; effort `low` | `skill` | `completed` | 1 | 4 → 0 | 4 (100.0%) | 0 | pass | yes | 60/100 (needs-work) → 100/100 (strong) | 0 deterministic risk; 0 heuristic; 0 needs-review |
+| `claude-opus-no-pack` | Claude Code; `opus` → `claude-opus-4-8`; effort `low` | `no-pack` | `completed` | 1 | 4 → 0 | 4 (100.0%) | 0 | pass | yes | 60/100 (needs-work) → 100/100 (strong) | 0 deterministic risk; 0 heuristic; 0 needs-review |
+| `codex-gpt-5-6-sol-inline` | Codex CLI; `gpt-5.6-sol` → `gpt-5.6-sol`; effort `low` | `inline` | `completed` | 1 | 4 → 0 | 4 (100.0%) | 0 | pass | yes | 60/100 (needs-work) → 100/100 (strong) | 0 deterministic risk; 0 heuristic; 0 needs-review |
+| `codex-gpt-5-6-sol-skill` | Codex CLI; `gpt-5.6-sol` → `gpt-5.6-sol`; effort `low` | `skill` | `completed` | 1 | 4 → 0 | 4 (100.0%) | 0 | pass | yes | 60/100 (needs-work) → 100/100 (strong) | 0 deterministic risk; 0 heuristic; 0 needs-review |
+| `codex-gpt-5-6-sol-no-pack` | Codex CLI; `gpt-5.6-sol` → `gpt-5.6-sol`; effort `low` | `no-pack` | `completed` | 1 | 4 → 0 | 4 (100.0%) | 0 | pass | yes | 60/100 (needs-work) → 100/100 (strong) | 0 deterministic risk; 0 heuristic; 0 needs-review |
 
 The score and band columns are secondary/advisory and formula-bound. They are
 not an objective grade and are not comparable with a different scoring
@@ -170,8 +194,10 @@ formula.
 | Audit schema / Harness | `0.2` / `0.6.1` |
 | Advisory score formula | `epistemic-criterion-max-v2` |
 | Executor pass / final re-audit | 1 / 1 |
+| Recorded effort settings | Claude Code `haiku`: `provider-default`; Claude Code `sonnet`: `low`; Claude Code `opus`: `low`; Codex CLI `gpt-5.6-sol`: `low` |
 
-Only executor/model identity and the predeclared delivery mechanism vary.
+Among predeclared execution coordinates, only executor/model identity, its
+recorded effort setting, and the delivery mechanism vary.
 Raw commands, transcripts, environment values, credentials, and private
 absolute paths are not part of this public record.
 

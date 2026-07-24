@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { readFile, readdir } from "node:fs/promises";
+import { lstat, readFile, readdir } from "node:fs/promises";
 import { join, relative, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 
@@ -79,6 +79,43 @@ const FAILURE_FIELDS = Object.freeze([
   "selector",
   "viewport"
 ]);
+const PUBLIC_SNAPSHOT_ENTRIES = Object.freeze({
+  "common-task.md": "file",
+  "copy-style.yaml": "file",
+  "final-sources": "directory",
+  "fixture.html": "file",
+  "preservation-oracle.json": "file",
+  "protocol.md": "file",
+  "report.md": "file",
+  "results.json": "file"
+});
+const PUBLIC_COMMON_INPUTS = Object.freeze([
+  {
+    name: "common-task.md",
+    bytesKey: "commonTask",
+    hashKey: "commonTaskSha256"
+  },
+  {
+    name: "copy-style.yaml",
+    bytesKey: "copyStyle",
+    hashKey: "copyStyleSha256"
+  },
+  {
+    name: "fixture.html",
+    bytesKey: "fixture",
+    hashKey: "fixtureSha256"
+  },
+  {
+    name: "preservation-oracle.json",
+    bytesKey: "preservationOracleBytes",
+    hashKey: "preservationOracleSha256"
+  },
+  {
+    name: "protocol.md",
+    bytesKey: "protocol",
+    hashKey: "protocolSha256"
+  }
+]);
 
 export class BenchmarkValidationError extends Error {
   constructor(issues, label = "obedience-v1 validation") {
@@ -106,8 +143,25 @@ export async function validatePublicSnapshot({
   const issues = [];
   const root = resolve(benchmarkRoot);
   const resolvedCommonInputs = commonInputs ?? await readCommonInputs();
-  const report =
-    reportSource ?? await readFile(join(root, "report.md"), "utf8");
+  const publicTree = await validatePublicSnapshotTree(
+    root,
+    resolvedCommonInputs,
+    issues
+  );
+  let report = reportSource;
+  if (
+    report === undefined &&
+    publicTree.safeTopLevelFiles.has("report.md")
+  ) {
+    try {
+      report = await readFile(join(root, "report.md"), "utf8");
+    } catch (error) {
+      issues.push(`cannot read public report: ${error.message}`);
+    }
+  }
+  if (typeof report !== "string") {
+    report = "";
+  }
   const roadmap =
     roadmapSource ??
     await readFile(join(REPO_ROOT, "docs", "ROADMAP.md"), "utf8");
@@ -130,6 +184,8 @@ export async function validatePublicSnapshot({
       root,
       comparability: results?.comparability,
       preservationOracle: resolvedCommonInputs.preservationOracle,
+      baselineSource: resolvedCommonInputs.fixture?.toString("utf8"),
+      safeFinalSourceNames: publicTree.safeFinalSourceNames,
       issues
     });
   }
@@ -165,26 +221,6 @@ export async function validatePublicSnapshot({
   validatePublicCopy(report, "$report", issues);
   validatePublicCopy(roadmap, "$roadmap", issues);
 
-  const expectedFinalNames = new Set(MATRIX.map((cell) => `${cell.id}.html`));
-  try {
-    const actualFinalNames = new Set(
-      (await readdir(join(root, "final-sources")))
-        .filter((name) => !name.startsWith("."))
-    );
-    for (const name of actualFinalNames) {
-      if (!expectedFinalNames.has(name)) {
-        issues.push(`unexpected public final source: final-sources/${name}`);
-      }
-    }
-    for (const name of expectedFinalNames) {
-      if (!actualFinalNames.has(name)) {
-        issues.push(`missing public final source: final-sources/${name}`);
-      }
-    }
-  } catch (error) {
-    issues.push(`cannot inspect public final sources: ${error.message}`);
-  }
-
   if (issues.length > 0) {
     throw new BenchmarkValidationError(issues);
   }
@@ -196,6 +232,144 @@ export async function validatePublicSnapshot({
     ).length,
     passedBothCount: cells.filter((cell) => cell.primary?.passedBoth).length
   };
+}
+
+async function validatePublicSnapshotTree(root, commonInputs, issues) {
+  const safeTopLevelFiles = new Set();
+  const safeFinalSourceNames = new Set();
+  try {
+    const rootInfo = await lstat(root);
+    if (!rootInfo.isDirectory() || rootInfo.isSymbolicLink()) {
+      issues.push("public snapshot root must be a real directory");
+      return { safeTopLevelFiles, safeFinalSourceNames };
+    }
+  } catch (error) {
+    issues.push(`cannot inspect public snapshot root: ${error.message}`);
+    return { safeTopLevelFiles, safeFinalSourceNames };
+  }
+
+  let rootEntries;
+  try {
+    rootEntries = await readdir(root, { withFileTypes: true });
+  } catch (error) {
+    issues.push(`cannot inspect public snapshot entries: ${error.message}`);
+    return { safeTopLevelFiles, safeFinalSourceNames };
+  }
+  const rootEntryNames = new Set(rootEntries.map((entry) => entry.name));
+  for (const entry of rootEntries) {
+    if (!Object.hasOwn(PUBLIC_SNAPSHOT_ENTRIES, entry.name)) {
+      issues.push(`unexpected public snapshot entry: ${entry.name}`);
+    }
+  }
+
+  let finalSourcesIsSafe = false;
+  for (const [name, expectedType] of Object.entries(
+    PUBLIC_SNAPSHOT_ENTRIES
+  )) {
+    if (!rootEntryNames.has(name)) {
+      issues.push(`missing public snapshot entry: ${name}`);
+      continue;
+    }
+    try {
+      const info = await lstat(join(root, name));
+      const matches =
+        !info.isSymbolicLink() &&
+        (expectedType === "file" ? info.isFile() : info.isDirectory());
+      if (!matches) {
+        issues.push(
+          `public snapshot entry ${name} must be a regular ${expectedType}`
+        );
+        continue;
+      }
+      if (expectedType === "file") {
+        safeTopLevelFiles.add(name);
+      } else if (name === "final-sources") {
+        finalSourcesIsSafe = true;
+      }
+    } catch (error) {
+      issues.push(`cannot inspect public snapshot entry ${name}: ${error.message}`);
+    }
+  }
+
+  if (finalSourcesIsSafe) {
+    const expectedFinalNames = new Set(
+      MATRIX.map((cell) => `${cell.id}.html`)
+    );
+    try {
+      const finalEntries = await readdir(join(root, "final-sources"), {
+        withFileTypes: true
+      });
+      const actualFinalNames = new Set(
+        finalEntries.map((entry) => entry.name)
+      );
+      for (const entry of finalEntries) {
+        if (!expectedFinalNames.has(entry.name)) {
+          issues.push(
+            `unexpected public final source: final-sources/${entry.name}`
+          );
+        }
+      }
+      for (const name of expectedFinalNames) {
+        if (!actualFinalNames.has(name)) {
+          issues.push(`missing public final source: final-sources/${name}`);
+          continue;
+        }
+        try {
+          const info = await lstat(join(root, "final-sources", name));
+          if (!info.isFile() || info.isSymbolicLink()) {
+            issues.push(
+              `public final source final-sources/${name} must be a regular file`
+            );
+            continue;
+          }
+          safeFinalSourceNames.add(name);
+        } catch (error) {
+          issues.push(
+            `cannot inspect public final source final-sources/${name}: ${error.message}`
+          );
+        }
+      }
+    } catch (error) {
+      issues.push(`cannot inspect public final sources: ${error.message}`);
+    }
+  }
+
+  for (const { name, bytesKey, hashKey } of PUBLIC_COMMON_INPUTS) {
+    if (!safeTopLevelFiles.has(name)) {
+      continue;
+    }
+    try {
+      const actualBytes = await readFile(join(root, name));
+      const expectedBytes = commonInputs?.[bytesKey];
+      const expectedHash = commonInputs?.hashes?.[hashKey];
+      if (
+        !(
+          Buffer.isBuffer(expectedBytes) ||
+          expectedBytes instanceof Uint8Array
+        )
+      ) {
+        issues.push(
+          `canonical common input ${name} bytes are unavailable`
+        );
+      } else if (!actualBytes.equals(Buffer.from(expectedBytes))) {
+        issues.push(
+          `staged common input ${name} bytes differ from canonical input`
+        );
+      }
+      if (
+        typeof expectedHash !== "string" ||
+        sha256(actualBytes) !== expectedHash
+      ) {
+        issues.push(
+          `staged common input ${name} hash differs from canonical input`
+        );
+      }
+    } catch (error) {
+      issues.push(`cannot validate staged common input ${name}: ${error.message}`);
+    }
+  }
+
+  return { safeTopLevelFiles, safeFinalSourceNames };
 }
 
 export function recomputeAggregate(cells) {
@@ -479,6 +653,8 @@ async function validateCell({
   root,
   comparability,
   preservationOracle,
+  baselineSource,
+  safeFinalSourceNames,
   issues
 }) {
   if (!isPlainObject(cell)) {
@@ -577,6 +753,9 @@ async function validateCell({
   if (cell.finalSourcePath !== expectedSourcePath) {
     return;
   }
+  if (!safeFinalSourceNames.has(`${cell.id}.html`)) {
+    return;
+  }
 
   try {
     const sourcePath = resolve(root, cell.finalSourcePath);
@@ -596,6 +775,7 @@ async function validateCell({
     const preservation = validatePreservation({
       source,
       oracle: preservationOracle,
+      baselineSource,
       label: cell.id
     });
     const expectedPreservation = {

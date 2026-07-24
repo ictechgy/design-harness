@@ -192,6 +192,7 @@ export async function importBenchmark({
     const newCount = countFailures(newFailures);
     const preservation = validatePreservation({
       source: finalSource,
+      baselineSource: commonInputs.fixture.toString("utf8"),
       oracle: commonInputs.preservationOracle,
       label: expected.id
     });
@@ -844,6 +845,15 @@ async function validatePreparedGit(cellRoot, git, cellId) {
     if (git.initialized !== true) {
       throw new Error(`${cellId} git metadata contradicts the prepared .git directory`);
     }
+    const [head, config] = await Promise.all([
+      readRegularGitMetadata(join(gitPath, "HEAD"), `${cellId} prepared .git HEAD`),
+      readRegularGitMetadata(
+        join(gitPath, "config"),
+        `${cellId} prepared .git config`
+      )
+    ]);
+    validateGitHead(head, cellId);
+    validateGitConfig(config, cellId);
   } catch (error) {
     if (error.code !== "ENOENT") {
       throw error;
@@ -854,7 +864,76 @@ async function validatePreparedGit(cellRoot, git, cellId) {
   }
 }
 
-function validateOperatorEvidence(evidence) {
+async function readRegularGitMetadata(path, label) {
+  let info;
+  try {
+    info = await lstat(path);
+  } catch (error) {
+    if (error.code === "ENOENT") {
+      throw new Error(`${label} must be a regular non-symbolic-link file`);
+    }
+    throw error;
+  }
+  if (!info.isFile() || info.isSymbolicLink()) {
+    throw new Error(`${label} must be a regular non-symbolic-link file`);
+  }
+  return readFile(path, "utf8");
+}
+
+function validateGitHead(source, cellId) {
+  const head = source.trim();
+  const detachedHead = /^(?:[a-f0-9]{40}|[a-f0-9]{64})$/.test(head);
+  const symbolicRef = head.startsWith("ref: ") ? head.slice(5) : null;
+  const plausibleSymbolicRef =
+    symbolicRef !== null &&
+    /^refs\/(?:heads|tags|remotes)\/[^\s~^:?*[\\\]]+$/.test(symbolicRef) &&
+    !symbolicRef.includes("..") &&
+    !symbolicRef.includes("//") &&
+    !symbolicRef.endsWith("/") &&
+    !symbolicRef.endsWith(".") &&
+    symbolicRef
+      .split("/")
+      .every(
+        (component) =>
+          component !== "" &&
+          !component.startsWith(".") &&
+          !component.endsWith(".lock")
+      );
+  if (!detachedHead && !plausibleSymbolicRef) {
+    throw new Error(`${cellId} prepared .git HEAD is not plausible Git metadata`);
+  }
+}
+
+function validateGitConfig(source, cellId) {
+  let inCoreSection = false;
+  let repositoryFormat;
+  let bare;
+  for (const line of source.split(/\r?\n/)) {
+    const section = /^\s*\[([^\]]+)\]\s*$/.exec(line);
+    if (section) {
+      inCoreSection = section[1].trim().toLowerCase() === "core";
+      continue;
+    }
+    if (!inCoreSection) {
+      continue;
+    }
+    const property = /^\s*([a-z][a-z0-9-]*)\s*=\s*(.*?)\s*$/i.exec(line);
+    if (!property) {
+      continue;
+    }
+    const key = property[1].toLowerCase();
+    if (key === "repositoryformatversion") {
+      repositoryFormat = property[2];
+    } else if (key === "bare") {
+      bare = property[2].toLowerCase();
+    }
+  }
+  if (repositoryFormat !== "0" || bare !== "false") {
+    throw new Error(`${cellId} prepared .git config is not plausible Git metadata`);
+  }
+}
+
+export function validateOperatorEvidence(evidence) {
   exactKeys(
     evidence,
     ["cells", "recordedAt", "schemaVersion"],

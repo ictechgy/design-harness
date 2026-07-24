@@ -15,6 +15,8 @@ import { fileURLToPath } from "node:url";
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const checker = join(repoRoot, "scripts/check-agent-recipes.mjs");
+const SHARED_BEGIN = "<!-- design-harness:shared:begin -->";
+const SHARED_END = "<!-- design-harness:shared:end -->";
 const temporaryRoot = await mkdtemp(
   join(tmpdir(), "agent-recipes-regression-")
 );
@@ -76,6 +78,53 @@ try {
     );
   }
 
+  const markerMutations = [
+    [
+      "missing begin marker",
+      divergentSkill.replace(`${SHARED_BEGIN}\n`, ""),
+      "exactly one begin/end pair"
+    ],
+    [
+      "missing end marker",
+      divergentSkill.replace(`${SHARED_END}\n`, ""),
+      "exactly one begin/end pair"
+    ],
+    [
+      "duplicate begin marker",
+      divergentSkill.replace(SHARED_BEGIN, `${SHARED_BEGIN}\n${SHARED_BEGIN}`),
+      "exactly one begin/end pair"
+    ],
+    [
+      "duplicate end marker",
+      divergentSkill.replace(SHARED_END, `${SHARED_END}\n${SHARED_END}`),
+      "exactly one begin/end pair"
+    ],
+    [
+      "reversed marker order",
+      divergentSkill
+        .replace(SHARED_BEGIN, "<!-- shared-marker-swap -->")
+        .replace(SHARED_END, SHARED_BEGIN)
+        .replace("<!-- shared-marker-swap -->", SHARED_END),
+      "begin marker must precede"
+    ]
+  ];
+  for (const [label, mutation, expectedMessage] of markerMutations) {
+    if (mutation === divergentSkill) {
+      throw new Error(`Regression fixture could not create ${label}`);
+    }
+    await writeFile(skillPath, mutation);
+    const rejectedMarkerMutation = runCheck();
+    if (
+      rejectedMarkerMutation.status === 0 ||
+      !rejectedMarkerMutation.stderr.includes(expectedMessage)
+    ) {
+      throw new Error(
+        `Intentional parity differences must not bypass ${label} validation`
+      );
+    }
+  }
+
+  await writeFile(skillPath, divergentSkill);
   const brokenContract = divergentSkill.replace(
     "$product-ui-designer",
     "product-ui-designer"

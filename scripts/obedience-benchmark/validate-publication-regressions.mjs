@@ -4,9 +4,11 @@ import assert from "node:assert/strict";
 import {
   cp,
   lstat,
+  mkdir,
   mkdtemp,
   readFile,
   rm,
+  symlink,
   writeFile
 } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -18,7 +20,10 @@ import {
   sha256
 } from "./contract.mjs";
 import { publishStagedSnapshot } from "./import.mjs";
-import { validatePublicSnapshot } from "./validate.mjs";
+import {
+  BenchmarkValidationError,
+  validatePublicSnapshot
+} from "./validate.mjs";
 
 const temporaryRoot = await mkdtemp(
   join(tmpdir(), "obedience-v1-publication-regression-")
@@ -42,6 +47,112 @@ try {
     readFile(join(BENCHMARK_ROOT, "..", "..", "ROADMAP.md"), "utf8"),
     readCommonInputs()
   ]);
+  let invalidCaseIndex = 0;
+  async function expectSnapshotReject(name, mutate, expectedIssues) {
+    invalidCaseIndex += 1;
+    const candidate = join(
+      temporaryRoot,
+      `invalid-tree-${String(invalidCaseIndex).padStart(2, "0")}`
+    );
+    await cp(BENCHMARK_ROOT, candidate, { recursive: true });
+    await mutate(candidate);
+    const [candidateResults, candidateReport] = await Promise.all([
+      readFile(join(candidate, "results.json"), "utf8"),
+      readFile(join(candidate, "report.md"), "utf8")
+    ]);
+    await assert.rejects(
+      validatePublicSnapshot({
+        results: JSON.parse(candidateResults),
+        benchmarkRoot: candidate,
+        reportSource: candidateReport,
+        roadmapSource,
+        commonInputs
+      }),
+      (error) =>
+        error instanceof BenchmarkValidationError &&
+        expectedIssues.every((expectedIssue) =>
+          error.issues.some((issue) => issue.includes(expectedIssue))
+        ),
+      `${name}: malformed public snapshot unexpectedly passed`
+    );
+  }
+
+  await expectSnapshotReject(
+    "unexpected top-level file",
+    (candidate) => writeFile(join(candidate, "extra.txt"), "unexpected\n"),
+    ["unexpected public snapshot entry: extra.txt"]
+  );
+  await expectSnapshotReject(
+    "top-level dotfile",
+    (candidate) => writeFile(join(candidate, ".DS_Store"), "unexpected\n"),
+    ["unexpected public snapshot entry: .DS_Store"]
+  );
+  await expectSnapshotReject(
+    "top-level symlink",
+    async (candidate) => {
+      const path = join(candidate, "common-task.md");
+      await rm(path);
+      await symlink("fixture.html", path);
+    },
+    ["public snapshot entry common-task.md must be a regular file"]
+  );
+  await expectSnapshotReject(
+    "missing top-level input",
+    (candidate) => rm(join(candidate, "protocol.md")),
+    ["missing public snapshot entry: protocol.md"]
+  );
+  await expectSnapshotReject(
+    "final-source dotfile",
+    (candidate) =>
+      writeFile(
+        join(candidate, "final-sources", ".hidden.html"),
+        "<!doctype html>\n"
+      ),
+    ["unexpected public final source: final-sources/.hidden.html"]
+  );
+  await expectSnapshotReject(
+    "final-source symlink",
+    async (candidate) => {
+      const path = join(
+        candidate,
+        "final-sources",
+        "claude-haiku-inline.html"
+      );
+      await rm(path);
+      await symlink("../fixture.html", path);
+    },
+    [
+      "public final source final-sources/claude-haiku-inline.html must be a regular file"
+    ]
+  );
+  await expectSnapshotReject(
+    "final-source directory",
+    async (candidate) => {
+      const path = join(
+        candidate,
+        "final-sources",
+        "claude-haiku-inline.html"
+      );
+      await rm(path);
+      await mkdir(path);
+    },
+    [
+      "public final source final-sources/claude-haiku-inline.html must be a regular file"
+    ]
+  );
+  await expectSnapshotReject(
+    "staged common-input drift",
+    async (candidate) => {
+      const path = join(candidate, "common-task.md");
+      const source = await readFile(path);
+      await writeFile(path, Buffer.concat([source, Buffer.from("drift\n")]));
+    },
+    [
+      "staged common input common-task.md bytes differ from canonical input",
+      "staged common input common-task.md hash differs from canonical input"
+    ]
+  );
+
   await publishStagedSnapshot({
     stagingRoot: validStage,
     publicRoot: destination,
@@ -152,7 +263,7 @@ try {
   });
 
   console.log(
-    "Validated atomic replacement, stale-source pruning, preflight preservation, and post-swap rollback."
+    "Validated the closed public tree, canonical staged inputs, atomic replacement, stale-source pruning, preflight preservation, and post-swap rollback."
   );
 } finally {
   await rm(temporaryRoot, { recursive: true, force: true });
