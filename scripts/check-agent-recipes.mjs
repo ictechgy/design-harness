@@ -33,6 +33,16 @@ if (missing.length > 0) {
 const SHARED_BEGIN = "<!-- design-harness:shared:begin -->";
 const SHARED_END = "<!-- design-harness:shared:end -->";
 const ADAPTERS = ["codex-skill", "claude-code-skill"];
+const ADAPTER_CONTRACTS = {
+  "codex-skill": {
+    installPath: ".agents/skills/product-ui-designer/",
+    invocation: "$product-ui-designer"
+  },
+  "claude-code-skill": {
+    installPath: ".claude/skills/product-ui-designer/",
+    invocation: "/product-ui-designer"
+  }
+};
 
 function extractSharedBlock(content, label) {
   const begin = content.indexOf(SHARED_BEGIN);
@@ -57,12 +67,22 @@ const intentionalDifferences = JSON.parse(
 );
 
 for (const adapter of ADAPTERS) {
+  const skillPath = `adapters/${adapter}/SKILL.md`;
+  const skill = await readFile(resolve(skillPath), "utf8");
+  const contract = ADAPTER_CONTRACTS[adapter];
+  if (!/^---\nname: product-ui-designer\n/m.test(skill)) {
+    throw new Error(`${skillPath}: frontmatter must declare name: product-ui-designer.`);
+  }
+  for (const [label, fragment] of Object.entries(contract)) {
+    if (!skill.includes(fragment)) {
+      throw new Error(`${skillPath}: missing ${label} contract fragment ${JSON.stringify(fragment)}.`);
+    }
+  }
   if (intentionalDifferences[adapter]?.reason) {
     console.warn(`Adapter parity skipped for ${adapter}: ${intentionalDifferences[adapter].reason}`);
     continue;
   }
-  const skillPath = `adapters/${adapter}/SKILL.md`;
-  const block = extractSharedBlock(await readFile(resolve(skillPath), "utf8"), skillPath);
+  const block = extractSharedBlock(skill, skillPath);
   if (block !== canonical) {
     const canonicalLines = canonical.split("\n");
     const blockLines = block.split("\n");

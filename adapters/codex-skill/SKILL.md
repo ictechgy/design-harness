@@ -5,7 +5,7 @@ description: Use Design Harness artifacts to run a brief -> implementation -> au
 
 # Product UI Designer (Codex)
 
-Use this skill when improving a frontend UI with Design Harness evidence. This adapter is intentionally thin: it makes Codex follow the same artifact contract as every other client. The rule content below is shared verbatim with the Claude Code adapter; the canonical copy lives in `adapters/shared/rules.md` and parity is CI-checked.
+Use this skill when improving a frontend UI with Design Harness evidence. Install by copying this directory to `.agents/skills/product-ui-designer/` in your project (or `$HOME/.agents/skills/product-ui-designer/` for all projects), then invoke it explicitly as `$product-ui-designer`. This adapter is intentionally thin: it makes Codex follow the same artifact contract as every other client. The rule content below is shared verbatim with the Claude Code adapter; the canonical copy lives in `adapters/shared/rules.md` and parity is CI-checked.
 
 <!-- design-harness:shared:begin -->
 ## Workflow

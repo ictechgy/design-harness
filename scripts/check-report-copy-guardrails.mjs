@@ -27,6 +27,7 @@ const { validateReportCopyGuardrails } = await import(distEntry);
 
 const REPORT_HEADER = "# Design Harness Audit Report";
 const README_PATTERNS = [/^README\.md$/, /^packages\/[^/]+\/README\.md$/];
+const ADDITIONAL_PUBLIC_REPORTS = new Set(["docs/benchmarks/obedience-v1/report.md"]);
 
 const trackedFiles = execFileSync("git", ["ls-files"], { cwd: root, encoding: "utf8" })
   .split("\n")
@@ -39,7 +40,7 @@ for (const file of trackedFiles) {
   const content = readFileSync(resolve(root, file), "utf8");
   const isReadme = README_PATTERNS.some((pattern) => pattern.test(file));
   const isRenderedReport = content.trimStart().startsWith(REPORT_HEADER);
-  if (!isReadme && !isRenderedReport) {
+  if (!isReadme && !isRenderedReport && !ADDITIONAL_PUBLIC_REPORTS.has(file)) {
     continue;
   }
   scanned += 1;
