@@ -31,6 +31,7 @@ describe("runLoop", () => {
       runId: "loop-test-baseline",
       outDir: "/loop-output/iterations/000-baseline"
     });
+    expect(harness.auditOptions[0]).not.toHaveProperty("colorPolicy");
     expect(harness.writtenArtifacts).toHaveLength(1);
     expect(harness.summaries.map(({ status }) => status)).toEqual(["running", "already-clean"]);
   });
@@ -220,24 +221,34 @@ describe("runLoop", () => {
       allowedFamilies: [{ value: "Inter", kind: "named" as const }],
       ignoreSelectors: []
     };
+    const colorPolicy = {
+      policyId: "color-adherence-v1" as const,
+      allowedColors: [{ red: 31, green: 97, blue: 209, alpha: 255 }],
+      ignoreSelectors: [".third-party-widget"]
+    };
     const harness = fakeHarness([
       { status: "success", selectors: ["html"] },
       { status: "success", selectors: [] }
     ]);
-    await runLoop(loopInput({ timeoutMs: 5_000, copyStyle, fontFamilyPolicy }), harness.dependencies);
+    await runLoop(
+      loopInput({ timeoutMs: 5_000, copyStyle, fontFamilyPolicy, colorPolicy }),
+      harness.dependencies
+    );
 
     expect(harness.auditOptions).toEqual([
       expect.objectContaining({
         runId: "loop-test-baseline",
         timeoutMs: 5_000,
         copyStyle,
-        fontFamilyPolicy
+        fontFamilyPolicy,
+        colorPolicy
       }),
       expect.objectContaining({
         runId: "loop-test-001",
         timeoutMs: 5_000,
         copyStyle,
-        fontFamilyPolicy
+        fontFamilyPolicy,
+        colorPolicy
       })
     ]);
   });

@@ -10,7 +10,14 @@ const noConfigOutDir = join(outRoot, "no-config");
 const validGuide = resolve("examples/configs/design-guide.example.yaml");
 const realStackGuide = resolve("examples/configs/design-guide.font-family-real-stack.yaml");
 const invalidSelectorGuide = resolve("examples/configs/design-guide.invalid-font-selector.yaml");
+const invalidColorSelectorGuide = resolve("examples/configs/design-guide.invalid-color-selector.yaml");
 const port = 4174;
+const expectedColorAllowedValues = [
+  { red: 250, green: 250, blue: 247, alpha: 255 },
+  { red: 255, green: 255, blue: 255, alpha: 255 },
+  { red: 20, green: 23, blue: 28, alpha: 255 },
+  { red: 31, green: 97, blue: 209, alpha: 255 }
+];
 const expectedRealStackAllowedFamilies = [
   { value: "Space Grotesk", kind: "named" },
   { value: "sans-serif", kind: "generic" },
@@ -245,7 +252,7 @@ try {
     assertContrastEffectRun(readAuditResult(outDir), scenario);
   }
 
-  await runFontFamilyFixture({
+  await runGuideAuditFixture({
     cliPath,
     name: "font-family-good",
     fixture: "font-family-adherence-good.html",
@@ -253,7 +260,7 @@ try {
     expectedExitCode: 0,
     assertResult: assertGoodFontFamilyRun
   });
-  await runFontFamilyFixture({
+  await runGuideAuditFixture({
     cliPath,
     name: "font-family-bad",
     fixture: "font-family-adherence-bad.html",
@@ -261,7 +268,7 @@ try {
     expectedExitCode: 0,
     assertResult: assertBadFontFamilyRun
   });
-  await runFontFamilyFixture({
+  await runGuideAuditFixture({
     cliPath,
     name: "font-family-real-stack-good",
     fixture: "font-family-adherence-real-stack-good.html",
@@ -269,7 +276,7 @@ try {
     expectedExitCode: 0,
     assertResult: assertRealStackGoodFontFamilyRun
   });
-  await runFontFamilyFixture({
+  await runGuideAuditFixture({
     cliPath,
     name: "font-family-real-stack-bad",
     fixture: "font-family-adherence-real-stack-bad.html",
@@ -277,7 +284,7 @@ try {
     expectedExitCode: 0,
     assertResult: assertRealStackBadFontFamilyRun
   });
-  await runFontFamilyFixture({
+  await runGuideAuditFixture({
     cliPath,
     name: "font-family-ignored",
     fixture: "font-family-adherence-ignored.html",
@@ -285,7 +292,7 @@ try {
     expectedExitCode: 0,
     assertResult: assertIgnoredFontFamilyRun
   });
-  await runFontFamilyFixture({
+  await runGuideAuditFixture({
     cliPath,
     name: "font-family-invalid-selector",
     fixture: "font-family-adherence-good.html",
@@ -298,7 +305,7 @@ try {
     { query: "computed-family-limit", reasonCode: "computed-family" },
     { query: "selector-evaluation", reasonCode: "selector-evaluation" }
   ]) {
-    await runFontFamilyFixture({
+    await runGuideAuditFixture({
       cliPath,
       name: `font-family-${scenario.query}`,
       fixture: `font-family-adherence-errors.html?scenario=${scenario.query}`,
@@ -307,13 +314,75 @@ try {
       assertResult: (auditResult) => assertScopedFontErrorRun(auditResult, scenario.reasonCode)
     });
   }
+  await runGuideAuditFixture({
+    cliPath,
+    name: "color-adherence-good",
+    fixture: "color-adherence-good.html",
+    guide: validGuide,
+    expectedExitCode: 0,
+    assertResult: assertGoodColorRun
+  });
+  await runGuideAuditFixture({
+    cliPath,
+    name: "color-adherence-bad",
+    fixture: "color-adherence-bad.html",
+    guide: validGuide,
+    expectedExitCode: 0,
+    assertResult: assertBadColorRun
+  });
+  await runGuideAuditFixture({
+    cliPath,
+    name: "color-adherence-root-bad",
+    fixture: "color-adherence-root-bad.html",
+    guide: validGuide,
+    expectedExitCode: 0,
+    assertResult: assertRootBadColorRun
+  });
+  await runGuideAuditFixture({
+    cliPath,
+    name: "color-adherence-ignored",
+    fixture: "color-adherence-ignored.html",
+    guide: validGuide,
+    expectedExitCode: 0,
+    assertResult: assertIgnoredColorRun
+  });
+  await runGuideAuditFixture({
+    cliPath,
+    name: "color-adherence-incomplete",
+    fixture: "color-adherence-incomplete.html",
+    guide: validGuide,
+    expectedExitCode: 0,
+    assertResult: assertIncompleteColorRun
+  });
+  await runGuideAuditFixture({
+    cliPath,
+    name: "color-adherence-invalid-selector",
+    fixture: "color-adherence-good.html",
+    guide: invalidColorSelectorGuide,
+    expectedExitCode: 2,
+    assertResult: assertInvalidColorSelectorRun
+  });
+  for (const scenario of [
+    { query: "candidate-limit", reasonCode: "candidate-limit" },
+    { query: "computed-color", reasonCode: "computed-color" },
+    { query: "selector-evaluation", reasonCode: "selector-evaluation" }
+  ]) {
+    await runGuideAuditFixture({
+      cliPath,
+      name: `color-adherence-${scenario.query}`,
+      fixture: `color-adherence-errors.html?scenario=${scenario.query}`,
+      guide: validGuide,
+      expectedExitCode: 2,
+      assertResult: (auditResult) => assertScopedColorErrorRun(auditResult, scenario.reasonCode)
+    });
+  }
   if (cleanCorpusFailures.length > 0) {
     throw new Error(
       `Clean corpus gate failed ${cleanCorpusFailures.length} assertion(s); every other example-smoke `
       + `assertion above passed.\n  - ${cleanCorpusFailures.join("\n  - ")}`
     );
   }
-  console.log("Example smoke passed: no-config regression, measurement tripwires, clean corpus, contrast paint-effect ancestry and priority, tap-target spacing, capped-finding coverage, plus live real-stack font-family success, exact companion mismatch, exception, and scoped-error audits.");
+  console.log("Example smoke passed: no-config regression, measurement tripwires, clean corpus, contrast paint-effect ancestry and priority, tap-target spacing, capped-finding coverage, live font-family gates, plus exact rendered-color success, mismatch, root-paint, opacity, exception, unsupported-value, and scoped-error audits.");
 } finally {
   await new Promise((resolveClose) => server.close(resolveClose));
 }
@@ -351,6 +420,18 @@ function assertNoConfigArtifacts(outDir) {
   }
   if (auditResult.failedChecks.some((check) => check.endsWith(":unapproved-font-family"))) {
     throw new Error("No-guide example recorded a font-family failed check");
+  }
+  if (measurements.some((asset) => asset.data?.colorAdherence !== undefined)) {
+    throw new Error("No-guide example materialized rendered-color summaries");
+  }
+  if (auditResult.findings.some((finding) => finding.checkName === "off-palette-color")) {
+    throw new Error("No-guide example emitted rendered-color findings");
+  }
+  if (auditResult.failedChecks.some((check) => check.endsWith(":off-palette-color"))) {
+    throw new Error("No-guide example recorded a rendered-color failed check");
+  }
+  if ((auditResult.notices ?? []).some((notice) => notice.code.startsWith("color-adherence-"))) {
+    throw new Error("No-guide example emitted rendered-color notices");
   }
   if (metadata.toolVersions?.["@design-harness/copy-audit"] !== undefined) {
     throw new Error("No-copy example recorded copy-audit metadata");
@@ -827,7 +908,7 @@ function assertLineLengthTripwire(auditResult) {
   }
 }
 
-async function runFontFamilyFixture({
+async function runGuideAuditFixture({
   cliPath,
   name,
   fixture,
@@ -854,8 +935,8 @@ async function runFontFamilyFixture({
 
 function assertGoodFontFamilyRun(auditResult) {
   assertFontRunIntegrity(auditResult, "success");
-  if (fontFindings(auditResult).length !== 0) {
-    throw new Error("Good font-family fixture emitted an adherence finding");
+  if (auditResult.findings.length !== 0) {
+    throw new Error("Good font-family fixture emitted a finding");
   }
   for (const summary of fontSummaries(auditResult)) {
     if (
@@ -877,6 +958,9 @@ function assertBadFontFamilyRun(auditResult) {
   const findings = fontFindings(auditResult);
   if (findings.length !== auditResult.viewportPresets.length) {
     throw new Error(`Bad font-family fixture emitted ${findings.length} findings for ${auditResult.viewportPresets.length} viewports`);
+  }
+  if (auditResult.findings.length !== findings.length) {
+    throw new Error("Bad font-family fixture emitted an unrelated finding");
   }
   if (findings.some((finding) => (
     finding.determinism !== "deterministic"
@@ -968,8 +1052,8 @@ function assertRealStackBadFontFamilyRun(auditResult) {
 
 function assertIgnoredFontFamilyRun(auditResult) {
   assertFontRunIntegrity(auditResult, "success");
-  if (fontFindings(auditResult).length !== 0) {
-    throw new Error("Ignored font-family fixture emitted an adherence finding");
+  if (auditResult.findings.length !== 0) {
+    throw new Error("Ignored font-family fixture emitted a finding");
   }
   for (const summary of fontSummaries(auditResult)) {
     if (summary.evaluatedElementCount < 1 || summary.ignoredElementCount < 1 || summary.violatingElementCount !== 0) {
@@ -1043,6 +1127,255 @@ function fontSummaries(auditResult) {
   return auditResult.evidenceAssets
     .filter((asset) => asset.id.startsWith("measurement-"))
     .flatMap((asset) => asset.data?.fontFamilyAdherence ? [asset.data.fontFamilyAdherence] : []);
+}
+
+function assertGoodColorRun(auditResult) {
+  assertColorRunIntegrity(auditResult, "success");
+  if (auditResult.findings.length !== 0) {
+    throw new Error("Good rendered-color fixture emitted a finding");
+  }
+  for (const summary of colorSummaries(auditResult)) {
+    if (
+      summary.evaluatedSlotCount < 1
+      || summary.ignoredSlotCount < 1
+      || summary.skippedSlotCount !== 0
+      || summary.violatingSlotCount !== 0
+      || summary.distinctViolationGroupCount !== 0
+      || summary.groups.length !== 0
+    ) {
+      throw new Error("Good rendered-color fixture did not record a clean evaluated summary");
+    }
+  }
+}
+
+function assertBadColorRun(auditResult) {
+  assertColorRunIntegrity(auditResult, "success");
+  const findings = colorFindings(auditResult);
+  if (
+    findings.length !== auditResult.viewportPresets.length
+    || auditResult.findings.length !== findings.length
+  ) {
+    throw new Error(
+      `Bad rendered-color fixture emitted ${findings.length} color findings and `
+      + `${auditResult.findings.length} total findings for ${auditResult.viewportPresets.length} viewports`
+    );
+  }
+  for (const finding of findings) {
+    if (
+      finding.criterionId !== "visual.color.project-contract"
+      || finding.determinism !== "deterministic"
+      || finding.resultKind !== "risk"
+      || finding.severity !== "low"
+      || finding.confidence !== "high"
+      || finding.selector !== "#palette-sample"
+      || finding.observed?.property !== "border-right-color"
+      || JSON.stringify(finding.observed?.unexpectedColor)
+        !== JSON.stringify({ red: 192, green: 38, blue: 211, alpha: 255 })
+      || finding.observed?.affectedSlotCount !== 1
+      || !Array.isArray(finding.observed?.selectors)
+      || finding.observed.selectors.length !== 1
+      || finding.observed.selectors[0] !== "#palette-sample"
+      || !Array.isArray(finding.observed?.regions)
+      || finding.observed.regions.length !== 1
+      || finding.observed.regions[0]?.width <= 0
+      || finding.observed.regions[0]?.height <= 0
+      || JSON.stringify(finding.expected?.allowedColors) !== JSON.stringify(expectedColorAllowedValues)
+    ) {
+      throw new Error("Bad rendered-color fixture did not isolate the off-palette right border");
+    }
+  }
+  for (const summary of colorSummaries(auditResult)) {
+    const group = summary.groups[0];
+    if (
+      summary.violatingSlotCount !== 1
+      || summary.distinctViolationGroupCount !== 1
+      || summary.emittedGroupCount !== 1
+      || summary.truncatedGroupCount !== 0
+      || summary.groups.length !== 1
+      || group?.property !== "border-right-color"
+      || JSON.stringify(group?.unexpectedColor)
+        !== JSON.stringify({ red: 192, green: 38, blue: 211, alpha: 255 })
+      || group?.affectedSlotCount !== 1
+      || group?.selectors?.[0] !== "#palette-sample"
+    ) {
+      throw new Error("Bad rendered-color summary did not preserve the exact right-border mismatch");
+    }
+  }
+}
+
+function assertRootBadColorRun(auditResult) {
+  assertColorRunIntegrity(auditResult, "success");
+  const findings = colorFindings(auditResult);
+  if (
+    findings.length !== auditResult.viewportPresets.length
+    || auditResult.findings.length !== findings.length
+  ) {
+    throw new Error("Root rendered-color fixture did not emit exactly one color finding per viewport");
+  }
+  for (const finding of findings) {
+    if (
+      finding.selector !== "html"
+      || finding.observed?.property !== "background-color"
+      || JSON.stringify(finding.observed?.unexpectedColor)
+        !== JSON.stringify({ red: 192, green: 38, blue: 211, alpha: 255 })
+      || finding.observed?.affectedSlotCount !== 1
+    ) {
+      throw new Error("Root rendered-color fixture did not isolate the document-element background");
+    }
+  }
+  for (const summary of colorSummaries(auditResult)) {
+    if (
+      summary.violatingSlotCount !== 1
+      || summary.distinctViolationGroupCount !== 1
+      || summary.groups.length !== 1
+      || summary.groups[0]?.property !== "background-color"
+      || summary.groups[0]?.selectors?.[0] !== "html"
+    ) {
+      throw new Error("Root rendered-color summary did not preserve the document-element mismatch");
+    }
+  }
+}
+
+function assertIgnoredColorRun(auditResult) {
+  assertColorRunIntegrity(auditResult, "success");
+  if (auditResult.findings.length !== 0) {
+    throw new Error("Ignored rendered-color fixture emitted a finding");
+  }
+  for (const summary of colorSummaries(auditResult)) {
+    if (
+      summary.evaluatedSlotCount < 1
+      || summary.ignoredSlotCount < 1
+      || summary.violatingSlotCount !== 0
+      || summary.distinctViolationGroupCount !== 0
+      || summary.groups.length !== 0
+    ) {
+      throw new Error("Ignored rendered-color fixture did not prove evaluation and subtree exclusion");
+    }
+  }
+}
+
+function assertIncompleteColorRun(auditResult) {
+  assertColorRunIntegrity(auditResult, "success");
+  if (auditResult.findings.length !== 0) {
+    throw new Error("Unsupported rendered-color fixture emitted a finding");
+  }
+  for (const summary of colorSummaries(auditResult)) {
+    if (
+      summary.evaluatedSlotCount < 1
+      || summary.skippedSlotCount !== 1
+      || summary.skippedByReason?.["unsupported-color"] !== 1
+      || summary.violatingSlotCount !== 0
+      || summary.groups.length !== 0
+    ) {
+      throw new Error("Unsupported rendered-color fixture did not preserve one explicit scoped skip");
+    }
+  }
+  const notices = (auditResult.notices ?? []).filter(
+    (notice) => notice.code === "color-adherence-slots-skipped"
+  );
+  if (
+    notices.length !== auditResult.viewportPresets.length
+    || notices.some((notice) => (
+      notice.details?.skippedSlotCount !== 1
+      || notice.details?.skippedByReason?.["unsupported-color"] !== 1
+    ))
+  ) {
+    throw new Error("Unsupported rendered-color fixture omitted exact per-viewport skip notices");
+  }
+}
+
+function assertInvalidColorSelectorRun(auditResult) {
+  assertScopedColorErrorRun(auditResult, "invalid-selector");
+}
+
+function assertScopedColorErrorRun(auditResult, reasonCode) {
+  if (auditResult.status !== "partial") {
+    throw new Error(`${reasonCode} color audit status was ${auditResult.status}, expected partial`);
+  }
+  const expectedFailures = auditResult.viewportPresets.map(
+    (viewport) => `${viewport.name}:off-palette-color`
+  );
+  if (JSON.stringify(auditResult.failedChecks) !== JSON.stringify(expectedFailures)) {
+    throw new Error(
+      `${reasonCode} color failedChecks mismatch: ${auditResult.failedChecks.join(", ")}`
+    );
+  }
+  if (colorSummaries(auditResult).length !== 0 || colorFindings(auditResult).length !== 0) {
+    throw new Error(`${reasonCode} color run retained a summary or emitted a finding`);
+  }
+  if (fontSummaries(auditResult).length !== auditResult.viewportPresets.length) {
+    throw new Error(`${reasonCode} color run suppressed successful font-family evidence`);
+  }
+  const measurementCount = auditResult.evidenceAssets.filter(
+    (asset) => asset.id.startsWith("measurement-")
+  ).length;
+  if (measurementCount < auditResult.viewportPresets.length) {
+    throw new Error(`${reasonCode} color run lost base measurement assets`);
+  }
+  const notices = (auditResult.notices ?? []).filter((notice) => (
+    notice.code === "color-adherence-measurement-failed"
+    && notice.details?.reasonCode === reasonCode
+  ));
+  if (notices.length !== auditResult.viewportPresets.length) {
+    throw new Error(`${reasonCode} color run omitted bounded per-viewport failure notices`);
+  }
+}
+
+function assertColorRunIntegrity(auditResult, expectedStatus) {
+  if (auditResult.status !== expectedStatus) {
+    throw new Error(`Rendered-color audit status was ${auditResult.status}, expected ${expectedStatus}`);
+  }
+  const summaries = colorSummaries(auditResult);
+  if (summaries.length !== auditResult.viewportPresets.length) {
+    throw new Error(
+      `Rendered-color audit recorded ${summaries.length} summaries, `
+      + `expected ${auditResult.viewportPresets.length}`
+    );
+  }
+  if (auditResult.failedChecks.some((check) => check.endsWith(":off-palette-color"))) {
+    throw new Error("Successful rendered-color audit retained a failed adherence check");
+  }
+  for (const summary of summaries) {
+    if (
+      summary.policyId !== "color-adherence-v1"
+      || JSON.stringify(summary.allowedColors) !== JSON.stringify(expectedColorAllowedValues)
+      || summary.candidateSlotCount
+        !== summary.evaluatedSlotCount + summary.ignoredSlotCount + summary.skippedSlotCount
+      || summary.violatingSlotCount > summary.evaluatedSlotCount
+      || summary.emittedGroupCount !== Math.min(summary.distinctViolationGroupCount, 5)
+      || summary.truncatedGroupCount
+        !== summary.distinctViolationGroupCount - summary.emittedGroupCount
+      || summary.groups.length !== summary.emittedGroupCount
+      || sumRecord(summary.ignoredByReason) !== summary.ignoredSlotCount
+      || sumRecord(summary.skippedByReason) !== summary.skippedSlotCount
+    ) {
+      throw new Error(`Rendered-color summary integrity drifted: ${JSON.stringify(summary)}`);
+    }
+    for (const group of summary.groups) {
+      if (
+        group.sampleCount > 5
+        || group.sampleCount !== group.selectors.length
+        || group.sampleCount !== group.regions.length
+        || group.omittedSampleCount !== group.affectedSlotCount - group.sampleCount
+      ) {
+        throw new Error(`Rendered-color group sample accounting drifted: ${JSON.stringify(group)}`);
+      }
+    }
+  }
+}
+
+function colorFindings(auditResult) {
+  return auditResult.findings.filter((finding) => finding.checkName === "off-palette-color");
+}
+
+function colorSummaries(auditResult) {
+  return auditResult.evidenceAssets
+    .filter((asset) => asset.id.startsWith("measurement-"))
+    .flatMap((asset) => asset.data?.colorAdherence ? [asset.data.colorAdherence] : []);
+}
+
+function sumRecord(value) {
+  return Object.values(value ?? {}).reduce((sum, count) => sum + count, 0);
 }
 
 function readAuditResult(outDir) {

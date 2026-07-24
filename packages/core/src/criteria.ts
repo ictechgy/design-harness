@@ -173,6 +173,20 @@ export const CRITERIA: Criterion[] = [
     remediationHint: "Use the declared generation tokens, add intentional runtime families under audit.fontFamily.additionalAllowedFamilies, or reserve selector exceptions for third-party content."
   },
   {
+    id: "visual.color.project-contract",
+    category: "visual-polish",
+    title: "Rendered colors follow the configured guide",
+    description: "Visible computed text, background, and painted border colors should match the semantic color values declared by the project design guide.",
+    sourceRefs: ["design-guide-contract"],
+    sourceStrength: "project-contract",
+    determinism: "deterministic",
+    resultKind: "risk",
+    confidenceDefault: "high",
+    runtime: "computed-style",
+    checkNames: ["off-palette-color"],
+    remediationHint: "Use the declared semantic color tokens or reserve a narrow audit.color.ignoreSelectors selector exception for third-party content."
+  },
+  {
     id: "a11y.text-contrast.minimum",
     category: "accessibility",
     title: "Text contrast meets configured threshold",

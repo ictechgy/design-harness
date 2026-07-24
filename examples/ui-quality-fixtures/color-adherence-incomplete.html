@@ -3,27 +3,32 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Font family adherence bad fixture</title>
+    <title>Color adherence incomplete-evidence fixture</title>
     <style>
       body {
         margin: 0;
         padding: 2rem;
         color: #14171C;
-        background: #ffffff;
+        background: #FAFAF7;
         font-family: "Inter", sans-serif;
       }
       main {
         max-width: 36rem;
+        padding: 1rem;
+        background: #FFFFFF;
       }
-      .unexpected-stack {
-        font-family: "Unapproved Display", sans-serif;
+      .unsupported-color {
+        width: 4rem;
+        height: 4rem;
+        background-color: color(display-p3 1 0 0);
       }
     </style>
   </head>
   <body>
     <main>
       <h1>Account overview</h1>
-      <p class="unexpected-stack">This isolated line adds one family outside the project guide.</p>
+      <p>The empty box below supplies one unsupported computed color without fabricating a mismatch.</p>
+      <div class="unsupported-color" aria-hidden="true"></div>
     </main>
   </body>
 </html>

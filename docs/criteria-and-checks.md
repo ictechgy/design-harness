@@ -158,6 +158,16 @@ CLI users may pass one explicit `design-guide.yaml` to `audit --guide`. The CLI 
 
 The evidence proves only that a computed family list conflicts with the declared list. It does not identify which face rendered a glyph, enforce heading/body roles or stack order, diagnose fallback loading, or establish typography quality. The v1 identity distinguishes named and generic families, folds ASCII letters only, preserves all non-ASCII code points exactly, and deliberately performs no Unicode normalization or locale-aware matching. Selector-engine or computed-family processing errors become a scoped partial check while unrelated measurements and findings remain available.
 
+### Rendered Color Contract
+
+The same explicit `audit --guide` path projects every semantic DTCG `srgb` color token into `color-adherence-v1`. Each normalized channel and alpha is clamped to `0..1`, multiplied by 255, rounded with `Math.round`, and compared as an exact RGBA8 tuple. Duplicate values collapse while preserving token declaration order. The optional closed `audit.color` overlay contains only `ignoreSelectors`; it cannot introduce audit-only allowed colors, so generation guidance and verification still share one allowlist. The overlay requires 1–32 unique trim-stable selectors, and browser-invalid syntax becomes a color-check-scoped partial result rather than being silently ignored.
+
+`off-palette-color` maps to `visual.color.project-contract` and emits low-severity, high-confidence deterministic `project-contract` risks. It runs only when a guide policy is present and inspects visible viewport-intersecting elements, including the document element: direct-text foreground, background color when no background image is painted, and each border-side color whose width is positive, whose style is neither `none` nor `hidden`, and whose border image source is `none`. Elements with non-visible computed visibility, zero geometry, or an opacity-zero ancestor do not contribute paint slots. Gradients, background/border images, shadows, SVG paint, pseudo-elements, outlines, text decoration, pixel/composited output, and authored token provenance are outside this detector.
+
+Fully transparent paint is counted as ignored. Supported computed `rgb()`/`rgba()` and `color(srgb ...)` serializations are converted to RGBA8; unsupported color spaces or malformed values are explicit skips and are never guessed as black or treated as an allowed match. Selector exceptions count the affected paint slots as ignored and apply only to the selected subtree. Collection failures discard incomplete color evidence, retain unrelated measurements, and mark only `off-palette-color` partial.
+
+Violations group by computed property plus unexpected RGBA8 value. Each viewport emits at most five groups and retains at most five selector/region samples per group. Its adherence summary preserves exact candidate, evaluated, ignored, skipped, violating, distinct, emitted, truncated, sample, and omitted-sample counts. This evidence proves only that a rendered paint value conflicts with the explicit project palette; it does not prove that source code used a token, that the palette is aesthetically good, or that the page is accessible.
+
 #### Parser-Free Copy Audit
 
 Library callers can pass a validated `CopyStyle` through `auditUrl({ copyStyle })`. CLI callers can pass the same contract with `--copy <copy-style.yaml>`; the validated object enters that existing `auditUrl({ copyStyle })` path rather than a separate analyzer. The capture adapter resolves surfaces on live nodes, then `@design-harness/copy-audit` analyzes the serialized text inventory without importing Playwright.
@@ -189,8 +199,8 @@ Heading findings are the exception to independent caps. `empty-heading`, `headin
 `capGroup: "headingIssues"` and their combined emitted count cannot exceed five. A single audit-level notice
 summarizes all nonzero omissions across viewports; it is score-, status-, and failure-neutral.
 
-`unapproved-font-family` is excluded because its existing adherence summary already records total, emitted,
-and truncated stacks. `repeated-visual-weight-risk`, `saturated-color-noise-risk`, and
+`unapproved-font-family` and `off-palette-color` are excluded because their adherence summaries already
+record exact detected composition, emitted groups, and truncation. `repeated-visual-weight-risk`, `saturated-color-noise-risk`, and
 `checklist-state-visibility-risk` are excluded because their algorithms currently produce at most one, one,
 and two semantic aggregates. If any of those output shapes later makes its nominal three-item slice
 reachable, the detector must add coverage in the same change. Non-finding payload and layout-metric sample

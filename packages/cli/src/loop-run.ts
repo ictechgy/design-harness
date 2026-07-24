@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import {
   HARNESS_VERSION,
+  type ColorAdherencePolicy,
   type CopyStyle,
   type FontFamilyAdherencePolicy
 } from "@design-harness/core";
@@ -48,6 +49,7 @@ export interface LoopRunInput {
   timeoutMs?: number;
   copyStyle?: CopyStyle;
   fontFamilyPolicy?: FontFamilyAdherencePolicy;
+  colorPolicy?: ColorAdherencePolicy;
   cwd: string;
 }
 
@@ -201,7 +203,8 @@ export async function runLoop(
       runId,
       ...(input.timeoutMs === undefined ? {} : { timeoutMs: input.timeoutMs }),
       ...(input.copyStyle === undefined ? {} : { copyStyle: input.copyStyle }),
-      ...(input.fontFamilyPolicy === undefined ? {} : { fontFamilyPolicy: input.fontFamilyPolicy })
+      ...(input.fontFamilyPolicy === undefined ? {} : { fontFamilyPolicy: input.fontFamilyPolicy }),
+      ...(input.colorPolicy === undefined ? {} : { colorPolicy: input.colorPolicy })
     };
     try {
       const result = await audit(options);

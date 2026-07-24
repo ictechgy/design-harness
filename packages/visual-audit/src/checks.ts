@@ -12,6 +12,7 @@ import {
   assertFindingCoverageIntegrity,
   type FindingCoverage
 } from "./finding-coverage.js";
+import type { ColorAdherenceSummary } from "./color-adherence.js";
 
 export type { FindingCoverage, FindingCoverageEntry } from "./finding-coverage.js";
 
@@ -156,6 +157,7 @@ export interface ViewportMeasurements {
   movingContentControlRisks: ElementSample[];
   textInventory: TextInventoryItem[];
   fontFamilyAdherence?: FontFamilyAdherenceSummary;
+  colorAdherence?: ColorAdherenceSummary;
   findingCoverage?: FindingCoverage;
 }
 
@@ -210,6 +212,38 @@ export function findingsFromMeasurements(
         expected: {
           allowedFamilies: fontFamilyAdherence.allowedFamilies,
           comparison: "Every computed list member is declared by the explicit project guide."
+        }
+      }));
+    }
+  }
+
+  const colorAdherence = measurements.colorAdherence;
+  if (colorAdherence) {
+    for (const [index, group] of colorAdherence.groups.entries()) {
+      findings.push(createFinding({
+        id: `finding-${measurements.viewport}-off-palette-color-${index + 1}`,
+        category: "visual-polish",
+        severity: "low",
+        viewport: measurements.viewport,
+        selector: group.selectors[0],
+        region: group.regions[0],
+        evidenceRefs,
+        problem: `The rendered ${group.property} value for ${group.affectedSlotCount} visible paint ${group.affectedSlotCount === 1 ? "slot is" : "slots are"} outside the semantic color values declared in the configured project guide.`,
+        recommendation: "Use the declared semantic color tokens or reserve a narrow audit.color.ignoreSelectors selector exception for third-party content.",
+        checkName: "off-palette-color",
+        observed: {
+          property: group.property,
+          unexpectedColor: group.unexpectedColor,
+          rawComputedValues: group.rawComputedValues,
+          affectedSlotCount: group.affectedSlotCount,
+          selectors: group.selectors,
+          regions: group.regions,
+          omittedSampleCount: group.omittedSampleCount,
+          policyId: colorAdherence.policyId
+        },
+        expected: {
+          allowedColors: colorAdherence.allowedColors,
+          comparison: "The rendered RGBA8 value exactly matches a semantic color declared by the explicit project guide."
         }
       }));
     }
