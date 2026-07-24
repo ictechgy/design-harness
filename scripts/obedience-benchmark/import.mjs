@@ -845,13 +845,14 @@ async function validatePreparedGit(cellRoot, git, cellId) {
     if (git.initialized !== true) {
       throw new Error(`${cellId} git metadata contradicts the prepared .git directory`);
     }
-    const [head, config] = await Promise.all([
-      readRegularGitMetadata(join(gitPath, "HEAD"), `${cellId} prepared .git HEAD`),
-      readRegularGitMetadata(
-        join(gitPath, "config"),
-        `${cellId} prepared .git config`
-      )
-    ]);
+    const head = await readRegularGitMetadata(
+      join(gitPath, "HEAD"),
+      `${cellId} prepared .git HEAD`
+    );
+    const config = await readRegularGitMetadata(
+      join(gitPath, "config"),
+      `${cellId} prepared .git config`
+    );
     validateGitHead(head, cellId);
     validateGitConfig(config, cellId);
   } catch (error) {
