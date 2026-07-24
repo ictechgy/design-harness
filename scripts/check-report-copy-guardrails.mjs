@@ -5,12 +5,13 @@
  * `validateReportCopyGuardrails` has always existed in core, but until now it ran only in a unit test — so
  * the rule it enforces ("never claim WCAG compliant / accessible / good design unqualified") did not run on
  * real rendered output. This check runs it over the surfaces the rule is actually about: every committed
- * rendered audit report, and every README (root + published package READMEs are "public docs" per rule 9).
+ * rendered audit report, every README (root + published package READMEs are "public docs" per rule 9),
+ * and explicitly designated public reports.
  *
  * Rendered reports are detected by content (the report header), not by filename, so any committed report
  * anywhere is covered — including examples/reports/[name]/report.md and the differently-named
- * examples/merchant-dashboard/sample-report.md. docs/** is naturally excluded: those files legitimately
- * QUOTE the banned phrases to define the rule, and they are neither rendered reports nor READMEs.
+ * examples/merchant-dashboard/sample-report.md. Ordinary docs/** files are excluded because they may
+ * legitimately quote the banned phrases to define the rule; designated public reports are the exception.
  */
 import { existsSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -59,4 +60,4 @@ if (failures.length > 0) {
   process.exit(1);
 }
 
-console.log(`check-report-copy-guardrails passed: ${scanned} rendered report(s)/README(s) free of unqualified overclaims.`);
+console.log(`check-report-copy-guardrails passed: ${scanned} public report(s)/README(s) free of unqualified overclaims.`);

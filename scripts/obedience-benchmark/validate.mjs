@@ -1660,10 +1660,11 @@ function validatePublicCopy(source, path, issues) {
       issues.push(`${path} contains forbidden ${label} claim`);
     }
   }
-  const reinsOccurrences = source.match(/“reins”/g)?.length ?? 0;
-  const blockedOccurrences =
-    source.split(BLOCKED_CLAIMS_STATEMENT).length - 1;
-  if (reinsOccurrences !== blockedOccurrences) {
+  const copyOutsideBlockedClaims = source.replaceAll(
+    BLOCKED_CLAIMS_STATEMENT,
+    " "
+  );
+  if (/\breins\b/i.test(copyOutsideBlockedClaims)) {
     issues.push(
       `${path} may mention “reins” only inside the exact blocked-claims statement`
     );
