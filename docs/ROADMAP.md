@@ -5,7 +5,7 @@ How to read this file:
 - Authority on conflict: owner's current-session instruction > `AGENTS.md` > this file and the other committed docs > git-ignored local notes > your judgment.
 - **Latest release: v0.6.1 — RELEASED 2026-07-24.** It contains the post-v0.6.0 truth and evidence-honesty maintenance train summarized below; `schemaVersion` remains `0.2`. Historical artifacts retain the producer version that generated them.
 - **Latest released train: post-v0.6.0 truth and evidence honesty — RELEASED IN v0.6.1.** The fixed order was documentation truth → contrast fail-closed handling for unsupported ancestor paint effects → criterion-bounded scoring and capped-finding cardinality → a bounded deterministic-failure loop. Rendered color and spacing adherence now belong to the unreleased post-release train below. Actual glyph-face detection, framework auto-rules, the other v0.5 remainder, the future Korean slice, and every cut-list item remain unscheduled. Out-of-scope ideas go to `.omx/ideas.md` as one line.
-- **Latest post-release serial train — COMPLETE 2026-07-24, NOT RELEASED:** remove duplicate CI event coverage → prove positive installed-tarball loop execution → publish the bounded `obedience-v1` descriptive snapshot. Each item is a separate reviewed/merged PR and the next began only after the previous merge was verified. No version, publish, tag, or GitHub Release action belonged to this train.
+- **Latest post-release serial train — COMPLETE 2026-07-25, NOT RELEASED:** rendered color membership → rendered spacing membership → remove unused browser-boundary color metadata. Each item was separately reviewed, merged, and verified before the aggregate gate closed. No version, publish, tag, or GitHub Release action belonged to this train.
 - Maintenance rule: any PR that changes scope, conventions, or architecture updates this file (and `AGENTS.md` if a rule changed) in the same PR.
 - Common definition of done for every milestone: `CI=true pnpm release:check` passes, new checks ship with good/bad fixtures, docs updated, handoff written (`docs/agent-protocol.md`), README claims match npm/code reality.
 
@@ -29,14 +29,16 @@ The benchmark used disposable-cell working directories plus a task-level edit co
 
 Explicitly out of scope: product runtime/provider SDKs, hosted agents in CI, new agent surfaces, schemas/enums/criteria/scoring, dependencies, README positioning, versioning, publishing, tags, and GitHub Releases.
 
-## Post-v0.6.1 rendered-token adherence train (IN PROGRESS, NOT RELEASED)
+## Post-v0.6.1 rendered-token adherence train (COMPLETE 2026-07-25, NOT RELEASED)
 
 The owner selected two serial vertical slices on 2026-07-24. Each uses the existing explicit `--guide` path, reports only conformance to project-declared token values, and remains a deterministic `project-contract` risk rather than a universal design-quality judgment. There is no version, publish, tag, or GitHub Release action in this train.
 
 1. **Rendered color membership — COMPLETE 2026-07-24, NOT RELEASED.** `off-palette-color` maps to `visual.color.project-contract` and compares visible computed text, background, and painted border colors with the guide's semantic color tokens after exact RGBA8 normalization. The closed selector-only `audit.color.ignoreSelectors` overlay excludes deliberate third-party subtrees without adding another allowlist. Fully transparent paint is ignored; unsupported color spaces and bounded collection gaps are explicit skips or detector-scoped partial evidence, never guessed black or a clean match. Violations group by property plus unexpected RGBA8 value, with five groups and five selector/region samples per group at most, while exact candidate/evaluated/ignored/skipped/violation/truncation counts remain observable. No guide means no color-policy collection or output.
-2. **Rendered spacing membership — COMPLETE 2026-07-24, NOT RELEASED.** `off-scale-spacing` maps to `visual.spacing.project-contract` and compares the four rendered margin sides, four padding sides, and row/column gaps with the guide's declared `px`/`rem` spacing scale after per-viewport root-font conversion. Zero is implicit; negative margins compare by magnitude; the fixed inclusive tolerance is `0.001 CSS px`. Typed OM preserves `auto` margins and `normal` gaps as skips, while unavailable, throwing, or unsupported typed evidence never falls through to a silently resolved match. Negative padding/gap and non-finite evidence are skipped. The separate selector-only `audit.spacing.ignoreSelectors` overlay, scoped partial behavior, and five-group/five-sample exact accounting mirror only the proven delivery seams from color. Resolved percentages/calculations prove rendered-value membership only, not authored-token provenance.
+2. **Rendered spacing membership — COMPLETE 2026-07-25, NOT RELEASED.** `off-scale-spacing` maps to `visual.spacing.project-contract` and compares the four rendered margin sides, four padding sides, and row/column gaps with the guide's declared `px`/`rem` spacing scale after per-viewport root-font conversion. Zero is implicit; negative margins compare by magnitude; the fixed inclusive tolerance is `0.001 CSS px`. Typed OM preserves `auto` margins and `normal` gaps as skips, while unavailable, throwing, or unsupported typed evidence never falls through to a silently resolved match. Negative padding/gap and non-finite evidence are skipped. The separate selector-only `audit.spacing.ignoreSelectors` overlay, scoped partial behavior, and five-group/five-sample exact accounting mirror only the proven delivery seams from color. Resolved percentages/calculations prove rendered-value membership only, not authored-token provenance.
 
 Shared frameworks, audit-only allowed token values, fuzzy color distance, aesthetic palette or spacing-quality judgments, authored-source token provenance, pixel/composited output, new dependencies, schema version changes, and cut-list work remain out of scope.
+
+The train closed after a behavior-preserving cleanup removed palette values that the browser measurement closure never consumed and color-error length metadata that no producer emitted. Node-side palette comparison, selector exceptions, explicit oversized-color skips, and font-family length diagnostics remain unchanged.
 
 ## v0.4c — parser-free CLI wiring (COMPLETE 2026-07-16)
 
@@ -153,9 +155,9 @@ Font-stack order is never sorted (`summarizeTokenGroup` sorts object keys only; 
 
 Acceptance at merge: core 91 / cli 150 / visual-audit 154 / copy-audit 22 tests green; per-package `tsc -p tsconfig.json --noEmit`; real-compile eyeball. The change later shipped in v0.6.0 with v0.5c, v0.5d, and v0.5e.
 
-## v0.5 remainder — ACTIVE ITEM 2 TRAIN; ITEMS 3, 5, AND 6 UNSCHEDULED
+## v0.5 remainder — ITEM 2 COMPLETE; ITEMS 3, 5, AND 6 UNSCHEDULED
 
-The following retain their prior item numbers for traceability. Item 4 moved into the released post-v0.6.0 train above. Item 2 now runs as the serial post-v0.6.1 train; the remaining items stay unscheduled.
+The following retain their prior item numbers for traceability. Item 4 moved into the released post-v0.6.0 train above. Item 2 completed as the serial post-v0.6.1 train; the remaining items stay unscheduled.
 
 2. **Remaining token-adherence checks** (rendered layer only): `off-palette-color` and `off-scale-spacing` are complete but not released. Both compare computed values with explicit guide tokens and do not create a shared aesthetic-adherence framework. Token-file linting remains a separate question: evaluate Terrazzo's MIT `tz lint` before adding a dependency or building equivalent file-level checks.
 3. **Evidence-backed visual metrics slice** (droppable as a unit — first cut if v0.5 overruns; pack lines and checks ship together or slip together):
