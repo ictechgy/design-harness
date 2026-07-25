@@ -774,7 +774,6 @@ describe("auditUrl rendered color adherence", () => {
 
     expect(options.measurementArgs).toEqual([{
       color: {
-        allowedColors: colorAdherencePolicy().allowedColors,
         ignoreSelectors: [".third-party-color-widget"]
       }
     }]);
