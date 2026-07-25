@@ -10,6 +10,7 @@ import {
   type ColorAdherencePolicy,
   type CopyStyle,
   type FontFamilyAdherencePolicy,
+  type SpacingAdherencePolicy,
   type ViewportPreset
 } from "@design-harness/core";
 import { auditUrl, BrowserUnavailableError, type BrowserHandle, type PageHandle } from "./index.js";
@@ -956,6 +957,321 @@ describe("auditUrl rendered color adherence", () => {
   });
 });
 
+describe("auditUrl rendered spacing adherence", () => {
+  it("omits spacing collection config and evidence when no guide policy is supplied", async () => {
+    const measurement = measurementFor("desktop");
+    const options: FakeBrowserOptions = {
+      measurement,
+      measurementArgs: []
+    };
+
+    const result = await auditUrl({
+      url: "http://localhost:3000",
+      outDir: await tempDir(),
+      viewportPresets: [viewport],
+      launchBrowser: async () => fakeBrowser(options)
+    });
+
+    const measurementEvidence = result.auditResult.evidenceAssets.find(
+      (asset) => asset.id === "measurement-desktop"
+    );
+    expect(options.measurementArgs).toEqual([undefined]);
+    expect(measurementEvidence?.data).not.toHaveProperty("spacingAdherence");
+    expect(result.auditResult.findings.some(
+      (finding) => finding.checkName === "off-scale-spacing"
+    )).toBe(false);
+    expect(result.auditResult.failedChecks).not.toContain("desktop:off-scale-spacing");
+  });
+
+  it("records exact summary evidence and a project-contract risk for an unexpected spacing slot", async () => {
+    const measurement = measurementFor("desktop");
+    const options: FakeBrowserOptions = {
+      measurement,
+      measurementArgs: [],
+      collectionResults: [{
+        measurements: measurement,
+        notices: [],
+        spacingAdherenceCandidates: [{
+          selector: "#spacing-sample",
+          region: { x: 20, y: 30, width: 180, height: 40 },
+          property: "margin-right",
+          valuePx: 12
+        }],
+        spacingAdherenceCollection: {
+          candidateSlotCount: 1,
+          ignoredSlotCount: 0,
+          skippedSlotCount: 0,
+          skippedByReason: {}
+        },
+        spacingAdherenceRootFontSizePx: 16
+      }]
+    };
+
+    const result = await auditUrl({
+      url: "http://localhost:3000",
+      outDir: await tempDir(),
+      viewportPresets: [viewport],
+      spacingPolicy: spacingAdherencePolicy(),
+      launchBrowser: async () => fakeBrowser(options)
+    });
+
+    expect(options.measurementArgs).toEqual([{
+      spacing: {
+        ignoreSelectors: [".third-party-spacing-widget"]
+      }
+    }]);
+    const measurementEvidence = result.auditResult.evidenceAssets.find(
+      (asset) => asset.id === "measurement-desktop"
+    );
+    expect(measurementEvidence?.data?.spacingAdherence).toMatchObject({
+      policyId: "spacing-adherence-v1",
+      allowedValuesPx: [4, 8, 16, 24],
+      rootFontSizePx: 16,
+      candidateSlotCount: 1,
+      evaluatedSlotCount: 1,
+      ignoredSlotCount: 0,
+      skippedSlotCount: 0,
+      violatingSlotCount: 1,
+      distinctViolationGroupCount: 1,
+      emittedGroupCount: 1,
+      truncatedGroupCount: 0,
+      groups: [{
+        property: "margin-right",
+        unexpectedValuePx: 12,
+        affectedSlotCount: 1,
+        sampleCount: 1,
+        omittedSampleCount: 0
+      }]
+    });
+    expect(result.auditResult.findings).toEqual([
+      expect.objectContaining({
+        checkName: "off-scale-spacing",
+        criterionId: "visual.spacing.project-contract",
+        severity: "low",
+        confidence: "high",
+        determinism: "deterministic",
+        resultKind: "risk",
+        selector: "#spacing-sample"
+      })
+    ]);
+    expect(result.auditResult.status).toBe("success");
+    expect(() => assertAuditResultIntegrity(result.auditResult)).not.toThrow();
+  });
+
+  it("reports preserved spacing keywords as explicit skips without fabricating a finding", async () => {
+    const measurement = measurementFor("desktop");
+    const result = await auditUrl({
+      url: "http://localhost:3000",
+      outDir: await tempDir(),
+      viewportPresets: [viewport],
+      spacingPolicy: spacingAdherencePolicy(),
+      launchBrowser: async () => fakeBrowser({
+        measurement,
+        collectionResults: [{
+          measurements: measurement,
+          notices: [],
+          spacingAdherenceCandidates: [],
+          spacingAdherenceCollection: {
+            candidateSlotCount: 1,
+            ignoredSlotCount: 0,
+            skippedSlotCount: 1,
+            skippedByReason: { "auto-margin": 1 }
+          },
+          spacingAdherenceRootFontSizePx: 16
+        }]
+      })
+    });
+
+    const measurementEvidence = result.auditResult.evidenceAssets.find(
+      (asset) => asset.id === "measurement-desktop"
+    );
+    expect(measurementEvidence?.data?.spacingAdherence).toMatchObject({
+      candidateSlotCount: 1,
+      evaluatedSlotCount: 0,
+      ignoredSlotCount: 0,
+      skippedSlotCount: 1,
+      skippedByReason: { "auto-margin": 1 },
+      violatingSlotCount: 0,
+      groups: []
+    });
+    expect(result.auditResult.findings).toEqual([]);
+    expect(result.auditResult.notices).toEqual([
+      expect.objectContaining({
+        code: "spacing-adherence-slots-skipped",
+        details: {
+          skippedByReason: { "auto-margin": 1 },
+          skippedSlotCount: 1,
+          viewport: "desktop"
+        }
+      })
+    ]);
+    expect(result.auditResult.status).toBe("success");
+  });
+
+  it("converts rem membership independently for each viewport root font size", async () => {
+    const desktopMeasurement = measurementFor("desktop");
+    const mobileMeasurement = measurementFor("mobile");
+    const result = await auditUrl({
+      url: "http://localhost:3000",
+      outDir: await tempDir(),
+      viewportPresets: [viewport, mobileViewport],
+      spacingPolicy: spacingAdherencePolicy(),
+      launchBrowser: async () => fakeBrowser({
+        measurement: desktopMeasurement,
+        collectionResults: [
+          {
+            measurements: desktopMeasurement,
+            notices: [],
+            spacingAdherenceCandidates: [{
+              selector: "#desktop-rem",
+              region: { x: 20, y: 30, width: 180, height: 40 },
+              property: "padding-left",
+              valuePx: 8
+            }],
+            spacingAdherenceCollection: {
+              candidateSlotCount: 1,
+              ignoredSlotCount: 0,
+              skippedSlotCount: 0,
+              skippedByReason: {}
+            },
+            spacingAdherenceRootFontSizePx: 16
+          },
+          {
+            measurements: mobileMeasurement,
+            notices: [],
+            spacingAdherenceCandidates: [{
+              selector: "#mobile-rem",
+              region: { x: 10, y: 15, width: 120, height: 32 },
+              property: "padding-left",
+              valuePx: 8.5
+            }],
+            spacingAdherenceCollection: {
+              candidateSlotCount: 1,
+              ignoredSlotCount: 0,
+              skippedSlotCount: 0,
+              skippedByReason: {}
+            },
+            spacingAdherenceRootFontSizePx: 17
+          }
+        ]
+      })
+    });
+
+    const spacingSummaries = result.auditResult.evidenceAssets
+      .filter((asset) => asset.type === "measurement")
+      .map((asset) => asset.data?.spacingAdherence);
+    expect(spacingSummaries).toEqual([
+      expect.objectContaining({
+        rootFontSizePx: 16,
+        allowedValuesPx: [4, 8, 16, 24],
+        violatingSlotCount: 0
+      }),
+      expect.objectContaining({
+        rootFontSizePx: 17,
+        allowedValuesPx: [4, 8.5, 17, 24],
+        violatingSlotCount: 0
+      })
+    ]);
+    expect(result.auditResult.findings).toEqual([]);
+    expect(result.auditResult.status).toBe("success");
+  });
+
+  it.each([
+    ["browser selector failure", {
+      collection: {
+        spacingAdherenceError: { code: "invalid-selector" as const, selectorIndex: 0 }
+      },
+      expectedReason: "invalid-selector"
+    }],
+    ["computed spacing collection failure", {
+      collection: {
+        spacingAdherenceError: { code: "computed-spacing" as const, elementIndex: 0 }
+      },
+      expectedReason: "computed-spacing"
+    }],
+    ["root font collection failure", {
+      collection: {
+        spacingAdherenceError: { code: "root-font-size" as const }
+      },
+      expectedReason: "root-font-size"
+    }],
+    ["candidate limit failure", {
+      collection: {
+        spacingAdherenceError: {
+          code: "candidate-limit" as const,
+          candidateCount: 25_001,
+          limit: 25_000
+        }
+      },
+      expectedReason: "candidate-limit"
+    }],
+    ["missing collection result", {
+      collection: {},
+      expectedReason: "missing-collection-result"
+    }],
+    ["collection accounting mismatch", {
+      collection: {
+        spacingAdherenceCandidates: [{
+          selector: "#spacing-sample",
+          region: { x: 20, y: 30, width: 180, height: 40 },
+          property: "margin-left" as const,
+          valuePx: 12
+        }],
+        spacingAdherenceCollection: {
+          candidateSlotCount: 2,
+          ignoredSlotCount: 0,
+          skippedSlotCount: 0,
+          skippedByReason: {}
+        },
+        spacingAdherenceRootFontSizePx: 16
+      },
+      expectedReason: "evidence-count-mismatch"
+    }]
+  ])("keeps base measurements but marks only the spacing check partial on %s", async (_label, scenario) => {
+    const measurement = {
+      ...measurementFor("desktop"),
+      documentScrollWidth: 1500
+    };
+    const result = await auditUrl({
+      url: "http://localhost:3000",
+      outDir: await tempDir(),
+      viewportPresets: [viewport],
+      spacingPolicy: spacingAdherencePolicy(),
+      launchBrowser: async () => fakeBrowser({
+        measurement,
+        collectionResults: [{
+          measurements: measurement,
+          notices: [],
+          ...scenario.collection
+        }]
+      })
+    });
+
+    const measurementEvidence = result.auditResult.evidenceAssets.find(
+      (asset) => asset.id === "measurement-desktop"
+    );
+    expect(result.auditResult.status).toBe("partial");
+    expect(result.auditResult.failedChecks).toEqual(["desktop:off-scale-spacing"]);
+    expect(result.auditResult.findings.map((finding) => finding.checkName)).toContain(
+      "horizontal-overflow"
+    );
+    expect(result.auditResult.findings.map((finding) => finding.checkName)).not.toContain(
+      "off-scale-spacing"
+    );
+    expect(measurementEvidence?.data).not.toHaveProperty("spacingAdherence");
+    expect(result.auditResult.notices).toEqual([
+      expect.objectContaining({
+        code: "spacing-adherence-measurement-failed",
+        details: expect.objectContaining({
+          viewport: "desktop",
+          reasonCode: scenario.expectedReason
+        })
+      })
+    ]);
+    expect(() => assertAuditResultIntegrity(result.auditResult)).not.toThrow();
+  });
+});
+
 describe("auditUrl copy analysis", () => {
   it("analyzes pre-materialized text inventory against its exact evidence asset", async () => {
     const result = await auditUrl({
@@ -1601,6 +1917,19 @@ function colorAdherencePolicy(): ColorAdherencePolicy {
       { red: 31, green: 97, blue: 209, alpha: 255 }
     ],
     ignoreSelectors: [".third-party-color-widget"]
+  };
+}
+
+function spacingAdherencePolicy(): SpacingAdherencePolicy {
+  return {
+    policyId: "spacing-adherence-v1",
+    allowedValues: [
+      { value: 4, unit: "px" },
+      { value: 0.5, unit: "rem" },
+      { value: 1, unit: "rem" },
+      { value: 24, unit: "px" }
+    ],
+    ignoreSelectors: [".third-party-spacing-widget"]
   };
 }
 

@@ -168,6 +168,16 @@ Fully transparent paint is counted as ignored. Supported computed `rgb()`/`rgba(
 
 Violations group by computed property plus unexpected RGBA8 value. Each viewport emits at most five groups and retains at most five selector/region samples per group. Its adherence summary preserves exact candidate, evaluated, ignored, skipped, violating, distinct, emitted, truncated, sample, and omitted-sample counts. This evidence proves only that a rendered paint value conflicts with the explicit project palette; it does not prove that source code used a token, that the palette is aesthetically good, or that the page is accessible.
 
+### Rendered Spacing Contract
+
+The same explicit guide path projects every literal `tokens.spacing` dimension into the separate `spacing-adherence-v1` policy while preserving its declared `px` or `rem` unit. Duplicate unit/value pairs collapse in declaration order. The optional closed `audit.spacing` overlay contains only `ignoreSelectors`; it cannot add audit-only spacing values. Its selector bounds and browser-syntax failure behavior match the color overlay but remain detector-specific.
+
+`off-scale-spacing` maps to `visual.spacing.project-contract` and emits low-severity, high-confidence deterministic `project-contract` risks. It runs only when a spacing policy is present and inspects the four computed margin sides, four padding sides, `row-gap`, and `column-gap` on visible viewport-intersecting elements. Each viewport records its computed root font size and converts declared `rem` values to CSS pixels there; declared `px` values compare directly. Zero is always allowed, negative margins compare by magnitude while retaining their signed observed value, and membership uses the fixed inclusive tolerance `0.001 CSS px`. Resolved percentages and calculations are assessed only as rendered CSS-pixel membership and never prove which source token or authored expression produced the value.
+
+CSS Typed OM preserves the keyword boundary before margin/gap comparison: `auto` margins and `normal` gaps are explicit skips. If Typed OM is unavailable, throws, or returns unsupported typed evidence, the affected margin/gap slot is skipped rather than silently accepting a resolved `getComputedStyle()` pixel fallback. Negative padding/gap and non-finite computed evidence are also skipped as invalid evidence. Selector exceptions count all ten affected slots as ignored for this detector only. Collection or root-font failures discard incomplete spacing evidence, retain unrelated measurements, and mark only `off-scale-spacing` partial.
+
+Spacing violations group by property plus the signed canonical unexpected CSS-pixel value. Like color, each viewport emits at most five groups and five selector/region samples per group while retaining exact candidate, evaluated, ignored, skipped, violating, distinct, emitted, truncated, and omitted-sample counts.
+
 #### Parser-Free Copy Audit
 
 Library callers can pass a validated `CopyStyle` through `auditUrl({ copyStyle })`. CLI callers can pass the same contract with `--copy <copy-style.yaml>`; the validated object enters that existing `auditUrl({ copyStyle })` path rather than a separate analyzer. The capture adapter resolves surfaces on live nodes, then `@design-harness/copy-audit` analyzes the serialized text inventory without importing Playwright.
@@ -199,7 +209,7 @@ Heading findings are the exception to independent caps. `empty-heading`, `headin
 `capGroup: "headingIssues"` and their combined emitted count cannot exceed five. A single audit-level notice
 summarizes all nonzero omissions across viewports; it is score-, status-, and failure-neutral.
 
-`unapproved-font-family` and `off-palette-color` are excluded because their adherence summaries already
+`unapproved-font-family`, `off-palette-color`, and `off-scale-spacing` are excluded because their adherence summaries already
 record exact detected composition, emitted groups, and truncation. `repeated-visual-weight-risk`, `saturated-color-noise-risk`, and
 `checklist-state-visibility-risk` are excluded because their algorithms currently produce at most one, one,
 and two semantic aggregates. If any of those output shapes later makes its nominal three-item slice

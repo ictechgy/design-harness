@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Spacing adherence incomplete-evidence fixture</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        row-gap: 0;
+        column-gap: 0;
+      }
+      html {
+        font-size: 16px;
+      }
+      body {
+        padding: 1rem;
+        color: #14171C;
+        background: #FAFAF7;
+        font: 16px/1.5 "Inter", sans-serif;
+      }
+      main {
+        padding: 0.5rem;
+        background: #FFFFFF;
+      }
+      #typed-om-unavailable {
+        padding: 4px;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Spacing evidence boundary</h1>
+      <p id="typed-om-unavailable">This element keeps padding evidence but lacks keyword-preserving Typed OM evidence.</p>
+    </main>
+    <script>
+      const target = document.querySelector("#typed-om-unavailable");
+      if (target) {
+        const scenario = new URLSearchParams(window.location.search).get("scenario");
+        if (scenario === "throw") {
+          Object.defineProperty(target, "computedStyleMap", {
+            configurable: true,
+            get() {
+              throw new Error("Injected computedStyleMap getter failure");
+            }
+          });
+        } else {
+          Object.defineProperty(target, "computedStyleMap", {
+            configurable: true,
+            value: undefined
+          });
+        }
+      }
+    </script>
+  </body>
+</html>

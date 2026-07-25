@@ -36,6 +36,10 @@ tokens:
       $value: { value: 0.5, unit: rem }
     md:
       $value: { value: 1, unit: rem }
+    lg:
+      $value: { value: 2, unit: rem }
+    heading-flow:
+      $value: { value: 1.34, unit: rem }
   radius:
     $type: dimension
     none:

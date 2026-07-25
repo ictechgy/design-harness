@@ -11,6 +11,7 @@ const validGuide = resolve("examples/configs/design-guide.example.yaml");
 const realStackGuide = resolve("examples/configs/design-guide.font-family-real-stack.yaml");
 const invalidSelectorGuide = resolve("examples/configs/design-guide.invalid-font-selector.yaml");
 const invalidColorSelectorGuide = resolve("examples/configs/design-guide.invalid-color-selector.yaml");
+const invalidSpacingSelectorGuide = resolve("examples/configs/design-guide.invalid-spacing-selector.yaml");
 const port = 4174;
 const expectedColorAllowedValues = [
   { red: 250, green: 250, blue: 247, alpha: 255 },
@@ -376,13 +377,75 @@ try {
       assertResult: (auditResult) => assertScopedColorErrorRun(auditResult, scenario.reasonCode)
     });
   }
+  await runGuideAuditFixture({
+    cliPath,
+    name: "spacing-adherence-good",
+    fixture: "spacing-adherence-good.html",
+    guide: validGuide,
+    expectedExitCode: 0,
+    assertResult: assertGoodSpacingRun
+  });
+  await runGuideAuditFixture({
+    cliPath,
+    name: "spacing-adherence-bad",
+    fixture: "spacing-adherence-bad.html",
+    guide: validGuide,
+    expectedExitCode: 0,
+    assertResult: assertBadSpacingRun
+  });
+  await runGuideAuditFixture({
+    cliPath,
+    name: "spacing-adherence-ignored",
+    fixture: "spacing-adherence-ignored.html",
+    guide: validGuide,
+    expectedExitCode: 0,
+    assertResult: assertIgnoredSpacingRun
+  });
+  await runGuideAuditFixture({
+    cliPath,
+    name: "spacing-adherence-incomplete",
+    fixture: "spacing-adherence-incomplete.html",
+    guide: validGuide,
+    expectedExitCode: 0,
+    assertResult: (auditResult) => assertIncompleteSpacingRun(auditResult, "typed-om-unavailable")
+  });
+  await runGuideAuditFixture({
+    cliPath,
+    name: "spacing-adherence-typed-om-getter-error",
+    fixture: "spacing-adherence-incomplete.html?scenario=throw",
+    guide: validGuide,
+    expectedExitCode: 0,
+    assertResult: (auditResult) => assertIncompleteSpacingRun(auditResult, "typed-om-error")
+  });
+  await runGuideAuditFixture({
+    cliPath,
+    name: "spacing-adherence-invalid-selector",
+    fixture: "spacing-adherence-good.html",
+    guide: invalidSpacingSelectorGuide,
+    expectedExitCode: 2,
+    assertResult: assertInvalidSpacingSelectorRun
+  });
+  for (const scenario of [
+    { query: "candidate-limit", reasonCode: "candidate-limit" },
+    { query: "root-font-size", reasonCode: "root-font-size" },
+    { query: "selector-evaluation", reasonCode: "selector-evaluation" }
+  ]) {
+    await runGuideAuditFixture({
+      cliPath,
+      name: `spacing-adherence-${scenario.query}`,
+      fixture: `spacing-adherence-errors.html?scenario=${scenario.query}`,
+      guide: validGuide,
+      expectedExitCode: 2,
+      assertResult: (auditResult) => assertScopedSpacingErrorRun(auditResult, scenario.reasonCode)
+    });
+  }
   if (cleanCorpusFailures.length > 0) {
     throw new Error(
       `Clean corpus gate failed ${cleanCorpusFailures.length} assertion(s); every other example-smoke `
       + `assertion above passed.\n  - ${cleanCorpusFailures.join("\n  - ")}`
     );
   }
-  console.log("Example smoke passed: no-config regression, measurement tripwires, clean corpus, contrast paint-effect ancestry and priority, tap-target spacing, capped-finding coverage, live font-family gates, plus exact rendered-color success, mismatch, root-paint, opacity, exception, unsupported-value, and scoped-error audits.");
+  console.log("Example smoke passed: no-config regression, measurement tripwires, clean corpus, contrast paint-effect ancestry and priority, tap-target spacing, capped-finding coverage, live font-family gates, exact rendered-color gates, plus rendered-spacing px/rem/root-font conversion, zero, auto/normal skip, negative-margin, mismatch, exception, incomplete-evidence, and scoped-error audits.");
 } finally {
   await new Promise((resolveClose) => server.close(resolveClose));
 }
@@ -432,6 +495,18 @@ function assertNoConfigArtifacts(outDir) {
   }
   if ((auditResult.notices ?? []).some((notice) => notice.code.startsWith("color-adherence-"))) {
     throw new Error("No-guide example emitted rendered-color notices");
+  }
+  if (measurements.some((asset) => asset.data?.spacingAdherence !== undefined)) {
+    throw new Error("No-guide example materialized rendered-spacing summaries");
+  }
+  if (auditResult.findings.some((finding) => finding.checkName === "off-scale-spacing")) {
+    throw new Error("No-guide example emitted rendered-spacing findings");
+  }
+  if (auditResult.failedChecks.some((check) => check.endsWith(":off-scale-spacing"))) {
+    throw new Error("No-guide example recorded a rendered-spacing failed check");
+  }
+  if ((auditResult.notices ?? []).some((notice) => notice.code.startsWith("spacing-adherence-"))) {
+    throw new Error("No-guide example emitted rendered-spacing notices");
   }
   if (metadata.toolVersions?.["@design-harness/copy-audit"] !== undefined) {
     throw new Error("No-copy example recorded copy-audit metadata");
@@ -1372,6 +1447,243 @@ function colorSummaries(auditResult) {
   return auditResult.evidenceAssets
     .filter((asset) => asset.id.startsWith("measurement-"))
     .flatMap((asset) => asset.data?.colorAdherence ? [asset.data.colorAdherence] : []);
+}
+
+function assertGoodSpacingRun(auditResult) {
+  assertSpacingRunIntegrity(auditResult, "success");
+  if (auditResult.findings.length !== 0) {
+    throw new Error("Good rendered-spacing fixture emitted a finding");
+  }
+  for (const summary of spacingSummaries(auditResult)) {
+    if (
+      summary.rootFontSizePx !== 17
+      || summary.evaluatedSlotCount < 1
+      || summary.ignoredSlotCount !== 0
+      || summary.skippedSlotCount !== 3
+      || summary.skippedByReason?.["auto-margin"] !== 1
+      || summary.skippedByReason?.["normal-gap"] !== 2
+      || summary.violatingSlotCount !== 0
+      || summary.distinctViolationGroupCount !== 0
+      || summary.groups.length !== 0
+    ) {
+      throw new Error(
+        `Good rendered-spacing fixture did not preserve the 17px-root membership and keyword skips: `
+        + JSON.stringify(summary)
+      );
+    }
+  }
+}
+
+function assertBadSpacingRun(auditResult) {
+  assertSpacingRunIntegrity(auditResult, "success");
+  const findings = spacingFindings(auditResult);
+  if (
+    findings.length !== auditResult.viewportPresets.length
+    || auditResult.findings.length !== findings.length
+  ) {
+    throw new Error(
+      `Bad rendered-spacing fixture emitted ${findings.length} spacing findings and `
+      + `${auditResult.findings.length} total findings for ${auditResult.viewportPresets.length} viewports`
+    );
+  }
+  for (const finding of findings) {
+    if (
+      finding.criterionId !== "visual.spacing.project-contract"
+      || finding.determinism !== "deterministic"
+      || finding.resultKind !== "risk"
+      || finding.severity !== "low"
+      || finding.confidence !== "high"
+      || finding.selector !== "#spacing-sample"
+      || finding.observed?.property !== "padding-right"
+      || finding.observed?.unexpectedValuePx !== 13
+      || finding.observed?.affectedSlotCount !== 1
+      || finding.observed?.rootFontSizePx !== 17
+      || finding.observed?.selectors?.[0] !== "#spacing-sample"
+      || finding.observed?.regions?.[0]?.width <= 0
+      || finding.observed?.regions?.[0]?.height <= 0
+      || JSON.stringify(finding.expected?.allowedValuesPx)
+        !== JSON.stringify(expectedSpacingAllowedValues(17))
+      || finding.expected?.tolerancePx !== 0.001
+    ) {
+      throw new Error("Bad rendered-spacing fixture did not isolate the off-scale right padding");
+    }
+  }
+  for (const summary of spacingSummaries(auditResult)) {
+    const group = summary.groups[0];
+    if (
+      summary.rootFontSizePx !== 17
+      || summary.skippedSlotCount !== 3
+      || summary.violatingSlotCount !== 1
+      || summary.distinctViolationGroupCount !== 1
+      || summary.emittedGroupCount !== 1
+      || summary.truncatedGroupCount !== 0
+      || summary.groups.length !== 1
+      || group?.property !== "padding-right"
+      || group?.unexpectedValuePx !== 13
+      || group?.affectedSlotCount !== 1
+      || group?.selectors?.[0] !== "#spacing-sample"
+    ) {
+      throw new Error("Bad rendered-spacing summary did not preserve the exact right-padding mismatch");
+    }
+  }
+}
+
+function assertIgnoredSpacingRun(auditResult) {
+  assertSpacingRunIntegrity(auditResult, "success");
+  if (auditResult.findings.length !== 0) {
+    throw new Error("Ignored rendered-spacing fixture emitted a finding");
+  }
+  for (const summary of spacingSummaries(auditResult)) {
+    if (
+      summary.evaluatedSlotCount < 1
+      || summary.ignoredSlotCount < 10
+      || summary.ignoredByReason?.["selector-exception"] !== summary.ignoredSlotCount
+      || summary.violatingSlotCount !== 0
+      || summary.distinctViolationGroupCount !== 0
+      || summary.groups.length !== 0
+    ) {
+      throw new Error("Ignored rendered-spacing fixture did not prove evaluation and subtree exclusion");
+    }
+  }
+}
+
+function assertIncompleteSpacingRun(auditResult, reason) {
+  assertSpacingRunIntegrity(auditResult, "success");
+  if (auditResult.findings.length !== 0) {
+    throw new Error("Incomplete rendered-spacing fixture emitted a finding");
+  }
+  for (const summary of spacingSummaries(auditResult)) {
+    if (
+      summary.evaluatedSlotCount < 1
+      || summary.skippedSlotCount !== 6
+      || summary.skippedByReason?.[reason] !== 6
+      || summary.violatingSlotCount !== 0
+      || summary.groups.length !== 0
+    ) {
+      throw new Error("Incomplete rendered-spacing fixture did not preserve six explicit Typed OM skips");
+    }
+  }
+  const notices = (auditResult.notices ?? []).filter(
+    (notice) => notice.code === "spacing-adherence-slots-skipped"
+  );
+  if (
+    notices.length !== auditResult.viewportPresets.length
+    || notices.some((notice) => (
+      notice.details?.skippedSlotCount !== 6
+      || notice.details?.skippedByReason?.[reason] !== 6
+    ))
+  ) {
+    throw new Error("Incomplete rendered-spacing fixture omitted exact per-viewport skip notices");
+  }
+}
+
+function assertInvalidSpacingSelectorRun(auditResult) {
+  assertScopedSpacingErrorRun(auditResult, "invalid-selector");
+}
+
+function assertScopedSpacingErrorRun(auditResult, reasonCode) {
+  if (auditResult.status !== "partial") {
+    throw new Error(`${reasonCode} spacing audit status was ${auditResult.status}, expected partial`);
+  }
+  const expectedFailures = auditResult.viewportPresets.map(
+    (viewport) => `${viewport.name}:off-scale-spacing`
+  );
+  if (JSON.stringify(auditResult.failedChecks) !== JSON.stringify(expectedFailures)) {
+    throw new Error(
+      `${reasonCode} spacing failedChecks mismatch: ${auditResult.failedChecks.join(", ")}`
+    );
+  }
+  if (spacingSummaries(auditResult).length !== 0 || spacingFindings(auditResult).length !== 0) {
+    throw new Error(`${reasonCode} spacing run retained a summary or emitted a finding`);
+  }
+  if (
+    fontSummaries(auditResult).length !== auditResult.viewportPresets.length
+    || colorSummaries(auditResult).length !== auditResult.viewportPresets.length
+  ) {
+    throw new Error(`${reasonCode} spacing run suppressed successful font or color evidence`);
+  }
+  const measurementCount = auditResult.evidenceAssets.filter(
+    (asset) => asset.id.startsWith("measurement-")
+  ).length;
+  if (measurementCount < auditResult.viewportPresets.length) {
+    throw new Error(`${reasonCode} spacing run lost base measurement assets`);
+  }
+  const notices = (auditResult.notices ?? []).filter((notice) => (
+    notice.code === "spacing-adherence-measurement-failed"
+    && notice.details?.reasonCode === reasonCode
+  ));
+  if (notices.length !== auditResult.viewportPresets.length) {
+    throw new Error(`${reasonCode} spacing run omitted bounded per-viewport failure notices`);
+  }
+}
+
+function assertSpacingRunIntegrity(auditResult, expectedStatus) {
+  if (auditResult.status !== expectedStatus) {
+    throw new Error(`Rendered-spacing audit status was ${auditResult.status}, expected ${expectedStatus}`);
+  }
+  const summaries = spacingSummaries(auditResult);
+  if (summaries.length !== auditResult.viewportPresets.length) {
+    throw new Error(
+      `Rendered-spacing audit recorded ${summaries.length} summaries, `
+      + `expected ${auditResult.viewportPresets.length}`
+    );
+  }
+  if (auditResult.failedChecks.some((check) => check.endsWith(":off-scale-spacing"))) {
+    throw new Error("Successful rendered-spacing audit retained a failed adherence check");
+  }
+  for (const summary of summaries) {
+    if (
+      summary.policyId !== "spacing-adherence-v1"
+      || JSON.stringify(summary.allowedValuesPx)
+        !== JSON.stringify(expectedSpacingAllowedValues(summary.rootFontSizePx))
+      || summary.candidateSlotCount
+        !== summary.evaluatedSlotCount + summary.ignoredSlotCount + summary.skippedSlotCount
+      || summary.violatingSlotCount > summary.evaluatedSlotCount
+      || summary.emittedGroupCount !== Math.min(summary.distinctViolationGroupCount, 5)
+      || summary.truncatedGroupCount
+        !== summary.distinctViolationGroupCount - summary.emittedGroupCount
+      || summary.groups.length !== summary.emittedGroupCount
+      || sumRecord(summary.ignoredByReason) !== summary.ignoredSlotCount
+      || sumRecord(summary.skippedByReason) !== summary.skippedSlotCount
+    ) {
+      throw new Error(`Rendered-spacing summary integrity drifted: ${JSON.stringify(summary)}`);
+    }
+    for (const group of summary.groups) {
+      if (
+        group.sampleCount > 5
+        || group.sampleCount !== group.selectors.length
+        || group.sampleCount !== group.regions.length
+        || group.omittedSampleCount !== group.affectedSlotCount - group.sampleCount
+      ) {
+        throw new Error(`Rendered-spacing group sample accounting drifted: ${JSON.stringify(group)}`);
+      }
+    }
+  }
+}
+
+function expectedSpacingAllowedValues(rootFontSizePx) {
+  return [
+    4,
+    canonicalSpacingNumber(0.5 * rootFontSizePx),
+    canonicalSpacingNumber(rootFontSizePx),
+    canonicalSpacingNumber(0.333333 * rootFontSizePx),
+    canonicalSpacingNumber(2 * rootFontSizePx),
+    canonicalSpacingNumber(1.34 * rootFontSizePx)
+  ];
+}
+
+function canonicalSpacingNumber(value) {
+  return value === 0 ? 0 : value;
+}
+
+function spacingFindings(auditResult) {
+  return auditResult.findings.filter((finding) => finding.checkName === "off-scale-spacing");
+}
+
+function spacingSummaries(auditResult) {
+  return auditResult.evidenceAssets
+    .filter((asset) => asset.id.startsWith("measurement-"))
+    .flatMap((asset) => asset.data?.spacingAdherence ? [asset.data.spacingAdherence] : []);
 }
 
 function sumRecord(value) {

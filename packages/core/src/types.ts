@@ -121,9 +121,14 @@ export interface DesignGuideColorAudit {
   ignoreSelectors: string[];
 }
 
+export interface DesignGuideSpacingAudit {
+  ignoreSelectors: string[];
+}
+
 export interface DesignGuideAudit {
   fontFamily?: DesignGuideFontFamilyAudit;
   color?: DesignGuideColorAudit;
+  spacing?: DesignGuideSpacingAudit;
 }
 
 export interface DesignGuide {
@@ -158,6 +163,12 @@ export interface ColorAdherencePolicy {
   allowedColors: Rgba8Color[];
   ignoreSelectors: string[];
   policyId: "color-adherence-v1";
+}
+
+export interface SpacingAdherencePolicy {
+  allowedValues: DtcgDimensionValue[];
+  ignoreSelectors: string[];
+  policyId: "spacing-adherence-v1";
 }
 
 export const COPY_SURFACES = ["button", "error", "marketing", "body"] as const;

@@ -1,10 +1,12 @@
 import {
   projectColorAdherencePolicy,
   projectFontFamilyAdherencePolicy,
+  projectSpacingAdherencePolicy,
   type ColorAdherencePolicy,
   type CopyStyle,
   type DesignGuide,
-  type FontFamilyAdherencePolicy
+  type FontFamilyAdherencePolicy,
+  type SpacingAdherencePolicy
 } from "@design-harness/core";
 import {
   BrowserUnavailableError,
@@ -101,6 +103,9 @@ export async function runCli(argv: string[], dependencies: RunCliDependencies = 
       if (prepared.colorPolicy) {
         loopInput.colorPolicy = prepared.colorPolicy;
       }
+      if (prepared.spacingPolicy) {
+        loopInput.spacingPolicy = prepared.spacingPolicy;
+      }
       const loopDependencies: LoopRunDependencies = {};
       if (dependencies.audit) {
         loopDependencies.audit = dependencies.audit;
@@ -140,6 +145,9 @@ export async function runCli(argv: string[], dependencies: RunCliDependencies = 
     if (prepared.colorPolicy) {
       auditOptions.colorPolicy = prepared.colorPolicy;
     }
+    if (prepared.spacingPolicy) {
+      auditOptions.spacingPolicy = prepared.spacingPolicy;
+    }
 
     const result = await (dependencies.audit ?? auditUrl)(auditOptions);
     await (dependencies.writeArtifacts ?? writeAuditArtifacts)({
@@ -171,6 +179,7 @@ interface PreparedAuditConfiguration {
   copyStyle?: CopyStyle;
   fontFamilyPolicy?: FontFamilyAdherencePolicy;
   colorPolicy?: ColorAdherencePolicy;
+  spacingPolicy?: SpacingAdherencePolicy;
 }
 
 async function prepareAuditConfiguration(
@@ -191,10 +200,20 @@ async function prepareAuditConfiguration(
   const colorPolicy = designGuide
     ? projectColorAdherencePolicy(designGuide)
     : undefined;
+  const spacingPolicy = designGuide
+    ? projectSpacingAdherencePolicy(designGuide)
+    : undefined;
   const copyStyle = args.copyStylePath
     ? await (dependencies.loadCopyStyle ?? loadCopyStyleFile)(args.copyStylePath, { cwd: invocationCwd })
     : undefined;
-  return { url, invocationCwd, copyStyle, fontFamilyPolicy, colorPolicy };
+  return {
+    url,
+    invocationCwd,
+    copyStyle,
+    fontFamilyPolicy,
+    colorPolicy,
+    spacingPolicy
+  };
 }
 
 function renderGuideResult(

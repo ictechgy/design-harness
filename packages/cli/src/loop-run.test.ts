@@ -226,12 +226,26 @@ describe("runLoop", () => {
       allowedColors: [{ red: 31, green: 97, blue: 209, alpha: 255 }],
       ignoreSelectors: [".third-party-widget"]
     };
+    const spacingPolicy = {
+      policyId: "spacing-adherence-v1" as const,
+      allowedValues: [
+        { value: 8, unit: "px" as const },
+        { value: 1, unit: "rem" as const }
+      ],
+      ignoreSelectors: [".third-party-spacing-widget"]
+    };
     const harness = fakeHarness([
       { status: "success", selectors: ["html"] },
       { status: "success", selectors: [] }
     ]);
     await runLoop(
-      loopInput({ timeoutMs: 5_000, copyStyle, fontFamilyPolicy, colorPolicy }),
+      loopInput({
+        timeoutMs: 5_000,
+        copyStyle,
+        fontFamilyPolicy,
+        colorPolicy,
+        spacingPolicy
+      }),
       harness.dependencies
     );
 
@@ -241,14 +255,16 @@ describe("runLoop", () => {
         timeoutMs: 5_000,
         copyStyle,
         fontFamilyPolicy,
-        colorPolicy
+        colorPolicy,
+        spacingPolicy
       }),
       expect.objectContaining({
         runId: "loop-test-001",
         timeoutMs: 5_000,
         copyStyle,
         fontFamilyPolicy,
-        colorPolicy
+        colorPolicy,
+        spacingPolicy
       })
     ]);
   });

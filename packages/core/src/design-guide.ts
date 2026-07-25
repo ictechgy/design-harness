@@ -9,12 +9,14 @@ import type {
   DtcgFontFamilyGroup,
   FontFamilyAdherencePolicy,
   FontFamilyKind,
-  Rgba8Color
+  Rgba8Color,
+  SpacingAdherencePolicy
 } from "./types.js";
 
 export const DESIGN_GUIDE_PROFILE_ID = "design-guide-v0.5a-1" as const;
 export const FONT_FAMILY_ADHERENCE_POLICY_ID = "font-family-adherence-v1" as const;
 export const COLOR_ADHERENCE_POLICY_ID = "color-adherence-v1" as const;
+export const SPACING_ADHERENCE_POLICY_ID = "spacing-adherence-v1" as const;
 export const GUIDE_CATALOG_VERSION = SLOP_FINGERPRINT_CATALOG.catalogVersion;
 
 export const CSS_GENERIC_FONT_FAMILY_VALUES = [
@@ -162,6 +164,30 @@ export function projectColorAdherencePolicy(designGuide: DesignGuide): ColorAdhe
   };
 }
 
+export function projectSpacingAdherencePolicy(designGuide: DesignGuide): SpacingAdherencePolicy {
+  assertDesignGuideProfile(designGuide);
+  const allowedValues: SpacingAdherencePolicy["allowedValues"] = [];
+  const seen = new Set<string>();
+
+  for (const [name, token] of Object.entries(designGuide.tokens.spacing)) {
+    if (name === "$type" || typeof token === "string") {
+      continue;
+    }
+    const value = token.$value;
+    const identity = `${value.unit}\u0000${value.value}`;
+    if (!seen.has(identity)) {
+      seen.add(identity);
+      allowedValues.push({ value: value.value, unit: value.unit });
+    }
+  }
+
+  return {
+    allowedValues,
+    ignoreSelectors: [...(designGuide.audit?.spacing?.ignoreSelectors ?? [])],
+    policyId: SPACING_ADHERENCE_POLICY_ID
+  };
+}
+
 export function dtcgColorToRgba8(value: DtcgColorValue): Rgba8Color {
   return {
     red: normalizedColorComponentToByte(value.components[0]),
@@ -196,15 +222,24 @@ function validateAudit(value: unknown, path: string, issues: DesignGuideProfileI
     issues.push(invalid(path, "must be an object"));
     return;
   }
-  checkExactKeys(value, ["fontFamily", "color"], path, issues, ["fontFamily", "color"]);
-  if (!hasOwn(value, "fontFamily") && !hasOwn(value, "color")) {
-    issues.push(invalid(path, "must contain fontFamily or color"));
+  checkExactKeys(
+    value,
+    ["fontFamily", "color", "spacing"],
+    path,
+    issues,
+    ["fontFamily", "color", "spacing"]
+  );
+  if (!hasOwn(value, "fontFamily") && !hasOwn(value, "color") && !hasOwn(value, "spacing")) {
+    issues.push(invalid(path, "must contain fontFamily, color, or spacing"));
   }
   if (hasOwn(value, "fontFamily")) {
     validateFontFamilyAudit(value.fontFamily, `${path}.fontFamily`, issues);
   }
   if (hasOwn(value, "color")) {
-    validateColorAudit(value.color, `${path}.color`, issues);
+    validateSelectorOnlyAudit(value.color, `${path}.color`, issues);
+  }
+  if (hasOwn(value, "spacing")) {
+    validateSelectorOnlyAudit(value.spacing, `${path}.spacing`, issues);
   }
 }
 
@@ -239,21 +274,21 @@ function validateFontFamilyAudit(
   }
 }
 
-function validateColorAudit(
-  color: unknown,
-  colorPath: string,
+function validateSelectorOnlyAudit(
+  audit: unknown,
+  auditPath: string,
   issues: DesignGuideProfileIssue[]
 ): void {
-  if (!isRecord(color)) {
-    issues.push(invalid(colorPath, "must be an object"));
+  if (!isRecord(audit)) {
+    issues.push(invalid(auditPath, "must be an object"));
     return;
   }
-  checkExactKeys(color, ["ignoreSelectors"], colorPath, issues);
-  if (!hasOwn(color, "ignoreSelectors")) {
-    issues.push(invalid(`${colorPath}.ignoreSelectors`, "must contain 1..32 unique selectors"));
+  checkExactKeys(audit, ["ignoreSelectors"], auditPath, issues);
+  if (!hasOwn(audit, "ignoreSelectors")) {
+    issues.push(invalid(`${auditPath}.ignoreSelectors`, "must contain 1..32 unique selectors"));
     return;
   }
-  validateIgnoreSelectors(color.ignoreSelectors, `${colorPath}.ignoreSelectors`, issues);
+  validateIgnoreSelectors(audit.ignoreSelectors, `${auditPath}.ignoreSelectors`, issues);
 }
 
 function validateAdditionalAllowedFamilies(

@@ -3,18 +3,25 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Color adherence error-boundary fixture</title>
+    <title>Spacing adherence error-boundary fixture</title>
     <style>
-      body {
+      * {
         margin: 0;
-        padding: 2rem;
+        padding: 0;
+        row-gap: 0;
+        column-gap: 0;
+      }
+      html {
+        font-size: 16px;
+      }
+      body {
+        padding: 1rem;
         color: #14171C;
         background: #FAFAF7;
-        font-family: "Inter", sans-serif;
+        font: 16px/1.5 "Inter", sans-serif;
       }
       main {
-        max-width: 36rem;
-        padding: 1rem;
+        padding: 0.5rem;
         background: #FFFFFF;
       }
       .slot-bundle {
@@ -22,15 +29,13 @@
         inset: 0 auto auto 0;
         width: 1px;
         height: 1px;
-        background: #FFFFFF;
-        border: 1px solid #FFFFFF;
       }
     </style>
   </head>
   <body>
     <main id="fixture-root">
-      <h1>Color evidence boundary</h1>
-      <p>Unrelated viewport measurements remain available when color evidence fails.</p>
+      <h1>Spacing evidence boundary</h1>
+      <p>Unrelated viewport measurements remain available when spacing evidence fails.</p>
     </main>
     <script>
       const scenario = new URLSearchParams(window.location.search).get("scenario");
@@ -38,25 +43,34 @@
 
       if (scenario === "candidate-limit" && root) {
         const fragment = document.createDocumentFragment();
-        for (let index = 0; index < 1001; index += 1) {
+        for (let index = 0; index < 2501; index += 1) {
           const element = document.createElement("div");
           element.className = "slot-bundle";
           element.setAttribute("aria-hidden", "true");
           fragment.append(element);
         }
         root.append(fragment);
-      } else if (scenario === "computed-color") {
-        Object.defineProperty(document.documentElement, "getBoundingClientRect", {
-          configurable: true,
-          value() {
-            delete document.documentElement.getBoundingClientRect;
-            throw new Error("fixture root geometry failure");
+      } else if (scenario === "root-font-size") {
+        const getComputedStyle = window.getComputedStyle;
+        window.getComputedStyle = function (element, pseudoElement) {
+          const style = getComputedStyle.call(this, element, pseudoElement);
+          if (element !== document.documentElement) {
+            return style;
           }
-        });
+          return new Proxy(style, {
+            get(target, property) {
+              if (property === "fontSize") {
+                return "normal";
+              }
+              const value = Reflect.get(target, property, target);
+              return typeof value === "function" ? value.bind(target) : value;
+            }
+          });
+        };
       } else if (scenario === "selector-evaluation") {
         const closest = Element.prototype.closest;
         Element.prototype.closest = function (selector) {
-          if (selector === ".third-party-color-widget") {
+          if (selector === ".third-party-spacing-widget") {
             throw new Error("fixture selector evaluation failure");
           }
           return closest.call(this, selector);

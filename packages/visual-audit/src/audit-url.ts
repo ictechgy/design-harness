@@ -14,6 +14,7 @@ import {
   type FontFamilyAdherencePolicy,
   type RunMetadata,
   type RunStatus,
+  type SpacingAdherencePolicy,
   type ViewportPreset,
   type LayoutMetrics
 } from "@design-harness/core";
@@ -23,6 +24,7 @@ import {
   collectViewportMeasurements,
   type ColorAdherenceMeasurementError,
   type FontFamilyMeasurementError,
+  type SpacingAdherenceMeasurementError,
   type ViewportCollectionResult,
   type ViewportMeasurementConfig
 } from "./browser-measurements.js";
@@ -34,6 +36,11 @@ import {
   type ColorAdherenceAnalysisError,
   type ColorAdherenceSummary
 } from "./color-adherence.js";
+import {
+  analyzeSpacingAdherence,
+  type SpacingAdherenceAnalysisError,
+  type SpacingAdherenceSummary
+} from "./spacing-adherence.js";
 import {
   analyzeFontFamilyAdherence,
   type FontFamilyAdherenceAnalysisError
@@ -54,6 +61,7 @@ export interface AuditUrlOptions {
   copyStyle?: CopyStyle;
   fontFamilyPolicy?: FontFamilyAdherencePolicy;
   colorPolicy?: ColorAdherencePolicy;
+  spacingPolicy?: SpacingAdherencePolicy;
   launchBrowser?: () => Promise<BrowserHandle>;
 }
 
@@ -110,7 +118,8 @@ export async function auditUrl(options: AuditUrlOptions): Promise<AuditUrlResult
   const measurementConfig = viewportMeasurementConfig(
     options.copyStyle,
     options.fontFamilyPolicy,
-    options.colorPolicy
+    options.colorPolicy,
+    options.spacingPolicy
   );
   const screenshotsDir = join(options.outDir, "screenshots");
   const evidenceAssets: EvidenceAsset[] = [];
@@ -289,6 +298,31 @@ export async function auditUrl(options: AuditUrlOptions): Promise<AuditUrlResult
               ));
             }
           }
+          if (options.spacingPolicy) {
+            const spacingFailure = applySpacingAdherence(collection, options.spacingPolicy);
+            if (spacingFailure) {
+              stripSpacingAdherenceEvidence(measurement);
+              failedChecks.push(`${viewport.name}:off-scale-spacing`);
+              const details = spacingAdherenceFailureDetails(viewport.name, spacingFailure);
+              noticeCandidates.push({
+                code: "spacing-adherence-measurement-failed",
+                message: "Rendered spacing adherence could not be evaluated for this viewport.",
+                viewport: viewport.name,
+                details
+              });
+              viewportEvidenceRefs.push(addFailureEvidence(
+                evidenceAssets,
+                viewport.name,
+                "off-scale-spacing",
+                details
+              ));
+            } else if (measurement.spacingAdherence?.skippedSlotCount) {
+              noticeCandidates.push(spacingAdherenceSkippedNotice(
+                viewport.name,
+                measurement.spacingAdherence
+              ));
+            }
+          }
           const measurementEvidenceId = `measurement-${viewport.name}`;
           evidenceAssets.push({
             id: measurementEvidenceId,
@@ -423,6 +457,11 @@ type ColorAdherenceScopedFailure =
   | ColorAdherenceAnalysisError
   | { code: "missing-collection-result" };
 
+type SpacingAdherenceScopedFailure =
+  | SpacingAdherenceMeasurementError
+  | SpacingAdherenceAnalysisError
+  | { code: "missing-collection-result" };
+
 function applyFontFamilyAdherence(
   collection: ViewportCollectionResult,
   policy: FontFamilyAdherencePolicy
@@ -481,6 +520,37 @@ function stripColorAdherenceEvidence(measurement: ViewportMeasurements): void {
   delete measurement.colorAdherence;
 }
 
+function applySpacingAdherence(
+  collection: ViewportCollectionResult,
+  policy: SpacingAdherencePolicy
+): SpacingAdherenceScopedFailure | undefined {
+  if (collection.spacingAdherenceError) {
+    return collection.spacingAdherenceError;
+  }
+  if (
+    collection.spacingAdherenceCandidates === undefined
+    || !collection.spacingAdherenceCollection
+    || collection.spacingAdherenceRootFontSizePx === undefined
+  ) {
+    return { code: "missing-collection-result" };
+  }
+  const result = analyzeSpacingAdherence(
+    collection.spacingAdherenceCandidates,
+    policy,
+    collection.spacingAdherenceCollection,
+    collection.spacingAdherenceRootFontSizePx
+  );
+  if (!result.ok) {
+    return result.error;
+  }
+  collection.measurements.spacingAdherence = result.summary;
+  return undefined;
+}
+
+function stripSpacingAdherenceEvidence(measurement: ViewportMeasurements): void {
+  delete measurement.spacingAdherence;
+}
+
 function colorAdherenceSkippedNotice(
   viewport: string,
   summary: ColorAdherenceSummary
@@ -488,6 +558,22 @@ function colorAdherenceSkippedNotice(
   return {
     code: "color-adherence-slots-skipped",
     message: `Skipped ${summary.skippedSlotCount} rendered color slot(s) whose value could not be compared exactly; no off-palette finding was emitted for them.`,
+    viewport,
+    details: {
+      viewport,
+      skippedSlotCount: summary.skippedSlotCount,
+      skippedByReason: summary.skippedByReason
+    }
+  };
+}
+
+function spacingAdherenceSkippedNotice(
+  viewport: string,
+  summary: SpacingAdherenceSummary
+): AuditNotice {
+  return {
+    code: "spacing-adherence-slots-skipped",
+    message: `Skipped ${summary.skippedSlotCount} rendered spacing slot(s) whose value could not be compared exactly; no off-scale finding was emitted for them.`,
     viewport,
     details: {
       viewport,
@@ -548,13 +634,36 @@ function colorAdherenceFailureDetails(
   };
 }
 
+function spacingAdherenceFailureDetails(
+  viewport: string,
+  failure: SpacingAdherenceScopedFailure
+): Record<string, unknown> {
+  return {
+    viewport,
+    reasonCode: failure.code,
+    ...("selectorIndex" in failure && failure.selectorIndex !== undefined
+      ? { selectorIndex: failure.selectorIndex }
+      : {}),
+    ...("elementIndex" in failure && failure.elementIndex !== undefined
+      ? { elementIndex: failure.elementIndex }
+      : {}),
+    ...("candidateCount" in failure && failure.candidateCount !== undefined
+      ? { candidateCount: failure.candidateCount }
+      : {}),
+    ...("limit" in failure && failure.limit !== undefined
+      ? { limit: failure.limit }
+      : {})
+  };
+}
+
 function viewportMeasurementConfig(
   copyStyle: CopyStyle | undefined,
   fontFamilyPolicy: FontFamilyAdherencePolicy | undefined,
-  colorPolicy: ColorAdherencePolicy | undefined
+  colorPolicy: ColorAdherencePolicy | undefined,
+  spacingPolicy: SpacingAdherencePolicy | undefined
 ): ViewportMeasurementConfig | undefined {
   const surfaceMapping = copyStyle?.surfaceMapping;
-  if (!surfaceMapping && !fontFamilyPolicy && !colorPolicy) {
+  if (!surfaceMapping && !fontFamilyPolicy && !colorPolicy && !spacingPolicy) {
     return undefined;
   }
   return {
@@ -566,6 +675,11 @@ function viewportMeasurementConfig(
       color: {
         allowedColors: colorPolicy.allowedColors.map((color) => ({ ...color })),
         ignoreSelectors: [...colorPolicy.ignoreSelectors]
+      }
+    } : {}),
+    ...(spacingPolicy ? {
+      spacing: {
+        ignoreSelectors: [...spacingPolicy.ignoreSelectors]
       }
     } : {})
   };

@@ -8,7 +8,8 @@ import {
   createExampleMetadata,
   createMinimalCopyStyle,
   projectColorAdherencePolicy,
-  projectFontFamilyAdherencePolicy
+  projectFontFamilyAdherencePolicy,
+  projectSpacingAdherencePolicy
 } from "@design-harness/core";
 import { BrowserUnavailableError, type AuditUrlOptions } from "@design-harness/visual-audit";
 import { CopyStyleLoadError } from "./copy-style.js";
@@ -46,6 +47,7 @@ describe("runCli", () => {
     expect(audit.mock.calls[0]?.[0]).not.toHaveProperty("copyStyle");
     expect(audit.mock.calls[0]?.[0]).not.toHaveProperty("fontFamilyPolicy");
     expect(audit.mock.calls[0]?.[0]).not.toHaveProperty("colorPolicy");
+    expect(audit.mock.calls[0]?.[0]).not.toHaveProperty("spacingPolicy");
     expect(audit.mock.calls[0]?.[0]).not.toHaveProperty("guide");
     expect(audit.mock.calls[0]?.[0]).not.toHaveProperty("designGuide");
     expect(writeArtifacts).toHaveBeenCalledOnce();
@@ -79,6 +81,7 @@ describe("runCli", () => {
     expect(audit).toHaveBeenCalledOnce();
     expect(audit.mock.calls[0]?.[0].fontFamilyPolicy).toEqual(projectFontFamilyAdherencePolicy(guide));
     expect(audit.mock.calls[0]?.[0].colorPolicy).toEqual(projectColorAdherencePolicy(guide));
+    expect(audit.mock.calls[0]?.[0].spacingPolicy).toEqual(projectSpacingAdherencePolicy(guide));
     expect(audit.mock.calls[0]?.[0].copyStyle).toBe(copyStyle);
     expect(audit.mock.calls[0]?.[0]).not.toHaveProperty("guide");
     expect(audit.mock.calls[0]?.[0]).not.toHaveProperty("designGuide");
@@ -278,7 +281,8 @@ describe("runCli", () => {
       cwd: "/project",
       copyStyle,
       fontFamilyPolicy: projectFontFamilyAdherencePolicy(guide),
-      colorPolicy: projectColorAdherencePolicy(guide)
+      colorPolicy: projectColorAdherencePolicy(guide),
+      spacingPolicy: projectSpacingAdherencePolicy(guide)
     });
     expect(audit).not.toHaveBeenCalled();
     expect(writeArtifacts).not.toHaveBeenCalled();
@@ -324,6 +328,7 @@ describe("runCli", () => {
     await expect(runCli(baseLoopArgv, dependencies)).resolves.toBe(3);
 
     expect(runLoop.mock.calls[0]?.[0]).not.toHaveProperty("colorPolicy");
+    expect(runLoop.mock.calls[0]?.[0]).not.toHaveProperty("spacingPolicy");
     expect(stderr).toHaveBeenCalledWith(expect.stringContaining("condition was reached"));
   });
 
