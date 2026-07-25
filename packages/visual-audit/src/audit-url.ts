@@ -625,9 +625,6 @@ function colorAdherenceFailureDetails(
     ...("candidateCount" in failure && failure.candidateCount !== undefined
       ? { candidateCount: failure.candidateCount }
       : {}),
-    ...("valueLength" in failure && failure.valueLength !== undefined
-      ? { valueLength: failure.valueLength }
-      : {}),
     ...("limit" in failure && failure.limit !== undefined
       ? { limit: failure.limit }
       : {})
@@ -673,7 +670,6 @@ function viewportMeasurementConfig(
     } : {}),
     ...(colorPolicy ? {
       color: {
-        allowedColors: colorPolicy.allowedColors.map((color) => ({ ...color })),
         ignoreSelectors: [...colorPolicy.ignoreSelectors]
       }
     } : {}),

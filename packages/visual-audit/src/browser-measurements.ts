@@ -1,8 +1,7 @@
 import type {
   AuditNotice,
   CopyStyleSurfaceRule,
-  LayoutMetrics,
-  Rgba8Color
+  LayoutMetrics
 } from "@design-harness/core";
 import type { FindingCoverage, FindingCoverageEntry, ViewportMeasurements } from "./checks.js";
 import type {
@@ -59,7 +58,6 @@ export interface ViewportMeasurementConfig {
     ignoreSelectors: string[];
   };
   color?: {
-    allowedColors: Rgba8Color[];
     ignoreSelectors: string[];
   };
   spacing?: {
@@ -86,7 +84,6 @@ export interface ColorAdherenceMeasurementError {
   selectorIndex?: number;
   elementIndex?: number;
   candidateCount?: number;
-  valueLength?: number;
   limit?: number;
 }
 
