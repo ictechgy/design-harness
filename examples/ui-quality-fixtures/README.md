@@ -23,6 +23,11 @@ Small pages used to calibrate source-backed criteria and report wording.
 - `color-adherence-ignored.html`: off-palette vendor paint under the configured selector exception plus an evaluated control.
 - `color-adherence-incomplete.html`: one unsupported `display-p3` background slot that must be skipped without fabricating a mismatch.
 - `color-adherence-errors.html`: query-selected hostile candidate, computed-geometry, and selector-evaluation boundaries for the live smoke.
+- `spacing-adherence-good.html`: declared px/rem values at a 17px root, implicit zero, keyword skips, a matched negative margin, fractional rem, resolved `calc()`, and fixed-container percentage padding without a spacing finding.
+- `spacing-adherence-bad.html`: the good fixture with only its right padding changed to one off-scale rendered value.
+- `spacing-adherence-ignored.html`: off-scale vendor spacing under the spacing-only selector exception plus an evaluated control.
+- `spacing-adherence-incomplete.html`: one element with unavailable or throwing Typed OM keyword evidence; margin/gap slots are skipped while its padding remains evaluated.
+- `spacing-adherence-errors.html`: query-selected 25,000-slot, root-font, and selector-evaluation boundaries for the live smoke.
 - `midjourney-derived/scanability-good.html`: hand-authored dense-dashboard scanability fixture.
 - `midjourney-derived/scanability-bad.html`: hand-authored dense-dashboard scanability stress fixture.
 - `midjourney-derived/state-and-color-good.html`: hand-authored checklist and color hierarchy fixture that should preserve clear state meaning.

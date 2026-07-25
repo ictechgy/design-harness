@@ -11,6 +11,7 @@ import {
   loadSchema,
   projectColorAdherencePolicy,
   projectFontFamilyAdherencePolicy,
+  projectSpacingAdherencePolicy,
   rgba8ColorIdentity,
   SCHEMA_VERSION,
   validateSchema
@@ -32,6 +33,13 @@ describe("Design Guide Profile v0.5a-1", () => {
           minProperties: 1,
           properties: {
             color: {
+              additionalProperties: false,
+              required: ["ignoreSelectors"],
+              properties: {
+                ignoreSelectors: { minItems: 1, maxItems: 32, uniqueItems: true }
+              }
+            },
+            spacing: {
               additionalProperties: false,
               required: ["ignoreSelectors"],
               properties: {
@@ -189,6 +197,51 @@ describe("Design Guide Profile v0.5a-1", () => {
         ...createExampleDesignGuide(),
         audit: { color: { ignoreSelectors: Array.from({ length: 33 }, (_, index) => `.x-${index}`) } }
       }, "$.audit.color.ignoreSelectors"]
+    ];
+    for (const [value, path] of invalidCases) {
+      expectProfileIssue(value, path, "invalid-profile");
+    }
+  });
+
+  it("accepts the separate selector-only spacing audit overlay and enforces its closed bounds", () => {
+    const spacingOnly = createExampleDesignGuide();
+    spacingOnly.audit = {
+      spacing: { ignoreSelectors: [".third-party-widget", "[data-vendor-shell]"] }
+    };
+    expect(validateSchema("design-guide", spacingOnly)).toEqual({ valid: true, issues: [] });
+    expect(() => assertDesignGuideProfile(spacingOnly)).not.toThrow();
+
+    const combined = createExampleDesignGuide();
+    combined.audit = {
+      fontFamily: { ignoreSelectors: [".font-vendor"] },
+      color: { ignoreSelectors: [".paint-vendor"] },
+      spacing: { ignoreSelectors: [".spacing-vendor"] }
+    };
+    expect(validateSchema("design-guide", combined)).toEqual({ valid: true, issues: [] });
+    expect(() => assertDesignGuideProfile(combined)).not.toThrow();
+
+    const browserInvalid = createExampleDesignGuide();
+    browserInvalid.audit = { spacing: { ignoreSelectors: ["["] } };
+    expect(() => assertDesignGuideProfile(browserInvalid)).not.toThrow();
+
+    const invalidCases: Array<[unknown, string]> = [
+      [{ ...createExampleDesignGuide(), audit: { spacing: {} } }, "$.audit.spacing.ignoreSelectors"],
+      [{
+        ...createExampleDesignGuide(),
+        audit: { spacing: { ignoreSelectors: [], extra: true } }
+      }, "$.audit.spacing.extra"],
+      [{
+        ...createExampleDesignGuide(),
+        audit: { spacing: { ignoreSelectors: [".vendor", ".vendor"] } }
+      }, "$.audit.spacing.ignoreSelectors[1]"],
+      [{
+        ...createExampleDesignGuide(),
+        audit: { spacing: { ignoreSelectors: [".safe\u202ebody"] } }
+      }, "$.audit.spacing.ignoreSelectors[0]"],
+      [{
+        ...createExampleDesignGuide(),
+        audit: { spacing: { ignoreSelectors: Array.from({ length: 33 }, (_, index) => `.x-${index}`) } }
+      }, "$.audit.spacing.ignoreSelectors"]
     ];
     for (const [value, path] of invalidCases) {
       expectProfileIssue(value, path, "invalid-profile");
@@ -397,6 +450,41 @@ describe("Design Guide Profile v0.5a-1", () => {
       ]),
       ignoreSelectors: [],
       policyId: "color-adherence-v1"
+    });
+  });
+
+  it("projects a unit-preserving deduplicated spacing policy from spacing tokens", () => {
+    const guide = createExampleDesignGuide();
+    guide.tokens.spacing = {
+      $type: "dimension",
+      "px-zero": { $value: { value: 0, unit: "px" } },
+      "rem-zero": { $value: { value: 0, unit: "rem" } },
+      "rem-half": { $value: { value: 0.5, unit: "rem" } },
+      "rem-half-duplicate": { $value: { value: 0.5, unit: "rem" } },
+      "px-eight": { $value: { value: 8, unit: "px" } },
+      "px-eight-duplicate": { $value: { value: 8, unit: "px" } }
+    };
+    guide.audit = { spacing: { ignoreSelectors: [".third-party-widget"] } };
+
+    expect(projectSpacingAdherencePolicy(guide)).toEqual({
+      allowedValues: [
+        { value: 0, unit: "px" },
+        { value: 0, unit: "rem" },
+        { value: 0.5, unit: "rem" },
+        { value: 8, unit: "px" }
+      ],
+      ignoreSelectors: [".third-party-widget"],
+      policyId: "spacing-adherence-v1"
+    });
+
+    const withoutOverlay = createExampleDesignGuide();
+    expect(projectSpacingAdherencePolicy(withoutOverlay)).toEqual({
+      allowedValues: [
+        { value: 0.5, unit: "rem" },
+        { value: 1, unit: "rem" }
+      ],
+      ignoreSelectors: [],
+      policyId: "spacing-adherence-v1"
     });
   });
 

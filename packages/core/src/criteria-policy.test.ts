@@ -151,6 +151,25 @@ describe("criteria policy matrix", () => {
     ], CRITERION_SOURCES).valid).toBe(false);
   });
 
+  it("keeps the design-guide spacing criterion at the project-contract risk ceiling", () => {
+    const criterion = getCriterion("visual.spacing.project-contract");
+    expect(criterion).toMatchObject({
+      category: "visual-polish",
+      sourceRefs: ["design-guide-contract"],
+      sourceStrength: "project-contract",
+      determinism: "deterministic",
+      resultKind: "risk",
+      runtime: "computed-style",
+      confidenceDefault: "high",
+      checkNames: ["off-scale-spacing"]
+    });
+    expect(criterion?.remediationHint).toContain("declared spacing values");
+    expect(criterion?.remediationHint).toContain("selector exception");
+    expect(validateCriteriaPolicy([
+      { ...criterion!, resultKind: "failure" }
+    ], CRITERION_SOURCES).valid).toBe(false);
+  });
+
   it("rejects heuristic and subjective failures at the criterion level", () => {
     const heuristic = makeCriterion({ determinism: "heuristic", resultKind: "failure" });
     expect(validateCriteriaPolicy([heuristic], SOURCES).valid).toBe(false);

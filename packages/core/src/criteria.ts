@@ -187,6 +187,20 @@ export const CRITERIA: Criterion[] = [
     remediationHint: "Use the declared semantic color tokens or reserve a narrow audit.color.ignoreSelectors selector exception for third-party content."
   },
   {
+    id: "visual.spacing.project-contract",
+    category: "visual-polish",
+    title: "Rendered spacing follows the configured guide",
+    description: "Visible computed margins, padding, and gaps should match the spacing values declared by the project design guide.",
+    sourceRefs: ["design-guide-contract"],
+    sourceStrength: "project-contract",
+    determinism: "deterministic",
+    resultKind: "risk",
+    confidenceDefault: "high",
+    runtime: "computed-style",
+    checkNames: ["off-scale-spacing"],
+    remediationHint: "Use the declared spacing values or reserve a narrow audit.spacing.ignoreSelectors selector exception for third-party content."
+  },
+  {
     id: "a11y.text-contrast.minimum",
     category: "accessibility",
     title: "Text contrast meets configured threshold",

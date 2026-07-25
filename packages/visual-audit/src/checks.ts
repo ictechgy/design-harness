@@ -13,6 +13,7 @@ import {
   type FindingCoverage
 } from "./finding-coverage.js";
 import type { ColorAdherenceSummary } from "./color-adherence.js";
+import type { SpacingAdherenceSummary } from "./spacing-adherence.js";
 
 export type { FindingCoverage, FindingCoverageEntry } from "./finding-coverage.js";
 
@@ -158,6 +159,7 @@ export interface ViewportMeasurements {
   textInventory: TextInventoryItem[];
   fontFamilyAdherence?: FontFamilyAdherenceSummary;
   colorAdherence?: ColorAdherenceSummary;
+  spacingAdherence?: SpacingAdherenceSummary;
   findingCoverage?: FindingCoverage;
 }
 
@@ -244,6 +246,39 @@ export function findingsFromMeasurements(
         expected: {
           allowedColors: colorAdherence.allowedColors,
           comparison: "The rendered RGBA8 value exactly matches a semantic color declared by the explicit project guide."
+        }
+      }));
+    }
+  }
+
+  const spacingAdherence = measurements.spacingAdherence;
+  if (spacingAdherence) {
+    for (const [index, group] of spacingAdherence.groups.entries()) {
+      findings.push(createFinding({
+        id: `finding-${measurements.viewport}-off-scale-spacing-${index + 1}`,
+        category: "visual-polish",
+        severity: "low",
+        viewport: measurements.viewport,
+        selector: group.selectors[0],
+        region: group.regions[0],
+        evidenceRefs,
+        problem: `The rendered ${group.property} value (${group.unexpectedValuePx} CSS px) for ${group.affectedSlotCount} visible spacing ${group.affectedSlotCount === 1 ? "slot is" : "slots are"} outside the spacing values declared in the configured project guide.`,
+        recommendation: "Use a declared spacing value or reserve a narrow audit.spacing.ignoreSelectors selector exception for third-party content.",
+        checkName: "off-scale-spacing",
+        observed: {
+          property: group.property,
+          unexpectedValuePx: group.unexpectedValuePx,
+          affectedSlotCount: group.affectedSlotCount,
+          selectors: group.selectors,
+          regions: group.regions,
+          omittedSampleCount: group.omittedSampleCount,
+          rootFontSizePx: spacingAdherence.rootFontSizePx,
+          policyId: spacingAdherence.policyId
+        },
+        expected: {
+          allowedValuesPx: spacingAdherence.allowedValuesPx,
+          tolerancePx: 0.001,
+          comparison: "The rendered computed CSS-pixel value matches a spacing value declared by the explicit project guide."
         }
       }));
     }

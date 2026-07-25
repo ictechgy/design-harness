@@ -221,6 +221,8 @@ async function assertPositivePackedLoop(consumerDir, expectedPlaywrightVersion) 
   const colorGuidePath = join(consumerDir, "packed-color-guide.yaml");
   const colorGoodFixturePath = join(consumerDir, "packed-color-good.html");
   const colorBadFixturePath = join(consumerDir, "packed-color-bad.html");
+  const spacingGoodFixturePath = join(consumerDir, "packed-spacing-good.html");
+  const spacingBadFixturePath = join(consumerDir, "packed-spacing-bad.html");
   const outDir = join(repoRoot, "runs", "packed-loop");
   await rm(outDir, { recursive: true, force: true });
   await Promise.all([
@@ -228,6 +230,8 @@ async function assertPositivePackedLoop(consumerDir, expectedPlaywrightVersion) 
     writeFile(colorGuidePath, packedGuideYaml()),
     writeFile(colorGoodFixturePath, packedColorFixture("#1A66CC")),
     writeFile(colorBadFixturePath, packedColorFixture("#C026D3")),
+    writeFile(spacingGoodFixturePath, packedSpacingFixture("0.333333rem")),
+    writeFile(spacingBadFixturePath, packedSpacingFixture("13px")),
     writeFile(
       helperPath,
       positiveLoopHelperSource({ fixturePath, invocationLogPath })
@@ -239,7 +243,9 @@ async function assertPositivePackedLoop(consumerDir, expectedPlaywrightVersion) 
   const fixturePaths = new Map([
     ["/fixture", fixturePath],
     ["/color-good", colorGoodFixturePath],
-    ["/color-bad", colorBadFixturePath]
+    ["/color-bad", colorBadFixturePath],
+    ["/spacing-good", spacingGoodFixturePath],
+    ["/spacing-bad", spacingBadFixturePath]
   ]);
   const server = createServer(async (request, response) => {
     try {
@@ -269,6 +275,11 @@ async function assertPositivePackedLoop(consumerDir, expectedPlaywrightVersion) 
       consumerDir,
       serverOrigin,
       colorGuidePath
+    });
+    await assertPositivePackedSpacingAudits({
+      consumerDir,
+      serverOrigin,
+      guidePath: colorGuidePath
     });
     const url = `${serverOrigin}/fixture`;
     const agentCommand = [process.execPath, helperPath].map(quoteCommandArgument).join(" ");
@@ -394,6 +405,89 @@ async function assertPositivePackedColorAudits({
   }
 }
 
+async function assertPositivePackedSpacingAudits({
+  consumerDir,
+  serverOrigin,
+  guidePath
+}) {
+  const expectedAllowedValuesPx = packedSpacingAllowedValues(17);
+  for (const scenario of [
+    { name: "good", expectedFindingsPerViewport: 0 },
+    { name: "bad", expectedFindingsPerViewport: 1 }
+  ]) {
+    const outDir = join(consumerDir, `packed-spacing-${scenario.name}-out`);
+    const result = await runPnpm([
+      "exec",
+      "design-harness",
+      "audit",
+      "--url",
+      `${serverOrigin}/spacing-${scenario.name}`,
+      "--out",
+      outDir,
+      "--guide",
+      guidePath
+    ], { cwd: consumerDir, capture: true, allowFailure: true });
+    if (result.code !== 0) {
+      throw new Error(
+        `Packed spacing ${scenario.name} audit exited ${result.code}.\n`
+        + `${result.stdout}\n${result.stderr}`
+      );
+    }
+
+    const audit = JSON.parse(await readFile(join(outDir, "audit.json"), "utf8"));
+    const summaries = audit.evidenceAssets
+      .filter((asset) => asset.id.startsWith("measurement-"))
+      .flatMap((asset) => asset.data?.spacingAdherence ? [asset.data.spacingAdherence] : []);
+    const findings = audit.findings.filter((finding) => finding.checkName === "off-scale-spacing");
+    if (
+      audit.status !== "success"
+      || summaries.length !== audit.viewportPresets.length
+      || findings.length !== scenario.expectedFindingsPerViewport * audit.viewportPresets.length
+      || audit.findings.length !== findings.length
+      || audit.failedChecks.some((check) => check.endsWith(":off-scale-spacing"))
+    ) {
+      throw new Error(`Packed spacing ${scenario.name} audit contract drifted.`);
+    }
+    for (const summary of summaries) {
+      const expectedViolations = scenario.expectedFindingsPerViewport;
+      if (
+        summary.policyId !== "spacing-adherence-v1"
+        || summary.rootFontSizePx !== 17
+        || JSON.stringify(summary.allowedValuesPx) !== JSON.stringify(expectedAllowedValuesPx)
+        || summary.candidateSlotCount
+          !== summary.evaluatedSlotCount + summary.ignoredSlotCount + summary.skippedSlotCount
+        || summary.skippedSlotCount !== 3
+        || summary.skippedByReason?.["auto-margin"] !== 1
+        || summary.skippedByReason?.["normal-gap"] !== 2
+        || summary.violatingSlotCount !== expectedViolations
+        || summary.distinctViolationGroupCount !== expectedViolations
+        || summary.emittedGroupCount !== expectedViolations
+        || summary.truncatedGroupCount !== 0
+      ) {
+        throw new Error(
+          `Packed spacing ${scenario.name} summary drifted:\n${JSON.stringify(summary, null, 2)}`
+        );
+      }
+    }
+    if (scenario.name === "bad" && findings.some((finding) => (
+      finding.criterionId !== "visual.spacing.project-contract"
+      || finding.determinism !== "deterministic"
+      || finding.resultKind !== "risk"
+      || finding.severity !== "low"
+      || finding.confidence !== "high"
+      || finding.selector !== "#spacing-sample"
+      || finding.observed?.property !== "padding-right"
+      || finding.observed?.unexpectedValuePx !== 13
+      || finding.observed?.rootFontSizePx !== 17
+      || JSON.stringify(finding.expected?.allowedValuesPx)
+        !== JSON.stringify(expectedAllowedValuesPx)
+      || finding.expected?.tolerancePx !== 0.001
+    ))) {
+      throw new Error("Packed bad spacing audit did not isolate the off-scale right padding.");
+    }
+  }
+}
+
 async function assertPositiveLoopResult({
   consumerDir,
   fixturePath,
@@ -469,6 +563,8 @@ async function assertPositiveLoopResult({
     "utf8"
   ));
   const repaired = JSON.parse(await readFile(join(outDir, "iterations", "001", "audit.json"), "utf8"));
+  assertPackedNoSpacingEvidence(baseline, "baseline");
+  assertPackedNoSpacingEvidence(repaired, "repaired");
   const baselineFailures = deterministicFailures(baseline);
   if (!baselineFailures.some((finding) => finding.checkName === "page-lang-missing")) {
     throw new Error("Positive packed loop baseline omitted page-lang-missing deterministic failure.");
@@ -597,9 +693,15 @@ async function assertPackedReadme(consumerDir) {
     || !/does not prove source-token use/iu.test(words)
     || !/palette-distance scoring/iu.test(words)
     || /Palette spacing adherence/iu.test(words)
+    || !readme.includes("audit.spacing.ignoreSelectors")
+    || !readme.includes("off-scale-spacing")
+    || !readme.includes("0.001 CSS px")
+    || !/CSS Typed OM preserves keyword evidence/iu.test(readme)
+    || !/does not prove source-token use|source-token provenance/iu.test(readme)
+    || !/spacing rhythm\/quality|spacing quality/iu.test(readme)
   ) {
     throw new Error(
-      "Packed CLI README omitted the rendered-color project-contract boundary "
+      "Packed CLI README omitted a rendered color/spacing project-contract boundary "
       + "or retained the old palette/spacing out-of-scope claim."
     );
   }
@@ -836,6 +938,45 @@ function packedColorFixture(borderColor) {
   ].join("\n");
 }
 
+function packedSpacingFixture(rightPadding) {
+  return [
+    "<!doctype html>",
+    "<html lang=\"en\">",
+    "<head>",
+    "  <meta charset=\"utf-8\">",
+    "  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">",
+    "  <title>Design Harness packed spacing smoke</title>",
+    "  <style>",
+    "    *{margin:0;padding:0;row-gap:0;column-gap:0}",
+    "    html{font-size:17px}",
+    "    body{padding:1rem;background:#F2F2F2;color:#141414;font:16px/1.5 Inter,sans-serif}",
+    `    #spacing-sample{margin:4px;padding:.5rem;padding-right:${rightPadding};background:#FFFFFF}`,
+    "    .px-rem{display:grid;margin:4px;padding:.5rem;row-gap:1rem;column-gap:4px}",
+    "    .auto-margin{width:8rem;margin-left:auto}",
+    "    .normal-gap{display:grid;gap:normal}",
+    "    .matched-negative-margin{margin-left:-.5rem}",
+    "    .resolved-calc{padding-top:calc(4px + 0px)}",
+    "    .percentage-container{width:100px}",
+    "    .resolved-percentage{padding-left:4%}",
+    "  </style>",
+    "</head>",
+    "<body>",
+    "  <main id=\"spacing-sample\">",
+    "    <h1>Packed spacing smoke</h1>",
+    "    <p class=\"px-rem\">Declared px and rem values.</p>",
+    "    <p>Implicit zero.</p>",
+    "    <p class=\"auto-margin\">Auto margin skip.</p>",
+    "    <p class=\"normal-gap\">Normal gap skip.</p>",
+    "    <p class=\"matched-negative-margin\">Matched negative margin.</p>",
+    "    <p class=\"resolved-calc\">Resolved calc membership.</p>",
+    "    <div class=\"percentage-container\"><p class=\"resolved-percentage\">Resolved percentage membership.</p></div>",
+    "  </main>",
+    "</body>",
+    "</html>",
+    ""
+  ].join("\n");
+}
+
 function missingLangFixture() {
   return [
     "<!doctype html>",
@@ -856,6 +997,35 @@ function deterministicFailures(audit) {
   return audit.findings.filter(
     (finding) => finding.determinism === "deterministic" && finding.resultKind === "failure"
   );
+}
+
+function assertPackedNoSpacingEvidence(audit, label) {
+  const measurementAssets = audit.evidenceAssets.filter(
+    (asset) => asset.id.startsWith("measurement-")
+  );
+  if (
+    measurementAssets.some((asset) => asset.data?.spacingAdherence !== undefined)
+    || audit.findings.some((finding) => finding.checkName === "off-scale-spacing")
+    || audit.failedChecks.some((check) => check.endsWith(":off-scale-spacing"))
+    || (audit.notices ?? []).some((notice) => notice.code.startsWith("spacing-adherence-"))
+  ) {
+    throw new Error(`Packed no-guide ${label} audit materialized rendered-spacing output.`);
+  }
+}
+
+function packedSpacingAllowedValues(rootFontSizePx) {
+  return [
+    4,
+    canonicalPackedSpacingNumber(0.5 * rootFontSizePx),
+    canonicalPackedSpacingNumber(rootFontSizePx),
+    canonicalPackedSpacingNumber(0.333333 * rootFontSizePx),
+    canonicalPackedSpacingNumber(2 * rootFontSizePx),
+    canonicalPackedSpacingNumber(1.34 * rootFontSizePx)
+  ];
+}
+
+function canonicalPackedSpacingNumber(value) {
+  return value === 0 ? 0 : value;
 }
 
 function sha256(value) {
@@ -945,8 +1115,12 @@ function packedGuideYaml() {
     "      body: { $value: [Inter, sans-serif] }",
     "  spacing:",
     "    $type: dimension",
+    "    xs: { $value: { value: 4, unit: px } }",
     "    sm: { $value: { value: 0.5, unit: rem } }",
     "    md: { $value: { value: 1, unit: rem } }",
+    "    fractional: { $value: { value: 0.333333, unit: rem } }",
+    "    lg: { $value: { value: 2, unit: rem } }",
+    "    heading-flow: { $value: { value: 1.34, unit: rem } }",
     "  radius:",
     "    $type: dimension",
     "    sm: { $value: { value: 4, unit: px } }",
@@ -959,6 +1133,9 @@ function packedGuideYaml() {
     "  color:",
     "    ignoreSelectors:",
     "      - .third-party-color-widget",
+    "  spacing:",
+    "    ignoreSelectors:",
+    "      - .third-party-spacing-widget",
     "prohibitions: [generic-card-grid]",
     "signatureElement: Use one compact status rail.",
     ""

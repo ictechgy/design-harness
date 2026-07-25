@@ -161,6 +161,57 @@ describe("findingsFromMeasurements", () => {
     expect(findings[0]?.recommendation).toContain("audit.color.ignoreSelectors");
   });
 
+  it("emits bounded deterministic project-contract risks from off-scale spacing groups", () => {
+    const findings = findingsFromMeasurements({
+      ...baseMeasurements,
+      spacingAdherence: {
+        policyId: "spacing-adherence-v1",
+        allowedValuesPx: [4, 8, 16, 24],
+        rootFontSizePx: 16,
+        candidateSlotCount: 12,
+        evaluatedSlotCount: 10,
+        ignoredSlotCount: 1,
+        ignoredByReason: { "selector-exception": 1 },
+        skippedSlotCount: 1,
+        skippedByReason: { "auto-margin": 1 },
+        violatingSlotCount: 2,
+        distinctViolationGroupCount: 1,
+        emittedGroupCount: 1,
+        truncatedGroupCount: 0,
+        groups: [{
+          property: "margin-right",
+          unexpectedValuePx: 12,
+          affectedSlotCount: 2,
+          selectors: ["#first", "#second"],
+          regions: [
+            { x: 10, y: 20, width: 200, height: 24 },
+            { x: 10, y: 50, width: 200, height: 24 }
+          ],
+          sampleCount: 2,
+          omittedSampleCount: 0
+        }]
+      }
+    }, ["measurement-desktop"]);
+
+    expect(findings).toHaveLength(1);
+    expect(findings[0]).toMatchObject({
+      id: "finding-desktop-off-scale-spacing-1",
+      checkName: "off-scale-spacing",
+      criterionId: "visual.spacing.project-contract",
+      category: "visual-polish",
+      severity: "low",
+      confidence: "high",
+      determinism: "deterministic",
+      resultKind: "risk",
+      humanReviewRecommended: false,
+      selector: "#first",
+      evidenceRefs: ["measurement-desktop"]
+    });
+    expect(findings[0]?.problem).toContain("rendered margin-right value");
+    expect(findings[0]?.problem).not.toMatch(/good design|uses? (a )?token in (the )?source/iu);
+    expect(findings[0]?.recommendation).toContain("audit.spacing.ignoreSelectors");
+  });
+
 
   it("detects likely blank renders", () => {
     const findings = findingsFromMeasurements(

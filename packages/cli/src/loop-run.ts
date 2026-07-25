@@ -3,7 +3,8 @@ import {
   HARNESS_VERSION,
   type ColorAdherencePolicy,
   type CopyStyle,
-  type FontFamilyAdherencePolicy
+  type FontFamilyAdherencePolicy,
+  type SpacingAdherencePolicy
 } from "@design-harness/core";
 import {
   auditUrl,
@@ -50,6 +51,7 @@ export interface LoopRunInput {
   copyStyle?: CopyStyle;
   fontFamilyPolicy?: FontFamilyAdherencePolicy;
   colorPolicy?: ColorAdherencePolicy;
+  spacingPolicy?: SpacingAdherencePolicy;
   cwd: string;
 }
 
@@ -204,7 +206,8 @@ export async function runLoop(
       ...(input.timeoutMs === undefined ? {} : { timeoutMs: input.timeoutMs }),
       ...(input.copyStyle === undefined ? {} : { copyStyle: input.copyStyle }),
       ...(input.fontFamilyPolicy === undefined ? {} : { fontFamilyPolicy: input.fontFamilyPolicy }),
-      ...(input.colorPolicy === undefined ? {} : { colorPolicy: input.colorPolicy })
+      ...(input.colorPolicy === undefined ? {} : { colorPolicy: input.colorPolicy }),
+      ...(input.spacingPolicy === undefined ? {} : { spacingPolicy: input.spacingPolicy })
     };
     try {
       const result = await audit(options);

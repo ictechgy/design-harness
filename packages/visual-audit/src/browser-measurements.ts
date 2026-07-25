@@ -11,6 +11,12 @@ import type {
   ColorAdherenceSkipReason,
   ColorPaintProperty
 } from "./color-adherence.js";
+import type {
+  SpacingAdherenceCandidate,
+  SpacingAdherenceCollectionCounts,
+  SpacingAdherenceSkipReason,
+  SpacingProperty
+} from "./spacing-adherence.js";
 import {
   computeContrastRisks,
   computeTapTargetRisks,
@@ -29,6 +35,10 @@ export interface ViewportCollectionResult {
   colorAdherenceCandidates?: ColorAdherenceCandidate[];
   colorAdherenceCollection?: ColorAdherenceCollectionCounts;
   colorAdherenceError?: ColorAdherenceMeasurementError;
+  spacingAdherenceCandidates?: SpacingAdherenceCandidate[];
+  spacingAdherenceCollection?: SpacingAdherenceCollectionCounts;
+  spacingAdherenceRootFontSizePx?: number;
+  spacingAdherenceError?: SpacingAdherenceMeasurementError;
 }
 
 /**
@@ -50,6 +60,9 @@ export interface ViewportMeasurementConfig {
   };
   color?: {
     allowedColors: Rgba8Color[];
+    ignoreSelectors: string[];
+  };
+  spacing?: {
     ignoreSelectors: string[];
   };
 }
@@ -77,6 +90,19 @@ export interface ColorAdherenceMeasurementError {
   limit?: number;
 }
 
+export interface SpacingAdherenceMeasurementError {
+  code:
+    | "invalid-selector"
+    | "selector-evaluation"
+    | "candidate-limit"
+    | "computed-spacing"
+    | "root-font-size";
+  selectorIndex?: number;
+  elementIndex?: number;
+  candidateCount?: number;
+  limit?: number;
+}
+
 export async function collectViewportMeasurements(page: {
   evaluate: <T>(pageFunction: ((arg?: unknown) => T | Promise<T>), arg?: unknown) => Promise<T>;
 }, config?: ViewportMeasurementConfig): Promise<ViewportCollectionResult> {
@@ -86,6 +112,8 @@ export async function collectViewportMeasurements(page: {
     const MAX_COMPUTED_FONT_FAMILY_LENGTH = 1_024;
     const MAX_COLOR_ADHERENCE_SLOTS = 5_000;
     const MAX_COMPUTED_COLOR_LENGTH = 256;
+    const MAX_SPACING_ADHERENCE_SLOTS = 25_000;
+    const MAX_COMPUTED_SPACING_LENGTH = 256;
     const MAX_BROWSER_FINDING_SAMPLES = 10;
     const FINDING_MATERIALIZATION_LIMIT = 5;
     const measurementConfig = rawConfig && typeof rawConfig === "object"
@@ -101,6 +129,12 @@ export async function collectViewportMeasurements(page: {
     const colorAdherenceEnabled = measurementConfig?.color !== undefined;
     const colorAdherenceIgnoreSelectors = Array.isArray(measurementConfig?.color?.ignoreSelectors)
       ? measurementConfig.color.ignoreSelectors
+      : [];
+    const spacingAdherenceEnabled = measurementConfig?.spacing !== undefined;
+    const spacingAdherenceIgnoreSelectors = Array.isArray(
+      measurementConfig?.spacing?.ignoreSelectors
+    )
+      ? measurementConfig.spacing.ignoreSelectors
       : [];
     const notices: AuditNotice[] = [];
     const unusableMatcherKeys = new Set<string>();
@@ -198,10 +232,12 @@ export async function collectViewportMeasurements(page: {
     let evaluatedFontFamilyElementCount = 0;
     let ignoredFontFamilyElementCount = 0;
     let colorAdherenceError: ColorAdherenceMeasurementError | undefined;
+    let spacingAdherenceError: SpacingAdherenceMeasurementError | undefined;
 
     prepareSurfaceMatchers();
     prepareFontFamilySelectors();
     prepareColorAdherenceSelectors();
+    prepareSpacingAdherenceSelectors();
 
     const textElements = Array.from(document.body.querySelectorAll<HTMLElement>("body *"))
       .filter((element) => {
@@ -326,6 +362,7 @@ export async function collectViewportMeasurements(page: {
     const movingContentControlRisks = movingContentControlRiskCollection.samples;
     const textInventory = collectTextInventory();
     const colorAdherenceCollectionResult = collectColorAdherenceCandidates();
+    const spacingAdherenceCollectionResult = collectSpacingAdherenceCandidates();
     const textLength = document.body.innerText.trim().length;
     const likelyBlank = textLength === 0 && textElements.length === 0;
     const emittedHeadingIssues = likelyBlank
@@ -482,7 +519,13 @@ export async function collectViewportMeasurements(page: {
         colorAdherenceCandidates: colorAdherenceCollectionResult.candidates,
         colorAdherenceCollection: colorAdherenceCollectionResult.counts
       } : {}),
-      ...(colorAdherenceError ? { colorAdherenceError } : {})
+      ...(colorAdherenceError ? { colorAdherenceError } : {}),
+      ...(spacingAdherenceEnabled && spacingAdherenceError === undefined ? {
+        spacingAdherenceCandidates: spacingAdherenceCollectionResult.candidates,
+        spacingAdherenceCollection: spacingAdherenceCollectionResult.counts,
+        spacingAdherenceRootFontSizePx: spacingAdherenceCollectionResult.rootFontSizePx
+      } : {}),
+      ...(spacingAdherenceError ? { spacingAdherenceError } : {})
     };
 
     function materializedSampleCount(samples: unknown[]): number {
@@ -683,7 +726,7 @@ export async function collectViewportMeasurements(page: {
         }
         let visibleInViewport = false;
         try {
-          visibleInViewport = isColorPaintVisibleInViewport(element);
+          visibleInViewport = isAdherenceElementVisibleInViewport(element);
         } catch {
           colorAdherenceError = { code: "computed-color", elementIndex };
           break;
@@ -780,6 +823,267 @@ export async function collectViewportMeasurements(page: {
       };
     }
 
+    function collectSpacingAdherenceCandidates(): {
+      candidates: SpacingAdherenceCandidate[];
+      counts: SpacingAdherenceCollectionCounts;
+      rootFontSizePx?: number;
+    } {
+      const candidates: SpacingAdherenceCandidate[] = [];
+      let candidateSlotCount = 0;
+      let ignoredSlotCount = 0;
+      let skippedSlotCount = 0;
+      const skippedByReason: Partial<Record<SpacingAdherenceSkipReason, number>> = {};
+      const emptyResult = () => ({
+        candidates,
+        counts: {
+          candidateSlotCount,
+          ignoredSlotCount,
+          skippedSlotCount,
+          skippedByReason
+        }
+      });
+
+      if (!spacingAdherenceEnabled || spacingAdherenceError) {
+        return emptyResult();
+      }
+
+      let rootFontSizePx: number;
+      try {
+        const rootFontSize = window.getComputedStyle(document.documentElement).fontSize;
+        rootFontSizePx = parseComputedCssPixelValue(rootFontSize);
+        if (!Number.isFinite(rootFontSizePx) || rootFontSizePx <= 0) {
+          spacingAdherenceError = { code: "root-font-size" };
+          return emptyResult();
+        }
+      } catch {
+        spacingAdherenceError = { code: "root-font-size" };
+        return emptyResult();
+      }
+
+      const slots = [
+        ["margin-top", "marginTop", "margin"],
+        ["margin-right", "marginRight", "margin"],
+        ["margin-bottom", "marginBottom", "margin"],
+        ["margin-left", "marginLeft", "margin"],
+        ["padding-top", "paddingTop", "padding"],
+        ["padding-right", "paddingRight", "padding"],
+        ["padding-bottom", "paddingBottom", "padding"],
+        ["padding-left", "paddingLeft", "padding"],
+        ["row-gap", "rowGap", "gap"],
+        ["column-gap", "columnGap", "gap"]
+      ] as const satisfies ReadonlyArray<
+        readonly [
+          SpacingProperty,
+          | "marginTop"
+          | "marginRight"
+          | "marginBottom"
+          | "marginLeft"
+          | "paddingTop"
+          | "paddingRight"
+          | "paddingBottom"
+          | "paddingLeft"
+          | "rowGap"
+          | "columnGap",
+          "margin" | "padding" | "gap"
+        ]
+      >;
+      const elements = [
+        document.documentElement,
+        document.body,
+        ...Array.from(document.body.querySelectorAll<HTMLElement>("*"))
+      ];
+
+      for (const [elementIndex, element] of elements.entries()) {
+        if (!(element instanceof HTMLElement)) {
+          continue;
+        }
+        let visibleInViewport = false;
+        try {
+          visibleInViewport = isAdherenceElementVisibleInViewport(element);
+        } catch {
+          spacingAdherenceError = { code: "computed-spacing", elementIndex };
+          break;
+        }
+        if (!visibleInViewport) {
+          continue;
+        }
+
+        let ignored = false;
+        try {
+          ignored = spacingAdherenceIgnoreSelectors.some(
+            (selector) => element.closest(selector) !== null
+          );
+        } catch {
+          spacingAdherenceError = { code: "selector-evaluation", elementIndex };
+          break;
+        }
+
+        if (candidateSlotCount + slots.length > MAX_SPACING_ADHERENCE_SLOTS) {
+          spacingAdherenceError = {
+            code: "candidate-limit",
+            candidateCount: candidateSlotCount + slots.length,
+            limit: MAX_SPACING_ADHERENCE_SLOTS
+          };
+          break;
+        }
+        candidateSlotCount += slots.length;
+        if (ignored) {
+          ignoredSlotCount += slots.length;
+          continue;
+        }
+
+        let style: CSSStyleDeclaration;
+        let sample: ReturnType<typeof sampleElement>;
+        try {
+          style = window.getComputedStyle(element);
+          sample = sampleElement(element);
+        } catch {
+          spacingAdherenceError = { code: "computed-spacing", elementIndex };
+          break;
+        }
+
+        let typedMap:
+          | { get: (property: string) => unknown }
+          | undefined;
+        let typedMapFailure: "typed-om-unavailable" | "typed-om-error" | undefined;
+        let computedStyleMap:
+          | (() => { get: (property: string) => unknown })
+          | undefined;
+        try {
+          computedStyleMap = (
+            element as HTMLElement & {
+              computedStyleMap?: () => { get: (property: string) => unknown };
+            }
+          ).computedStyleMap;
+        } catch {
+          typedMapFailure = "typed-om-error";
+        }
+        if (typeof computedStyleMap !== "function") {
+          typedMapFailure ??= "typed-om-unavailable";
+        } else {
+          try {
+            typedMap = computedStyleMap.call(element);
+            if (!typedMap || typeof typedMap.get !== "function") {
+              typedMapFailure = "typed-om-unavailable";
+            }
+          } catch {
+            typedMapFailure = "typed-om-error";
+          }
+        }
+
+        for (const [property, styleProperty, propertyKind] of slots) {
+          if (propertyKind !== "padding") {
+            if (typedMapFailure) {
+              recordSpacingSkip(typedMapFailure);
+              continue;
+            }
+
+            let typedValue: unknown;
+            try {
+              typedValue = typedMap?.get(property);
+            } catch {
+              recordSpacingSkip("typed-om-error");
+              continue;
+            }
+            const typedEvidence = classifyTypedSpacingEvidence(typedValue, propertyKind);
+            if (typedEvidence !== "numeric") {
+              recordSpacingSkip(typedEvidence);
+              continue;
+            }
+          }
+
+          const value = style[styleProperty];
+          if ([...value].length > MAX_COMPUTED_SPACING_LENGTH) {
+            recordSpacingSkip("computed-spacing-too-long");
+            continue;
+          }
+
+          const valuePx = parseComputedCssPixelValue(value);
+          if (!Number.isFinite(valuePx)) {
+            recordSpacingSkip("nonfinite-computed-value");
+            continue;
+          }
+          if (valuePx < 0 && propertyKind !== "margin") {
+            recordSpacingSkip("invalid-negative");
+            continue;
+          }
+          candidates.push({
+            selector: sample.selector,
+            region: sample.region,
+            property,
+            valuePx: Object.is(valuePx, -0) ? 0 : valuePx
+          });
+        }
+      }
+
+      return {
+        candidates,
+        counts: {
+          candidateSlotCount,
+          ignoredSlotCount,
+          skippedSlotCount,
+          skippedByReason
+        },
+        rootFontSizePx
+      };
+
+      function recordSpacingSkip(reason: SpacingAdherenceSkipReason): void {
+        skippedSlotCount += 1;
+        skippedByReason[reason] = (skippedByReason[reason] ?? 0) + 1;
+      }
+    }
+
+    function classifyTypedSpacingEvidence(
+      value: unknown,
+      propertyKind: "margin" | "gap"
+    ): "numeric" | SpacingAdherenceSkipReason {
+      if (!value || typeof value !== "object") {
+        return "unsupported-typed-value";
+      }
+
+      const typedValue = value as {
+        constructor?: { name?: string };
+        unit?: unknown;
+        value?: unknown;
+        toString?: () => string;
+      };
+      const constructorName = typedValue.constructor?.name ?? "";
+      const keyword = typeof typedValue.value === "string"
+        ? typedValue.value.trim().toLowerCase()
+        : constructorName === "CSSKeywordValue" && typeof typedValue.toString === "function"
+          ? typedValue.toString().trim().toLowerCase()
+          : "";
+      if (propertyKind === "margin" && keyword === "auto") {
+        return "auto-margin";
+      }
+      if (propertyKind === "gap" && keyword === "normal") {
+        return "normal-gap";
+      }
+      if (constructorName === "CSSKeywordValue" || keyword !== "") {
+        return "unsupported-typed-value";
+      }
+      if (
+        constructorName === "CSSUnitValue"
+        && typeof typedValue.value === "number"
+        && Number.isFinite(typedValue.value)
+        && typeof typedValue.unit === "string"
+      ) {
+        return "numeric";
+      }
+      if (constructorName.startsWith("CSSMath") && typeof typedValue.toString === "function") {
+        return "numeric";
+      }
+      return "unsupported-typed-value";
+    }
+
+    function parseComputedCssPixelValue(value: string): number {
+      const normalized = value.trim().toLowerCase();
+      if (!/^-?(?:\d+(?:\.\d+)?|\.\d+)px$/.test(normalized)) {
+        return Number.NaN;
+      }
+      return Number(normalized.slice(0, -2));
+    }
+
     function prepareFontFamilySelectors(): void {
       if (!fontFamilyEnabled) {
         return;
@@ -803,6 +1107,20 @@ export async function collectViewportMeasurements(page: {
           document.documentElement.matches(selector);
         } catch {
           colorAdherenceError = { code: "invalid-selector", selectorIndex };
+          return;
+        }
+      }
+    }
+
+    function prepareSpacingAdherenceSelectors(): void {
+      if (!spacingAdherenceEnabled) {
+        return;
+      }
+      for (const [selectorIndex, selector] of spacingAdherenceIgnoreSelectors.entries()) {
+        try {
+          document.documentElement.matches(selector);
+        } catch {
+          spacingAdherenceError = { code: "invalid-selector", selectorIndex };
           return;
         }
       }
@@ -1113,7 +1431,7 @@ export async function collectViewportMeasurements(page: {
         && rect.left < window.innerWidth;
     }
 
-    function isColorPaintVisibleInViewport(element: HTMLElement): boolean {
+    function isAdherenceElementVisibleInViewport(element: HTMLElement): boolean {
       const style = window.getComputedStyle(element);
       const rect = element.getBoundingClientRect();
       if (

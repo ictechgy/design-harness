@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Spacing adherence fixture</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        row-gap: 0;
+        column-gap: 0;
+      }
+      html {
+        font-size: 17px;
+      }
+      body {
+        padding: 1rem;
+        color: #14171C;
+        background: #FAFAF7;
+        font: 16px/1.5 "Inter", sans-serif;
+      }
+      #spacing-sample {
+        margin: 4px;
+        padding: 0.5rem;
+        padding-right: 13px;
+        background: #FFFFFF;
+      }
+      .px-rem {
+        display: grid;
+        margin: 4px;
+        padding: 0.5rem;
+        row-gap: 1rem;
+        column-gap: 4px;
+      }
+      .auto-margin {
+        width: 8rem;
+        margin-left: auto;
+      }
+      .normal-gap {
+        display: grid;
+        gap: normal;
+      }
+      .matched-negative-margin {
+        margin-left: -0.5rem;
+      }
+      .resolved-calc {
+        padding-top: calc(4px + 0px);
+      }
+      .percentage-container {
+        width: 100px;
+      }
+      .resolved-percentage {
+        padding-left: 4%;
+      }
+    </style>
+  </head>
+  <body>
+    <main id="spacing-sample">
+      <h1>Rendered spacing membership</h1>
+      <p class="px-rem">Declared px and rem values remain exact after rendering.</p>
+      <p>Zero is implicitly allowed by the contract.</p>
+      <p class="auto-margin">Auto margin is skipped before pixel comparison.</p>
+      <p class="normal-gap">Normal gap is skipped before pixel comparison.</p>
+      <p class="matched-negative-margin">A negative margin matches by declared magnitude.</p>
+      <p class="resolved-calc">A resolved calc lands on the declared 4px member.</p>
+      <div class="percentage-container">
+        <p class="resolved-percentage">Four percent of this fixed 100px container resolves to 4px.</p>
+      </div>
+    </main>
+  </body>
+</html>

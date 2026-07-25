@@ -583,6 +583,14 @@ describe("criteria registry", () => {
       confidence: "high",
       humanReviewRecommended: false
     });
+    expect(findingMetadataForCheck("off-scale-spacing")).toMatchObject({
+      criterionId: "visual.spacing.project-contract",
+      determinism: "deterministic",
+      resultKind: "risk",
+      runtime: "computed-style",
+      confidence: "high",
+      humanReviewRecommended: false
+    });
   });
 
   it("locks the parser-free copy criteria metadata", () => {

@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Spacing adherence ignored fixture</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        row-gap: 0;
+        column-gap: 0;
+      }
+      html {
+        font-size: 16px;
+      }
+      body {
+        padding: 1rem;
+        color: #14171C;
+        background: #FAFAF7;
+        font: 16px/1.5 "Inter", sans-serif;
+      }
+      main {
+        padding: 0.5rem;
+        background: #FFFFFF;
+      }
+      .approved-control {
+        margin-top: 4px;
+      }
+      .third-party-spacing-widget {
+        margin: 13px;
+        padding: 7px;
+        gap: 11px;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Rendered spacing exception</h1>
+      <p class="approved-control">This control remains evaluated against the declared scale.</p>
+      <div class="third-party-spacing-widget">
+        <p>This vendor subtree deliberately uses spacing outside the project contract.</p>
+      </div>
+    </main>
+  </body>
+</html>
