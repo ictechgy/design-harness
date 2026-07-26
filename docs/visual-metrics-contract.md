@@ -145,10 +145,14 @@ failed accounting invariant discards that metric's summary and creates a
 detector-scoped partial result. It never becomes a truncated count, zero, pass,
 or clean result.
 
-Expected unsupported evidence may produce a lower-bound summary when the
-contract below explicitly permits it. A lower bound may create a sound risk
-when it already exceeds the configured budget. A non-exceeding lower bound
-creates no finding and must not be described as a pass or clean result.
+Expected unsupported evidence may produce a lower-bound component when the
+component's count is provably monotone under omitted candidates. This is
+permitted only for typography distinct variants, palette distinct colors,
+palette hue families, and density visible elements. Such a lower bound may
+create a sound risk when it already exceeds the configured budget. A
+non-exceeding lower bound creates no finding and must not be described as a
+pass or clean result. Text-cluster connected-component count is explicitly
+excluded from this rule.
 
 At most one finding per metric per viewport is emitted. When a two-budget
 metric exceeds both budgets, one finding records both overages. Evidence
@@ -452,9 +456,10 @@ A box is visible when:
    `clip`, `auto`, or `scroll`.
 
 An element or ancestor with legacy `clip` other than `auto`, `clip-path` other
-than `none`, or a non-`none` mask is unsupported. Omit the affected candidate,
-record `unsupported-clip-or-mask`, and mark the summary as a lower bound.
-Occlusion by overlapping siblings is deliberately unresolved.
+than `none`, or a non-`none` mask is unsupported. Omit the affected candidate
+and record `unsupported-clip-or-mask`. This makes the visible-element component
+a lower bound. It makes the text-cluster component incomplete rather than a
+lower bound. Occlusion by overlapping siblings is deliberately unresolved.
 
 ### 6.3 Visible-content elements
 
@@ -485,9 +490,10 @@ ancestor behavior differ.
 
 ### 6.4 Text-flow clusters
 
-Use a `TreeWalker(document.body, NodeFilter.SHOW_TEXT)` and a `Range` selecting
-each whole text node. Abort the density collector if the DOM, text-node,
-fragment, or edge-test cap is exceeded.
+The text traversal runs only when `maxTextClusters` is configured. Use a
+`TreeWalker(document.body, NodeFilter.SHOW_TEXT)` and a `Range` selecting each
+whole text node. Abort the density collector if the DOM, text-node, fragment,
+or edge-test cap is exceeded.
 
 Classify every text node exactly once:
 
@@ -555,6 +561,24 @@ omittedClusterSamples = textClusterCount - emittedClusterSamples
 Retain at most ten visible-element and ten cluster samples. Exact totals,
 edge-test count, skipped-by-reason maps, and omitted counts remain in evidence.
 
+Coverage is component-specific:
+
+- `visibleElementCoverage` is `complete` when there are no skipped element
+  candidates and `lower-bound` otherwise. A lower-bound visible-element count
+  may emit a risk when it already exceeds `maxVisibleElements`.
+- `textClusterCoverage` is `complete` only when no text candidate or fragment
+  was skipped and all invariants hold. Any skipped/unsupported text fragment
+  makes it `incomplete`. The supported-only connected-component count may
+  remain diagnostic evidence, but it must not be compared with
+  `maxTextClusters`, create a text-cluster overage, or be called a lower bound.
+- When a configured text-cluster component is incomplete, record a
+  detector-scoped partial/notice. A simultaneously sound visible-element
+  overage may still create the single density finding, containing only that
+  component.
+
+This split is load-bearing: adding an omitted fragment can connect two
+supported components and reduce the true full-fragment cluster count.
+
 Adversarial vectors:
 
 - `<p>Hello <strong>world</strong></p>` → two visible-content owners and one
@@ -565,6 +589,10 @@ Adversarial vectors:
 - A multiline paragraph forms one cluster when line fragments connect.
 - CSS columns with no geometric bridge form separate clusters.
 - Overlapping labels in separate block roots remain separate.
+- Two supported fragments separated by one skipped fragment may appear as two
+  components even when the skipped fragment would bridge them into one.
+  Therefore the supported-only count is incomplete and cannot trigger a
+  text-cluster finding.
 - An ignored card removes its full subtree from both counts.
 - A rectangle that touches only a viewport edge is excluded; any positive
   subpixel intersection qualifies.
@@ -606,8 +634,9 @@ Finding observations include:
 - skipped-by-reason counts;
 - bounded samples and omitted counts.
 
-A discarded summary cannot create a finding. A lower-bound summary creates a
-finding only when the lower bound already exceeds a budget.
+A discarded summary cannot create a finding. An approved monotone lower-bound
+component creates a finding only when it already exceeds its budget.
+Incomplete text-cluster coverage never creates a text-cluster overage.
 
 ## 8. Generation projection and guide profile migration
 
