@@ -263,6 +263,29 @@ describe("analyzePaletteDiscipline", () => {
     ]);
   });
 
+  it("reclassifies overlong raw colors as explicit lower-bound skips before parsing", () => {
+    const overlongButParseable = `${" ".repeat(257)}rgb(255, 0, 0)`;
+    const result = analyzePaletteDiscipline(
+      [paletteCandidate({ value: overlongButParseable })],
+      palettePolicy(),
+      paletteCounts(1)
+    );
+
+    expect(result).toMatchObject({
+      ok: true,
+      summary: {
+        coverage: "lower-bound",
+        candidateSlotCount: 1,
+        collectedSlotCount: 1,
+        evaluatedSlotCount: 0,
+        skippedSlotCount: 1,
+        skippedByReason: { "computed-color-too-long": 1 },
+        distinctColorCount: 0,
+        hueFamilyCount: 0
+      }
+    });
+  });
+
   it("is permutation-stable and rejects policy, candidate, and accounting corruption", () => {
     const candidates = [
       paletteCandidate({ selector: "#b", value: "rgb(0, 0, 255)" }),

@@ -45,6 +45,7 @@ import {
 
 const MAX_EXAMPLES = 5;
 const MAX_LOCATIONS_PER_EXAMPLE = 5;
+const MAX_COMPUTED_PALETTE_COLOR_SCALARS = 256;
 
 export type SoundMetricCoverage = "complete" | "lower-bound";
 
@@ -399,6 +400,14 @@ export function analyzePaletteDiscipline(
   let skippedSlotCount = counts.skippedSlotCount;
 
   for (const candidate of candidates) {
+    if (unicodeScalarCountExceeds(
+      candidate.value,
+      MAX_COMPUTED_PALETTE_COLOR_SCALARS
+    )) {
+      skippedSlotCount += 1;
+      incrementCount(skippedByReason, "computed-color-too-long");
+      continue;
+    }
     const parsed = parseCssColor(candidate.value);
     const color = parsed ? rgba8FromParsedColor(parsed) : null;
     if (!color) {
@@ -981,6 +990,17 @@ function canonicalCounts<Reason extends string>(
 
 function canonicalNumber(value: number): number {
   return value === 0 ? 0 : value;
+}
+
+function unicodeScalarCountExceeds(value: string, maximum: number): boolean {
+  let count = 0;
+  for (const _character of value) {
+    count += 1;
+    if (count > maximum) {
+      return true;
+    }
+  }
+  return false;
 }
 
 const TYPOGRAPHY_BROWSER_SKIP_REASONS = [
