@@ -754,9 +754,18 @@ function analyzeDensityTextClusters(
     };
   }
 
-  const orderedSamples = counted.components
-    .map((component) => densityClusterSample(component, collection.fragments))
-    .sort(compareClusterSamples);
+  const orderedSamples: DensityTextClusterSample[] = [];
+  for (const component of counted.components) {
+    const sample = densityClusterSample(component, collection.fragments);
+    if (sample === undefined) {
+      return {
+        ok: false,
+        error: { code: "evidence-count-mismatch", component: "text-clusters" }
+      };
+    }
+    orderedSamples.push(sample);
+  }
+  orderedSamples.sort(compareClusterSamples);
   const samples = orderedSamples.slice(0, MAX_EVIDENCE_SAMPLES);
   return {
     ok: true,
@@ -775,7 +784,7 @@ function analyzeDensityTextClusters(
 function densityClusterSample(
   component: readonly number[],
   fragments: readonly DensityTextFragment[]
-): DensityTextClusterSample {
+): DensityTextClusterSample | undefined {
   let left = Number.POSITIVE_INFINITY;
   let top = Number.POSITIVE_INFINITY;
   let right = Number.NEGATIVE_INFINITY;
@@ -790,8 +799,12 @@ function densityClusterSample(
     selectors.push(fragment.selector);
   }
   selectors.sort(compareCodePoints);
+  const selector = selectors[0];
+  if (selector === undefined) {
+    return undefined;
+  }
   return {
-    selector: selectors[0] ?? "",
+    selector,
     region: {
       x: canonicalNumber(left),
       y: canonicalNumber(top),

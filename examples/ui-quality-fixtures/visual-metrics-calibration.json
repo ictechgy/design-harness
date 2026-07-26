@@ -2,7 +2,7 @@
   "schemaVersion": "visual-metrics-calibration/v1",
   "provenance": {
     "fixtureAuthorship": "project-authored synthetic fixtures plus the existing project merchant dashboard",
-    "license": "MIT",
+    "license": "Apache-2.0",
     "hashAlgorithm": "sha256",
     "hashInput": "raw-file-bytes",
     "recordedAt": "2026-07-26"

@@ -1,19 +1,18 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { existsSync } from "node:fs";
-import { readFile, readdir, rm, writeFile } from "node:fs/promises";
+import { readFile, rm, writeFile } from "node:fs/promises";
 import { dirname, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
+import {
+  readVisualMetricsCalibrationInputs,
+  validateVisualMetricsCalibration
+} from "./check-visual-metrics-calibration.mjs";
 import { startLocalFixtureServer } from "./local-fixture-server.mjs";
 
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(scriptDir, "..");
 const examplesRoot = join(repoRoot, "examples");
-const uiFixtureRoot = join(examplesRoot, "ui-quality-fixtures");
-const manifestPath = join(
-  uiFixtureRoot,
-  "visual-metrics-calibration.json"
-);
 const outRoot = join(repoRoot, "runs", "visual-metrics");
 const coreEntry = join(repoRoot, "packages", "core", "dist", "index.js");
 const visualAuditEntry = join(
@@ -45,13 +44,13 @@ const [core, { auditUrl }] = await Promise.all([
   import(visualAuditEntry)
 ]);
 const { renderMarkdownReport } = core;
-const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
-assert.equal(
-  manifest.schemaVersion,
-  "visual-metrics-calibration/v1",
-  "Calibration manifest schema version drifted."
+const calibrationInputs = await readVisualMetricsCalibrationInputs();
+assert.deepStrictEqual(
+  validateVisualMetricsCalibration(calibrationInputs),
+  [],
+  "Calibration manifest failed its browserless preflight."
 );
-assert(Array.isArray(manifest.cases), "Calibration manifest cases must be an array.");
+const { manifest } = calibrationInputs;
 assert.deepStrictEqual(
   manifest.viewport,
   viewport,
@@ -62,21 +61,6 @@ assert.deepStrictEqual(
   expectedContracts(core),
   "Calibration manifest policy, method, criterion, or check contracts drifted."
 );
-assert.equal(
-  manifest.cases.filter((calibrationCase) =>
-    canonicalMetric(calibrationCase.metric) !== "all"
-  ).length,
-  6,
-  "Calibration manifest must contain the six atomic good/bad cases."
-);
-assert.equal(
-  manifest.cases.filter((calibrationCase) =>
-    canonicalMetric(calibrationCase.metric) === "all"
-  ).length,
-  1,
-  "Calibration manifest must contain one all-metric merchant non-regression case."
-);
-await assertCorpusManifest(manifest);
 
 await rm(outRoot, { recursive: true, force: true });
 const fixtureServer = await startLocalFixtureServer(examplesRoot);
@@ -96,7 +80,6 @@ try {
 }
 
 async function runCalibrationCase(calibrationCase, baseUrl) {
-  assertCalibrationCase(calibrationCase);
   const fixturePath = resolve(repoRoot, calibrationCase.path);
   assert(
     pathIsInside(examplesRoot, fixturePath),
@@ -257,116 +240,6 @@ function expectedContracts(coreModule) {
   };
 }
 
-async function assertCorpusManifest(calibrationManifest) {
-  const corpus = calibrationManifest.corpus;
-  assert(
-    corpus !== null && typeof corpus === "object" && !Array.isArray(corpus),
-    "Calibration manifest corpus must be an object."
-  );
-  assert.equal(
-    corpus.repeatCount,
-    3,
-    "Unrelated-fixture corpus must run exactly three times."
-  );
-  assert(
-    corpus.policy !== null
-      && typeof corpus.policy === "object"
-      && !Array.isArray(corpus.policy),
-    "Unrelated-fixture corpus policy must be an object."
-  );
-  assert(
-    !containsKey(corpus.policy, "ignoreSelectors"),
-    "Unrelated-fixture corpus policy must be selector-free."
-  );
-  assert.deepStrictEqual(
-    Object.keys(corpus.policy).sort(),
-    ["density", "palette", "typography"],
-    "Unrelated-fixture corpus must configure all three metrics."
-  );
-  assert(Array.isArray(corpus.entries), "Calibration manifest corpus entries must be an array.");
-
-  const atomicPaths = new Set(
-    calibrationManifest.cases
-      .filter((calibrationCase) => canonicalMetric(calibrationCase.metric) !== "all")
-      .map((calibrationCase) => calibrationCase.path)
-  );
-  const expectedPaths = (await htmlFixturePaths(uiFixtureRoot))
-    .map((path) => relative(repoRoot, path).split(sep).join("/"))
-    .filter((path) => !atomicPaths.has(path))
-    .sort();
-  const entryPaths = corpus.entries.map((entry) => entry.path).sort();
-  assert.deepStrictEqual(
-    entryPaths,
-    expectedPaths,
-    "Calibration manifest corpus does not close over every unrelated UI-quality HTML fixture."
-  );
-
-  const ids = new Set();
-  const paths = new Set();
-  for (const entry of corpus.entries) {
-    assert(
-      entry !== null && typeof entry === "object" && !Array.isArray(entry),
-      "Every corpus entry must be an object."
-    );
-    assertSafeId(entry.id, "corpus entry");
-    assert(!ids.has(entry.id), `Duplicate corpus entry id: ${entry.id}`);
-    ids.add(entry.id);
-    assert(
-      typeof entry.path === "string" && entry.path.length > 0,
-      `${entry.id}: corpus path must be a non-empty string.`
-    );
-    assert(!paths.has(entry.path), `Duplicate corpus fixture path: ${entry.path}`);
-    paths.add(entry.path);
-    const fixturePath = resolve(repoRoot, entry.path);
-    assert(
-      pathIsInside(uiFixtureRoot, fixturePath),
-      `${entry.id}: corpus fixture path must remain under examples/ui-quality-fixtures/.`
-    );
-    assert(
-      /^[a-f0-9]{64}$/u.test(entry.fixtureSha256),
-      `${entry.id}: corpus fixture SHA-256 must be lowercase hexadecimal.`
-    );
-    assert(
-      /^[a-f0-9]{64}$/u.test(entry.projectionSha256),
-      `${entry.id}: corpus projection SHA-256 must be lowercase hexadecimal.`
-    );
-    assert(
-      Array.isArray(entry.expectedNotices),
-      `${entry.id}: expectedNotices must be an array.`
-    );
-  }
-}
-
-function assertCalibrationCase(calibrationCase) {
-  assert(
-    calibrationCase !== null && typeof calibrationCase === "object",
-    "Every calibration case must be an object."
-  );
-  for (const key of ["id", "path", "metric", "role"]) {
-    assert(
-      typeof calibrationCase[key] === "string" && calibrationCase[key].length > 0,
-      `Calibration case ${key} must be a non-empty string.`
-    );
-  }
-  assertSafeId(calibrationCase.id, "calibration case");
-  assert(
-    calibrationCase.policy !== null
-      && typeof calibrationCase.policy === "object"
-      && !Array.isArray(calibrationCase.policy),
-    `${calibrationCase.id}: policy must be an object.`
-  );
-  assert(
-    calibrationCase.expected !== null
-      && typeof calibrationCase.expected === "object"
-      && !Array.isArray(calibrationCase.expected),
-    `${calibrationCase.id}: expected must be an object.`
-  );
-  assert(
-    !containsKey(calibrationCase.policy, "ignoreSelectors"),
-    `${calibrationCase.id}: committed calibration policies must be selector-free.`
-  );
-}
-
 function runtimePolicies(calibrationCase) {
   switch (canonicalMetric(calibrationCase.metric)) {
     case "typography":
@@ -415,19 +288,12 @@ function allRuntimePolicies(policy) {
 function canonicalMetric(metric) {
   switch (metric) {
     case "typography":
-    case "typographyVariants":
-    case "typography-variants":
       return "typography";
     case "palette":
-    case "paletteDiscipline":
-    case "palette-discipline":
       return "palette";
     case "density":
-    case "densityComplexity":
-    case "density-complexity":
       return "density";
     case "all":
-    case "visual-metrics":
       return "all";
     default:
       throw new Error(`Unsupported calibration metric: ${metric}`);
@@ -714,38 +580,6 @@ function assertMetricSummary(summary, name) {
   assert(
     summary !== null && typeof summary === "object" && !Array.isArray(summary),
     `Measurement evidence omitted ${name}; run \`pnpm build\` before this smoke if source changed.`
-  );
-}
-
-function containsKey(value, wantedKey) {
-  if (Array.isArray(value)) {
-    return value.some((child) => containsKey(child, wantedKey));
-  }
-  if (value === null || typeof value !== "object") {
-    return false;
-  }
-  return Object.entries(value).some(
-    ([key, child]) => key === wantedKey || containsKey(child, wantedKey)
-  );
-}
-
-async function htmlFixturePaths(root) {
-  const paths = [];
-  for (const entry of await readdir(root, { withFileTypes: true })) {
-    const path = join(root, entry.name);
-    if (entry.isDirectory()) {
-      paths.push(...await htmlFixturePaths(path));
-    } else if (entry.isFile() && entry.name.endsWith(".html")) {
-      paths.push(path);
-    }
-  }
-  return paths.sort(compareText);
-}
-
-function assertSafeId(id, label) {
-  assert(
-    typeof id === "string" && /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/u.test(id),
-    `${label} id must be a lowercase kebab-case path segment.`
   );
 }
 

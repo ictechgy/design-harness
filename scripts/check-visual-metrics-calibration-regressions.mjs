@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import {
   readVisualMetricsCalibrationInputs,
   validateVisualMetricsCalibration
@@ -46,6 +47,14 @@ rejects("measurement accounting drift", (input) => {
   input.manifest.cases[4].expected.measurement.textClusters.textNodeUniverseCount += 1;
 }, /node accounting/u);
 
+rejects("negative ignored-reason count", (input) => {
+  input.manifest.cases[2].expected.measurement.ignoredByReason.transparent = -1;
+}, /non-negative safe integer/u);
+
+rejects("unknown metric", (input) => {
+  input.manifest.cases[0].metric = "typography-v2";
+}, /metric must be one of/u);
+
 rejects("score-honesty metadata drift", (input) => {
   input.manifest.cases[1].expected.findings[0].resultKind = "failure";
 }, /resultKind/u);
@@ -71,6 +80,25 @@ rejects("frozen source identifier drift", (input) => {
 rejects("missing unrelated corpus fixture", (input) => {
   input.manifest.corpus.entries.pop();
 }, /exactly close over 48/u);
+
+rejects("lossy corpus id collision", (input) => {
+  const sourcePath = "examples/ui-quality-fixtures/korean/copy-good.html";
+  const collidingPath = "examples/ui-quality-fixtures/korean-copy-good.html";
+  const bytes = Buffer.from(input.fixtureBytes.get(sourcePath));
+  input.corpusPaths.push(collidingPath);
+  input.corpusPaths.sort();
+  input.fixtureBytes.set(collidingPath, bytes);
+  input.manifest.corpus.entries.push({
+    id: "korean-copy-good",
+    path: collidingPath,
+    fixtureSha256: createHash("sha256").update(bytes).digest("hex"),
+    projectionSha256: "0".repeat(64),
+    expectedNotices: []
+  });
+  input.manifest.corpus.entries.sort((left, right) =>
+    left.path < right.path ? -1 : left.path > right.path ? 1 : 0
+  );
+}, /id duplicates/u);
 
 rejects("corpus selector exception", (input) => {
   input.manifest.corpus.policy.palette.ignoreSelectors = [".fixture-only"];
@@ -98,7 +126,7 @@ rejects("reviewed notice widening", (input) => {
   });
 }, /exactly pin|reviewed notice count/u);
 
-console.log("Visual metrics calibration mutation regressions passed (18 fail-closed mutations).");
+console.log("Visual metrics calibration mutation regressions passed (21 fail-closed mutations).");
 
 function rejects(label, mutate, pattern) {
   const input = cloneInputs(baseline);

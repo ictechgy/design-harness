@@ -56,7 +56,7 @@ import {
   analyzePaletteDiscipline,
   analyzeTypographyVariants,
   type DensityComplexityAnalysisError,
-  type DensityComplexitySummary,
+  type DensityVisibleElementSummary,
   type PaletteDisciplineAnalysisError,
   type PaletteDisciplineSummary,
   type TypographyVariantAnalysisError,
@@ -428,7 +428,7 @@ export async function auditUrl(options: AuditUrlOptions): Promise<AuditUrlResult
               if (densitySummary?.visibleElements?.skippedElementCount) {
                 noticeCandidates.push(densityVisibleElementsSkippedNotice(
                   viewport.name,
-                  densitySummary
+                  densitySummary.visibleElements
                 ));
               }
               if (densitySummary?.textClusters?.coverage === "incomplete") {
@@ -845,18 +845,17 @@ function paletteDisciplineSkippedNotice(
 
 function densityVisibleElementsSkippedNotice(
   viewport: string,
-  summary: DensityComplexitySummary
+  visibleElements: DensityVisibleElementSummary
 ): AuditNotice {
-  const visibleElements = summary.visibleElements;
   return {
     code: "density-visible-elements-skipped",
-    message: `Skipped ${visibleElements?.skippedElementCount ?? 0} visible-element candidate(s) with unsupported clipping or masking; the observed visible-element count is a lower bound.`,
+    message: `Skipped ${visibleElements.skippedElementCount} visible-element candidate(s) with unsupported clipping or masking; the observed visible-element count is a lower bound.`,
     viewport,
     details: {
       viewport,
-      skippedElementCount: visibleElements?.skippedElementCount ?? 0,
-      skippedByReason: visibleElements?.skippedByReason ?? {},
-      methodId: visibleElements?.methodId
+      skippedElementCount: visibleElements.skippedElementCount,
+      skippedByReason: visibleElements.skippedByReason,
+      methodId: visibleElements.methodId
     }
   };
 }

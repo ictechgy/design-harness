@@ -649,7 +649,8 @@ Finding observations include:
 - configured budgets;
 - observed exact totals;
 - every component overage;
-- coverage status (`complete` or `lower-bound`);
+- coverage status for compared components (`complete` or `lower-bound`), plus
+  component-specific `incomplete` text-cluster coverage when present;
 - skipped-by-reason counts;
 - bounded samples and omitted counts.
 
@@ -731,7 +732,7 @@ browser-equipped CI `example-smoke` job. CI uploads `runs/visual-metrics`.
 The committed manifest records fixture hashes, policy/method IDs, expected
 counts and findings, the three closed pairs, and a merchant-dashboard
 non-regression case. The live runner must reproduce the manifest exactly. Any
-unexplained risk on existing unrelated fixtures, or any need for
+unexplained visual-metric risk on existing unrelated fixtures, or any need for
 target-specific exceptions, stops the entire bundle.
 
 CI workflow artifact validation must know about the new smoke action and

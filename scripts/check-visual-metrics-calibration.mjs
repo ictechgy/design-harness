@@ -12,6 +12,9 @@ const designGuideSourcePath = resolve(repoRoot, "packages/core/src/design-guide.
 const criteriaSourcePath = resolve(repoRoot, "packages/core/src/criteria.ts");
 const fixtureRoot = resolve(repoRoot, "examples/ui-quality-fixtures");
 const fixturePathPrefix = "examples/ui-quality-fixtures/";
+const calibrationMetrics = Object.freeze(["typography", "palette", "density", "all"]);
+const calibrationMetricSet = new Set(calibrationMetrics);
+const paletteIgnoreReasonSet = new Set(["selector-exception", "transparent"]);
 
 const expectedContracts = Object.freeze({
   typography: Object.freeze({
@@ -252,7 +255,7 @@ function validateProvenance(value, errors) {
     "$.provenance.fixtureAuthorship",
     errors
   );
-  equal(value.license, "MIT", "$.provenance.license", errors);
+  equal(value.license, "Apache-2.0", "$.provenance.license", errors);
   equal(value.hashAlgorithm, "sha256", "$.provenance.hashAlgorithm", errors);
   equal(value.hashInput, "raw-file-bytes", "$.provenance.hashInput", errors);
   equal(value.recordedAt, "2026-07-26", "$.provenance.recordedAt", errors);
@@ -389,6 +392,12 @@ function validateCases(value, fixtureBytes, errors) {
     for (const key of ["id", "path", "metric", "role"]) {
       equal(record[key], expected[key], `${path}.${key}`, errors);
     }
+    const metricIsSupported = calibrationMetricSet.has(record.metric);
+    if (!metricIsSupported) {
+      errors.push(
+        `${path}.metric must be one of ${calibrationMetrics.map(JSON.stringify).join(", ")}`
+      );
+    }
     if (seenIds.has(record.id)) {
       errors.push(`${path}.id duplicates ${JSON.stringify(record.id)}`);
     }
@@ -398,6 +407,9 @@ function validateCases(value, fixtureBytes, errors) {
     seenIds.add(record.id);
     seenPaths.add(record.path);
     validateFixture(record, fixtureBytes?.get(record.path), path, errors);
+    if (!metricIsSupported) {
+      continue;
+    }
     validateRecordPolicyAndExpectation(record, path, errors);
   }
 }
@@ -432,6 +444,7 @@ function validateCorpus(value, discoveredPaths, fixtureBytes, errors) {
   }
 
   let reviewedNoticeCount = 0;
+  const seenIds = new Set();
   for (const [index, expectedPath] of expectedPaths.entries()) {
     const entry = value.entries[index];
     const path = `$.corpus.entries[${index}]`;
@@ -445,6 +458,16 @@ function validateCorpus(value, discoveredPaths, fixtureBytes, errors) {
     }
     equal(entry.path, expectedPath, `${path}.path`, errors);
     equal(entry.id, corpusIdForPath(expectedPath), `${path}.id`, errors);
+    if (
+      typeof entry.id !== "string"
+      || !/^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/u.test(entry.id)
+    ) {
+      errors.push(`${path}.id must be a lowercase kebab-case path segment`);
+    } else if (seenIds.has(entry.id)) {
+      errors.push(`${path}.id duplicates ${JSON.stringify(entry.id)}`);
+    } else {
+      seenIds.add(entry.id);
+    }
     validateSha256(entry.fixtureSha256, `${path}.fixtureSha256`, errors);
     validateSha256(entry.projectionSha256, `${path}.projectionSha256`, errors);
     const bytes = fixtureBytes?.get(entry.path);
@@ -531,6 +554,10 @@ function validateRecordPolicyAndExpectation(record, path, errors) {
 }
 
 function validateMetric(metric, policy, measurement, path, errors) {
+  if (!calibrationMetricSet.has(metric) || metric === "all") {
+    errors.push(`${path} uses unsupported atomic metric ${JSON.stringify(metric)}`);
+    return;
+  }
   if (!checkExactKeys(policy, policyKeys[metric], `${path}.policy`, errors)) {
     return;
   }
@@ -559,12 +586,16 @@ function validateMetric(metric, policy, measurement, path, errors) {
     );
   }
   equal(measurement.coverage, metric === "density" ? undefined : "complete", `${path}.expected.measurement.coverage`, errors, metric === "density");
-  if (metric === "typography") {
-    validateTypographyMeasurement(measurement, path, errors);
-  } else if (metric === "palette") {
-    validatePaletteMeasurement(measurement, path, errors);
-  } else {
-    validateDensityMeasurement(measurement, policy, path, errors);
+  switch (metric) {
+    case "typography":
+      validateTypographyMeasurement(measurement, path, errors);
+      break;
+    case "palette":
+      validatePaletteMeasurement(measurement, path, errors);
+      break;
+    case "density":
+      validateDensityMeasurement(measurement, policy, path, errors);
+      break;
   }
 }
 
@@ -625,11 +656,13 @@ function validatePaletteMeasurement(value, path, errors) {
     "hueFamilyCount"
   ], `${path}.expected.measurement`, errors);
   validateEmptyCountMap(value.skippedByReason, `${path}.expected.measurement.skippedByReason`, errors);
-  if (!isRecord(value.ignoredByReason)) {
-    errors.push(`${path}.expected.measurement.ignoredByReason must be an object`);
-  } else {
-    const ignoredTotal = Object.values(value.ignoredByReason)
-      .reduce((sum, count) => sum + (Number.isSafeInteger(count) ? count : Number.NaN), 0);
+  const ignoredTotal = validateReasonCountMap(
+    value.ignoredByReason,
+    paletteIgnoreReasonSet,
+    `${path}.expected.measurement.ignoredByReason`,
+    errors
+  );
+  if (ignoredTotal !== undefined) {
     equal(
       ignoredTotal,
       value.ignoredSlotCount,
@@ -826,17 +859,51 @@ function validateFindings(record, path, errors) {
 }
 
 function deriveOverages(metric, measurement) {
-  const candidates = metric === "typography"
-    ? [["distinctVariantCount", measurement.distinctVariantCount, measurement.maxDistinctVariants, measurement.coverage]]
-    : metric === "palette"
-      ? [
-          ["distinctColorCount", measurement.distinctColorCount, measurement.maxDistinctColors, measurement.coverage],
-          ["hueFamilyCount", measurement.hueFamilyCount, measurement.maxChromaticHueFamilies, measurement.coverage]
+  let candidates;
+  switch (metric) {
+    case "typography":
+      candidates = [[
+        "distinctVariantCount",
+        measurement.distinctVariantCount,
+        measurement.maxDistinctVariants,
+        measurement.coverage
+      ]];
+      break;
+    case "palette":
+      candidates = [
+        [
+          "distinctColorCount",
+          measurement.distinctColorCount,
+          measurement.maxDistinctColors,
+          measurement.coverage
+        ],
+        [
+          "hueFamilyCount",
+          measurement.hueFamilyCount,
+          measurement.maxChromaticHueFamilies,
+          measurement.coverage
         ]
-      : [
-          ["visibleElementCount", measurement.visibleElements.visibleElementCount, measurement.maxVisibleElements, measurement.visibleElements.coverage],
-          ["textClusterCount", measurement.textClusters.textClusterCount, measurement.maxTextClusters, measurement.textClusters.coverage]
-        ];
+      ];
+      break;
+    case "density":
+      candidates = [
+        [
+          "visibleElementCount",
+          measurement.visibleElements.visibleElementCount,
+          measurement.maxVisibleElements,
+          measurement.visibleElements.coverage
+        ],
+        [
+          "textClusterCount",
+          measurement.textClusters.textClusterCount,
+          measurement.maxTextClusters,
+          measurement.textClusters.coverage
+        ]
+      ];
+      break;
+    default:
+      throw new Error(`Unsupported calibration metric: ${metric}`);
+  }
   return candidates
     .filter(([, observed, maximum]) => observed > maximum)
     .map(([component, observedCount, configuredMaximum, coverage]) => ({
@@ -953,6 +1020,27 @@ function validateEmptyCountMap(value, path, errors) {
   }
 }
 
+function validateReasonCountMap(value, allowedReasons, path, errors) {
+  if (!isRecord(value)) {
+    errors.push(`${path} must be an object`);
+    return undefined;
+  }
+  let total = 0;
+  let countsAreValid = true;
+  for (const [reason, count] of Object.entries(value)) {
+    if (!allowedReasons.has(reason)) {
+      errors.push(`${path}.${reason} is not a recognized reason`);
+    }
+    if (!Number.isSafeInteger(count) || count < 0) {
+      errors.push(`${path}.${reason} must be a non-negative safe integer`);
+      countsAreValid = false;
+    } else {
+      total += count;
+    }
+  }
+  return countsAreValid ? total : undefined;
+}
+
 function validatePositiveInteger(value, path, errors) {
   if (!Number.isSafeInteger(value) || value < 1) {
     errors.push(`${path} must be a positive safe integer`);
@@ -961,11 +1049,35 @@ function validatePositiveInteger(value, path, errors) {
 
 function validateBudget(metric, budget, value, path, errors) {
   validatePositiveInteger(value, path, errors);
-  const maximum = metric === "typography"
-    ? 2_000
-    : metric === "palette"
-      ? budget === "maxDistinctColors" ? 5_000 : 12
-      : budget === "maxVisibleElements" ? 10_000 : 20_000;
+  let maximum;
+  switch (metric) {
+    case "typography":
+      if (budget !== "maxDistinctVariants") {
+        throw new Error(`Unsupported typography budget: ${budget}`);
+      }
+      maximum = 2_000;
+      break;
+    case "palette":
+      if (budget === "maxDistinctColors") {
+        maximum = 5_000;
+      } else if (budget === "maxChromaticHueFamilies") {
+        maximum = 12;
+      } else {
+        throw new Error(`Unsupported palette budget: ${budget}`);
+      }
+      break;
+    case "density":
+      if (budget === "maxVisibleElements") {
+        maximum = 10_000;
+      } else if (budget === "maxTextClusters") {
+        maximum = 20_000;
+      } else {
+        throw new Error(`Unsupported density budget: ${budget}`);
+      }
+      break;
+    default:
+      throw new Error(`Unsupported calibration metric: ${metric}`);
+  }
   if (Number.isSafeInteger(value) && value > maximum) {
     errors.push(`${path} exceeds the frozen safety maximum ${maximum}`);
   }
@@ -1027,13 +1139,16 @@ function compareCodePoints(left, right) {
 }
 
 function metricBudgets(metric) {
-  if (metric === "typography") {
-    return ["maxDistinctVariants"];
+  switch (metric) {
+    case "typography":
+      return ["maxDistinctVariants"];
+    case "palette":
+      return ["maxDistinctColors", "maxChromaticHueFamilies"];
+    case "density":
+      return ["maxVisibleElements", "maxTextClusters"];
+    default:
+      throw new Error(`Unsupported calibration metric: ${metric}`);
   }
-  if (metric === "palette") {
-    return ["maxDistinctColors", "maxChromaticHueFamilies"];
-  }
-  return ["maxVisibleElements", "maxTextClusters"];
 }
 
 function checkExactKeys(value, keys, path, errors) {

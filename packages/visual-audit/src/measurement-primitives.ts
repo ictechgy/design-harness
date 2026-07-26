@@ -2,17 +2,6 @@ import { foldAsciiCase } from "@design-harness/core";
 import type { ContrastRiskSample, ElementSample } from "./checks.js";
 import { parseFontFamilyList } from "./font-family.js";
 
-export {
-  DENSITY_COMPLEXITY_BUDGET_POLICY_ID,
-  DENSITY_COMPLEXITY_METHOD_ID,
-  DENSITY_TEXT_CLUSTER_METHOD_ID,
-  DENSITY_VISIBLE_ELEMENT_METHOD_ID,
-  PALETTE_DISCIPLINE_BUDGET_POLICY_ID,
-  PALETTE_DISCIPLINE_METHOD_ID,
-  TYPOGRAPHY_VARIANT_BUDGET_POLICY_ID,
-  TYPOGRAPHY_VARIANT_METHOD_ID
-} from "@design-harness/core";
-
 /**
  * DOM-free measurement computations.
  *
