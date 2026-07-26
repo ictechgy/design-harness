@@ -10,14 +10,19 @@ import {
   fontFamilyComparisonIdentity,
   loadSchema,
   projectColorAdherencePolicy,
+  projectDensityComplexityBudgetPolicy,
   projectFontFamilyAdherencePolicy,
+  projectPaletteDisciplineBudgetPolicy,
   projectSpacingAdherencePolicy,
+  projectTypographyVariantBudgetPolicy,
+  projectVisualMetricsGenerationPolicies,
+  projectVisualMetricsRuntimePolicies,
   rgba8ColorIdentity,
   SCHEMA_VERSION,
   validateSchema
 } from "./index.js";
 
-describe("Design Guide Profile v0.5a-1", () => {
+describe("Design Guide Profile v0.5a-2", () => {
   it("keeps the additive closed schema and semantic fixture in lockstep", () => {
     const guide = createExampleDesignGuide();
     expect(SCHEMA_VERSION).toBe("0.2");
@@ -65,11 +70,240 @@ describe("Design Guide Profile v0.5a-1", () => {
                 },
                 ignoreSelectors: { minItems: 1, maxItems: 32, uniqueItems: true }
               }
+            },
+            typographyVariants: {
+              additionalProperties: false,
+              required: ["maxDistinctVariants"],
+              properties: {
+                maxDistinctVariants: { type: "integer", minimum: 1, maximum: 2000 },
+                ignoreSelectors: { minItems: 1, maxItems: 32, uniqueItems: true }
+              }
+            },
+            paletteDiscipline: {
+              anyOf: expect.arrayContaining([
+                expect.objectContaining({ required: ["maxDistinctColors"] }),
+                expect.objectContaining({ required: ["maxChromaticHueFamilies"] })
+              ])
+            },
+            densityComplexity: {
+              anyOf: expect.arrayContaining([
+                expect.objectContaining({ required: ["maxVisibleElements"] }),
+                expect.objectContaining({ required: ["maxTextClusters"] })
+              ])
             }
           }
         }
       }
     });
+  });
+
+  it("accepts only the frozen closed visual-budget sections and exact safety bounds", () => {
+    const validSections = [
+      { typographyVariants: { maxDistinctVariants: 1 } },
+      { paletteDiscipline: { maxDistinctColors: 1 } },
+      { paletteDiscipline: { maxChromaticHueFamilies: 1 } },
+      { paletteDiscipline: { maxDistinctColors: 5_000, maxChromaticHueFamilies: 12 } },
+      { densityComplexity: { maxVisibleElements: 1 } },
+      { densityComplexity: { maxTextClusters: 1 } },
+      { densityComplexity: { maxVisibleElements: 10_000, maxTextClusters: 20_000 } }
+    ];
+    for (const audit of validSections) {
+      const guide = { ...createExampleDesignGuide(), audit };
+      expect(validateSchema("design-guide", guide)).toEqual({ valid: true, issues: [] });
+      expect(() => assertDesignGuideProfile(guide)).not.toThrow();
+    }
+
+    const maximum = createExampleDesignGuide();
+    maximum.audit = {
+      typographyVariants: {
+        maxDistinctVariants: 2_000,
+        ignoreSelectors: Array.from({ length: 32 }, (_, index) => `[data-type-${index}]`)
+      },
+      paletteDiscipline: {
+        maxDistinctColors: 5_000,
+        maxChromaticHueFamilies: 12,
+        ignoreSelectors: Array.from({ length: 32 }, (_, index) => `[data-paint-${index}]`)
+      },
+      densityComplexity: {
+        maxVisibleElements: 10_000,
+        maxTextClusters: 20_000,
+        ignoreSelectors: Array.from({ length: 32 }, (_, index) => `[data-density-${index}]`)
+      }
+    };
+    expect(validateSchema("design-guide", maximum)).toEqual({ valid: true, issues: [] });
+    expect(() => assertDesignGuideProfile(maximum)).not.toThrow();
+
+    const invalidBudgets: Array<[string, unknown, string]> = [
+      ["typographyVariants", {}, "$.audit.typographyVariants.maxDistinctVariants"],
+      [
+        "typographyVariants",
+        { ignoreSelectors: [".vendor"] },
+        "$.audit.typographyVariants.maxDistinctVariants"
+      ],
+      ["paletteDiscipline", {}, "$.audit.paletteDiscipline"],
+      ["paletteDiscipline", { ignoreSelectors: [".vendor"] }, "$.audit.paletteDiscipline"],
+      ["densityComplexity", {}, "$.audit.densityComplexity"],
+      ["densityComplexity", { ignoreSelectors: [".vendor"] }, "$.audit.densityComplexity"]
+    ];
+    for (const [section, value, path] of invalidBudgets) {
+      const guide = {
+        ...createExampleDesignGuide(),
+        audit: { [section]: value }
+      };
+      expect(validateSchema("design-guide", guide).valid).toBe(false);
+      expectProfileIssue(guide, path, "invalid-profile");
+    }
+
+    const invalidValues = [0, -1, 1.5, Number.NaN, Infinity, "1", true];
+    const budgetCases = [
+      ["typographyVariants", "maxDistinctVariants", 2_001],
+      ["paletteDiscipline", "maxDistinctColors", 5_001],
+      ["paletteDiscipline", "maxChromaticHueFamilies", 13],
+      ["densityComplexity", "maxVisibleElements", 10_001],
+      ["densityComplexity", "maxTextClusters", 20_001]
+    ] as const;
+    for (const [section, key, overBound] of budgetCases) {
+      for (const invalidValue of [...invalidValues, overBound]) {
+        const guide = {
+          ...createExampleDesignGuide(),
+          audit: { [section]: { [key]: invalidValue } }
+        };
+        expect(validateSchema("design-guide", guide).valid).toBe(false);
+        expectProfileIssue(guide, `$.audit.${section}.${key}`, "invalid-profile");
+      }
+    }
+
+    for (const [section, validBudget] of [
+      ["typographyVariants", { maxDistinctVariants: 8 }],
+      ["paletteDiscipline", { maxDistinctColors: 24 }],
+      ["densityComplexity", { maxVisibleElements: 120 }]
+    ] as const) {
+      const guide = {
+        ...createExampleDesignGuide(),
+        audit: { [section]: { ...validBudget, extra: true } }
+      };
+      expect(validateSchema("design-guide", guide).valid).toBe(false);
+      expectProfileIssue(guide, `$.audit.${section}.extra`, "invalid-profile");
+    }
+  });
+
+  it("applies the existing exact selector policy independently to every visual metric", () => {
+    const sections = [
+      ["typographyVariants", { maxDistinctVariants: 8 }],
+      ["paletteDiscipline", { maxDistinctColors: 24 }],
+      ["densityComplexity", { maxVisibleElements: 120 }]
+    ] as const;
+    const invalidSelectors: Array<[unknown, string]> = [
+      [[], "ignoreSelectors"],
+      [[".vendor", ".vendor"], "ignoreSelectors[1]"],
+      [[" x"], "ignoreSelectors[0]"],
+      [["x".repeat(257)], "ignoreSelectors[0]"],
+      [[".safe\nbody"], "ignoreSelectors[0]"],
+      [[".safe\u202ebody"], "ignoreSelectors[0]"],
+      [["\ud800"], "ignoreSelectors[0]"],
+      [Array.from({ length: 33 }, (_, index) => `.x-${index}`), "ignoreSelectors"]
+    ];
+
+    for (const [section, budget] of sections) {
+      const browserInvalid = {
+        ...createExampleDesignGuide(),
+        audit: { [section]: { ...budget, ignoreSelectors: ["["] } }
+      };
+      expect(() => assertDesignGuideProfile(browserInvalid)).not.toThrow();
+
+      for (const [ignoreSelectors, suffix] of invalidSelectors) {
+        const guide = {
+          ...createExampleDesignGuide(),
+          audit: { [section]: { ...budget, ignoreSelectors } }
+        };
+        expectProfileIssue(guide, `$.audit.${section}.${suffix}`, "invalid-profile");
+      }
+    }
+  });
+
+  it("projects frozen runtime policies and selector-free generation policies without absent keys", () => {
+    const noConfig = createExampleDesignGuide();
+    expect(projectVisualMetricsRuntimePolicies(noConfig)).toEqual({});
+    expect(projectVisualMetricsGenerationPolicies(noConfig)).toEqual({});
+    expect(projectTypographyVariantBudgetPolicy(noConfig)).toBeUndefined();
+    expect(projectPaletteDisciplineBudgetPolicy(noConfig)).toBeUndefined();
+    expect(projectDensityComplexityBudgetPolicy(noConfig)).toBeUndefined();
+
+    const guide = createExampleDesignGuide();
+    guide.audit = {
+      fontFamily: { ignoreSelectors: [".font-vendor"] },
+      color: { ignoreSelectors: [".paint-vendor"] },
+      spacing: { ignoreSelectors: [".spacing-vendor"] },
+      typographyVariants: {
+        maxDistinctVariants: 8,
+        ignoreSelectors: [".type-vendor"]
+      },
+      paletteDiscipline: {
+        maxDistinctColors: 24,
+        maxChromaticHueFamilies: 4,
+        ignoreSelectors: [".palette-vendor"]
+      },
+      densityComplexity: {
+        maxVisibleElements: 120,
+        maxTextClusters: 48,
+        ignoreSelectors: [".density-vendor"]
+      }
+    };
+
+    const runtime = projectVisualMetricsRuntimePolicies(guide);
+    expect(runtime).toEqual({
+      typographyVariants: {
+        maxDistinctVariants: 8,
+        ignoreSelectors: [".type-vendor"],
+        policyId: "typography-variant-budget-v1",
+        methodId: "rendered-typography-variants-v1"
+      },
+      paletteDiscipline: {
+        maxDistinctColors: 24,
+        maxChromaticHueFamilies: 4,
+        ignoreSelectors: [".palette-vendor"],
+        policyId: "palette-discipline-budget-v1",
+        methodId: "rendered-rgba8-oklch-cover30-v1"
+      },
+      densityComplexity: {
+        maxVisibleElements: 120,
+        maxTextClusters: 48,
+        ignoreSelectors: [".density-vendor"],
+        policyId: "density-complexity-budget-v1",
+        methodId: "viewport-dom-density-v1",
+        visibleElementMethodId: "visible-content-elements-v1",
+        textClusterMethodId: "text-flow-connectivity-v1"
+      }
+    });
+    expect(projectTypographyVariantBudgetPolicy(guide)).toEqual(runtime.typographyVariants);
+    expect(projectPaletteDisciplineBudgetPolicy(guide)).toEqual(runtime.paletteDiscipline);
+    expect(projectDensityComplexityBudgetPolicy(guide)).toEqual(runtime.densityComplexity);
+
+    const generation = projectVisualMetricsGenerationPolicies(guide);
+    expect(generation).toEqual({
+      typographyVariants: {
+        maxDistinctVariants: 8,
+        policyId: "typography-variant-budget-v1",
+        methodId: "rendered-typography-variants-v1"
+      },
+      paletteDiscipline: {
+        maxDistinctColors: 24,
+        maxChromaticHueFamilies: 4,
+        policyId: "palette-discipline-budget-v1",
+        methodId: "rendered-rgba8-oklch-cover30-v1"
+      },
+      densityComplexity: {
+        maxVisibleElements: 120,
+        maxTextClusters: 48,
+        policyId: "density-complexity-budget-v1",
+        methodId: "viewport-dom-density-v1",
+        visibleElementMethodId: "visible-content-elements-v1",
+        textClusterMethodId: "text-flow-connectivity-v1"
+      }
+    });
+    expect(JSON.stringify(generation)).not.toMatch(
+      /ignoreSelectors|font-vendor|paint-vendor|spacing-vendor|type-vendor|palette-vendor|density-vendor/u
+    );
   });
 
   it("accepts the optional closed audit overlay and enforces its semantic bounds", () => {

@@ -16,10 +16,12 @@ import {
   COPY_REGISTERS,
   COPY_SURFACES,
   CRITERIA,
+  CRITERION_SOURCES,
   DEFAULT_JOSA_HEDGE_POLICY,
   findingMetadataForCheck,
   getCriterion,
   getCriterionForCheck,
+  getSource,
   GLOSSARY_MATCH_MODES,
   GLOSSARY_TIERS,
   JOSA_HEDGE_POLICIES,
@@ -591,6 +593,69 @@ describe("criteria registry", () => {
       confidence: "high",
       humanReviewRecommended: false
     });
+  });
+
+  it("locks the three visual-budget criteria to research-emerging heuristic risks", () => {
+    const expected = [
+      {
+        criterionId: "typography.variant-count.budget",
+        checkName: "typography-variant-count-budget",
+        category: "visual-polish",
+        sourceRefs: ["ivory-sinha-hearst-2001"]
+      },
+      {
+        criterionId: "color.palette.count-discipline",
+        checkName: "palette-count-discipline",
+        category: "visual-polish",
+        sourceRefs: ["ivory-sinha-hearst-2001", "odonovan-et-al-2011"]
+      },
+      {
+        criterionId: "layout.density.complexity-budget",
+        checkName: "density-complexity-budget",
+        category: "layout",
+        sourceRefs: ["reinecke-et-al-2013", "miniukovich-marchese-2020"]
+      }
+    ] as const;
+
+    expect(CRITERIA.filter((criterion) => (
+      expected.some(({ criterionId }) => criterion.id === criterionId)
+    ))).toHaveLength(3);
+    for (const entry of expected) {
+      expect(getCriterion(entry.criterionId)).toMatchObject({
+        category: entry.category,
+        sourceRefs: entry.sourceRefs,
+        sourceStrength: "research-emerging",
+        determinism: "heuristic",
+        resultKind: "risk",
+        confidenceDefault: "low",
+        runtime: "computed-style",
+        checkNames: [entry.checkName]
+      });
+      expect(findingMetadataForCheck(entry.checkName)).toEqual({
+        criterionId: entry.criterionId,
+        sourceRefs: entry.sourceRefs,
+        determinism: "heuristic",
+        resultKind: "risk",
+        runtime: "computed-style",
+        confidence: "low",
+        humanReviewRecommended: true
+      });
+    }
+
+    for (const sourceId of [
+      "ivory-sinha-hearst-2001",
+      "odonovan-et-al-2011",
+      "reinecke-et-al-2013",
+      "miniukovich-marchese-2020"
+    ]) {
+      expect(getSource(sourceId)).toMatchObject({ id: sourceId, strength: "research-emerging" });
+    }
+    expect(CRITERION_SOURCES.filter((source) => (
+      source.id === "ivory-sinha-hearst-2001"
+      || source.id === "odonovan-et-al-2011"
+      || source.id === "reinecke-et-al-2013"
+      || source.id === "miniukovich-marchese-2020"
+    ))).toHaveLength(4);
   });
 
   it("locks the parser-free copy criteria metadata", () => {

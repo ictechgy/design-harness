@@ -170,6 +170,26 @@ describe("criteria policy matrix", () => {
     ], CRITERION_SOURCES).valid).toBe(false);
   });
 
+  it("keeps visual-budget criteria at the research-emerging heuristic-risk ceiling", () => {
+    for (const criterionId of [
+      "typography.variant-count.budget",
+      "color.palette.count-discipline",
+      "layout.density.complexity-budget"
+    ]) {
+      const criterion = getCriterion(criterionId);
+      expect(criterion).toMatchObject({
+        sourceStrength: "research-emerging",
+        determinism: "heuristic",
+        resultKind: "risk",
+        runtime: "computed-style",
+        confidenceDefault: "low"
+      });
+      expect(validateCriteriaPolicy([
+        { ...criterion!, resultKind: "failure" }
+      ], CRITERION_SOURCES).valid).toBe(false);
+    }
+  });
+
   it("rejects heuristic and subjective failures at the criterion level", () => {
     const heuristic = makeCriterion({ determinism: "heuristic", resultKind: "failure" });
     expect(validateCriteriaPolicy([heuristic], SOURCES).valid).toBe(false);

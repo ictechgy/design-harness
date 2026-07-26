@@ -141,6 +141,73 @@ describe("materializeGuideTargets", () => {
       .rejects.toMatchObject({ phase: "concurrent-change", path: "AGENTS.md" });
   });
 
+  it("migrates the exact recognized-prior token tuple through the ordinary transaction", async () => {
+    const fixture = await transactionFixture();
+    await seedOwnedTargets(fixture.target, priorTokenJson("b"));
+    const plans = await plansFor(fixture);
+    const tokenPlan = plans.find((plan) => plan.name === "design.tokens.json")!;
+
+    expect(tokenPlan.status).toBe("changed");
+    const result = await materializeGuideTargets(plans, undefined, {
+      transactionId: () => "profile-migration"
+    });
+
+    expect(result.artifacts.find((artifact) => artifact.name === "design.tokens.json"))
+      .toEqual({ name: "design.tokens.json", status: "changed" });
+    expect(JSON.parse(await readFile(join(fixture.target, "design.tokens.json"), "utf8"))
+      .$extensions["dev.design-harness"]).toMatchObject({
+        profile: "design-guide-v0.5a-2",
+        catalogVersion: "2026-07-18",
+        sourceHash: "a".repeat(64)
+      });
+    expect(await privateTransactionEntries(fixture.target)).toEqual([]);
+  });
+
+  it("restores recognized-prior tokens when a migration commit rolls back", async () => {
+    const fixture = await transactionFixture();
+    const originals = await seedOwnedTargets(fixture.target, priorTokenJson("b"));
+    const plans = await plansFor(fixture);
+
+    await expect(materializeGuideTargets(plans, undefined, {
+      transactionId: () => "profile-migration-rollback",
+      revalidateInputs: async () => {
+        const ownership = JSON.parse(
+          await readFile(join(fixture.target, "design.tokens.json"), "utf8")
+        ).$extensions["dev.design-harness"];
+        if (ownership.profile === DESIGN_GUIDE_PROFILE_ID) {
+          throw new GuideOperationError(
+            "concurrent-change",
+            "--guide",
+            "injected failure after token migration"
+          );
+        }
+      }
+    })).rejects.toSatisfy((error: unknown) => error instanceof GuideOperationError
+      && error.phase === "concurrent-change"
+      && error.message.includes("injected failure after token migration"));
+
+    await expectTargets(fixture.target, originals);
+    expect(await privateTransactionEntries(fixture.target)).toEqual([]);
+  });
+
+  it("preserves a concurrent edit to recognized-prior tokens before migration", async () => {
+    const fixture = await transactionFixture();
+    await seedOwnedTargets(fixture.target, priorTokenJson("b"));
+    const plans = await plansFor(fixture);
+    const concurrent = `${priorTokenJson("c")}\n`;
+    await writeFile(join(fixture.target, "design.tokens.json"), concurrent);
+
+    await expect(materializeGuideTargets(plans, undefined, {
+      transactionId: () => "profile-migration-race"
+    })).rejects.toMatchObject({
+      phase: "concurrent-change",
+      path: "design.tokens.json"
+    });
+
+    expect(await readFile(join(fixture.target, "design.tokens.json"), "utf8")).toBe(concurrent);
+    expect(await privateTransactionEntries(fixture.target)).toEqual([]);
+  });
+
   it("restores byte-for-byte originals after a late conditional-link failure", async () => {
     const fixture = await transactionFixture();
     const originals = await seedOwnedTargets(fixture.target);
@@ -503,12 +570,15 @@ async function plansFor(fixture: { cwd: string; target: string }) {
   return planGuideTargets({ paths, markdown: "# Stable guide\n- rule", designTokensJson: tokenJson("a") });
 }
 
-async function seedOwnedTargets(target: string): Promise<Record<string, string>> {
+async function seedOwnedTargets(
+  target: string,
+  designTokensJson: string = tokenJson("b")
+): Promise<Record<string, string>> {
   const originals: Record<string, string> = {
     "AGENTS.md": "owner agent notes\n",
     "CLAUDE.md": "@AGENTS.md\nowner Claude notes\n",
     "DESIGN.md": "owner design notes\n",
-    "design.tokens.json": tokenJson("b")
+    "design.tokens.json": designTokensJson
   };
   await Promise.all(Object.entries(originals).map(([name, content]) => writeFile(join(target, name), content)));
   return originals;
@@ -534,13 +604,29 @@ async function privateTransactionEntries(target: string): Promise<string[]> {
 }
 
 function tokenJson(hashCharacter: string): string {
+  return tokenJsonWithOwnership(
+    DESIGN_GUIDE_PROFILE_ID,
+    GUIDE_CATALOG_VERSION,
+    hashCharacter.repeat(64)
+  );
+}
+
+function priorTokenJson(hashCharacter: string): string {
+  return tokenJsonWithOwnership(
+    "design-guide-v0.5a-1",
+    "2026-07-18",
+    hashCharacter.repeat(64)
+  );
+}
+
+function tokenJsonWithOwnership(profile: string, catalogVersion: string, sourceHash: string): string {
   return `${JSON.stringify({
     color: {},
     $extensions: {
       "dev.design-harness": {
-        profile: DESIGN_GUIDE_PROFILE_ID,
-        catalogVersion: GUIDE_CATALOG_VERSION,
-        sourceHash: hashCharacter.repeat(64)
+        profile,
+        catalogVersion,
+        sourceHash
       }
     }
   }, null, 2)}\n`;

@@ -112,6 +112,34 @@ export const CRITERION_SOURCES: CriterionSource[] = [
     url: "https://doi.org/10.1006/ijhc.2001.0458",
     strength: "research-emerging",
     note: "Measured Latin reading bands: ~55 characters per line reads best; ~95 reads faster at a comprehension cost. CJK comfortable measure is shorter (~40-45 characters)."
+  },
+  {
+    id: "ivory-sinha-hearst-2001",
+    title: "Ivory, Sinha & Hearst: Empirically Validated Web Page Design Metrics",
+    url: "https://flamenco.berkeley.edu/papers/chi2001.pdf",
+    strength: "research-emerging",
+    note: "Directional evidence for page-level color and font counts; it does not establish universal project budgets."
+  },
+  {
+    id: "odonovan-et-al-2011",
+    title: "O'Donovan, Agarwala & Hertzmann: Color Compatibility From Large Datasets",
+    url: "https://www.dgp.toronto.edu/~donovan/color/colorcomp.pdf",
+    strength: "research-emerging",
+    note: "Directional color-theme evidence only; it does not validate hue harmony templates or a universal interface budget."
+  },
+  {
+    id: "reinecke-et-al-2013",
+    title: "Reinecke et al.: Predicting Users' First Impressions of Website Aesthetics With a Quantification of Perceived Visual Complexity and Colorfulness",
+    url: "https://kgajos.seas.harvard.edu/papers/reinecke13aesthetics.pdf",
+    strength: "research-emerging",
+    note: "Directional evidence connecting perceived visual complexity with first-impression ratings; not a universal DOM budget."
+  },
+  {
+    id: "miniukovich-marchese-2020",
+    title: "Miniukovich & Marchese: Relationship Between Visual Complexity and Aesthetics of Webpages",
+    url: "https://doi.org/10.1145/3313831.3376602",
+    strength: "research-emerging",
+    note: "Supports conservative high-side complexity review after accounting for confounds; not a universal DOM budget."
   }
 ];
 
@@ -199,6 +227,48 @@ export const CRITERIA: Criterion[] = [
     runtime: "computed-style",
     checkNames: ["off-scale-spacing"],
     remediationHint: "Use the declared spacing values or reserve a narrow audit.spacing.ignoreSelectors selector exception for third-party content."
+  },
+  {
+    id: "typography.variant-count.budget",
+    category: "visual-polish",
+    title: "Rendered typography variants stay within the project budget",
+    description: "Distinct rendered computed family-stack, size, weight, and style combinations should stay within the explicit project budget.",
+    sourceRefs: ["ivory-sinha-hearst-2001"],
+    sourceStrength: "research-emerging",
+    determinism: "heuristic",
+    resultKind: "risk",
+    confidenceDefault: "low",
+    runtime: "computed-style",
+    checkNames: ["typography-variant-count-budget"],
+    remediationHint: "Consolidate rendered typography variants or revise the explicit project budget when the additional variants are intentional."
+  },
+  {
+    id: "color.palette.count-discipline",
+    category: "visual-polish",
+    title: "Rendered palette counts stay within project budgets",
+    description: "Distinct rendered RGBA8 colors and chromatic hue-proximity groups should stay within the explicitly configured project budgets.",
+    sourceRefs: ["ivory-sinha-hearst-2001", "odonovan-et-al-2011"],
+    sourceStrength: "research-emerging",
+    determinism: "heuristic",
+    resultKind: "risk",
+    confidenceDefault: "low",
+    runtime: "computed-style",
+    checkNames: ["palette-count-discipline"],
+    remediationHint: "Consolidate rendered paint colors or revise the explicit project budgets when the additional colors are intentional."
+  },
+  {
+    id: "layout.density.complexity-budget",
+    category: "layout",
+    title: "Viewport density stays within project budgets",
+    description: "Visible-content element and text-flow cluster counts should stay within the explicitly configured high-side project budgets.",
+    sourceRefs: ["reinecke-et-al-2013", "miniukovich-marchese-2020"],
+    sourceStrength: "research-emerging",
+    determinism: "heuristic",
+    resultKind: "risk",
+    confidenceDefault: "low",
+    runtime: "computed-style",
+    checkNames: ["density-complexity-budget"],
+    remediationHint: "Reduce simultaneous viewport complexity or revise the explicit project budgets when the additional content is intentional."
   },
   {
     id: "a11y.text-contrast.minimum",

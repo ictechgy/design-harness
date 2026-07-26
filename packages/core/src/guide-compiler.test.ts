@@ -7,8 +7,10 @@ import {
   DESIGN_GUIDE_PROFILE_ID,
   estimateGuideTokens,
   GUIDE_CATALOG_VERSION,
+  GUIDE_TOKEN_HARD_CEILING,
   GUIDE_TOKEN_ESTIMATE_METHOD,
   GuideCompileError,
+  projectVisualMetricsGenerationPolicies,
   SchemaValidationError,
   type CopyStyle
 } from "./index.js";
@@ -18,6 +20,7 @@ describe("pure guide compiler", () => {
     for (const copyStyle of [undefined, createExampleCopyStyle()]) {
       const result = compileDesignGuide(createExampleDesignGuide(), copyStyle);
       expect(result.profileId).toBe(DESIGN_GUIDE_PROFILE_ID);
+      expect(result.profileId).toBe("design-guide-v0.5a-2");
       expect(result.catalogVersion).toBe(GUIDE_CATALOG_VERSION);
       expect(result.sourceHash).toMatch(/^[a-f0-9]{64}$/u);
       expect(result.tokenEstimate).toEqual({
@@ -39,6 +42,173 @@ describe("pure guide compiler", () => {
     }
   });
 
+  it("emits no visual-budget rule without configuration and one exact rule per configured metric", () => {
+    const noConfig = compileDesignGuide(createExampleDesignGuide());
+    expect(noConfig.rules.map((rule) => rule.id)).not.toEqual(expect.arrayContaining([
+      "typography.variant-count.budget",
+      "color.palette.count-discipline",
+      "layout.density.complexity-budget"
+    ]));
+    expect(noConfig.markdown).not.toMatch(
+      /rendered-typography-variants-v1|rendered-rgba8-oklch-cover30-v1|viewport-dom-density-v1|harmony|clear lightness contrast|alignment instruction/iu
+    );
+
+    const cases = [
+      {
+        section: "typographyVariants",
+        audit: { typographyVariants: { maxDistinctVariants: 8 } },
+        criterionId: "typography.variant-count.budget",
+        methodId: "rendered-typography-variants-v1",
+        configuredLimits: ["8"]
+      },
+      {
+        section: "paletteDiscipline",
+        audit: { paletteDiscipline: { maxDistinctColors: 24 } },
+        criterionId: "color.palette.count-discipline",
+        methodId: "rendered-rgba8-oklch-cover30-v1",
+        configuredLimits: ["24"]
+      },
+      {
+        section: "paletteDiscipline",
+        audit: { paletteDiscipline: { maxChromaticHueFamilies: 4 } },
+        criterionId: "color.palette.count-discipline",
+        methodId: "rendered-rgba8-oklch-cover30-v1",
+        configuredLimits: ["4"]
+      },
+      {
+        section: "paletteDiscipline",
+        audit: { paletteDiscipline: { maxDistinctColors: 24, maxChromaticHueFamilies: 4 } },
+        criterionId: "color.palette.count-discipline",
+        methodId: "rendered-rgba8-oklch-cover30-v1",
+        configuredLimits: ["24", "4"]
+      },
+      {
+        section: "densityComplexity",
+        audit: { densityComplexity: { maxVisibleElements: 120 } },
+        criterionId: "layout.density.complexity-budget",
+        methodId: "viewport-dom-density-v1",
+        configuredLimits: ["120"]
+      },
+      {
+        section: "densityComplexity",
+        audit: { densityComplexity: { maxTextClusters: 48 } },
+        criterionId: "layout.density.complexity-budget",
+        methodId: "viewport-dom-density-v1",
+        configuredLimits: ["48"]
+      },
+      {
+        section: "densityComplexity",
+        audit: { densityComplexity: { maxVisibleElements: 120, maxTextClusters: 48 } },
+        criterionId: "layout.density.complexity-budget",
+        methodId: "viewport-dom-density-v1",
+        configuredLimits: ["120", "48"]
+      }
+    ] as const;
+
+    for (const testCase of cases) {
+      const guide = createExampleDesignGuide();
+      guide.audit = structuredClone(testCase.audit);
+      const projection = projectVisualMetricsGenerationPolicies(guide);
+      const result = compileDesignGuide(guide);
+      const rules = result.rules.filter((rule) => rule.id === testCase.criterionId);
+      expect(rules).toHaveLength(1);
+      const rule = rules[0]!;
+      expect(rule.goodExample).toContain(testCase.methodId);
+      for (const configuredLimit of testCase.configuredLimits) {
+        expect(rule.goodExample).toContain(configuredLimit);
+      }
+      expect(JSON.parse(rule.subject.slice("visual-metric:".length))).toEqual({
+        [testCase.section]: projection[testCase.section]
+      });
+      expect(`${rule.description} ${rule.badExample} ${rule.goodExample}`).not.toMatch(
+        /universally|harmony|clear lightness contrast|alignment/iu
+      );
+    }
+  });
+
+  it("hashes visual budgets and frozen IDs while excluding every selector-only overlay", () => {
+    const guide = createExampleDesignGuide();
+    guide.audit = {
+      typographyVariants: { maxDistinctVariants: 8 },
+      paletteDiscipline: { maxDistinctColors: 24, maxChromaticHueFamilies: 4 },
+      densityComplexity: { maxVisibleElements: 120, maxTextClusters: 48 }
+    };
+    const compiled = compileDesignGuide(guide);
+    const projection = projectVisualMetricsGenerationPolicies(guide);
+    expect(compiled.rules.filter((rule) => (
+      [
+        "typography.variant-count.budget",
+        "color.palette.count-discipline",
+        "layout.density.complexity-budget"
+      ].includes(rule.id)
+    ))).toHaveLength(3);
+    expect(compiled.markdown).toContain("rendered-typography-variants-v1");
+    expect(compiled.markdown).toContain("rendered-rgba8-oklch-cover30-v1");
+    expect(compiled.markdown).toContain("viewport-dom-density-v1");
+    expect(JSON.stringify(projection)).toContain("typography-variant-budget-v1");
+    expect(JSON.stringify(projection)).toContain("palette-discipline-budget-v1");
+    expect(JSON.stringify(projection)).toContain("density-complexity-budget-v1");
+
+    const selectorsChanged = structuredClone(guide);
+    selectorsChanged.audit!.fontFamily = { ignoreSelectors: [".font-vendor"] };
+    selectorsChanged.audit!.color = { ignoreSelectors: [".paint-vendor"] };
+    selectorsChanged.audit!.spacing = { ignoreSelectors: [".spacing-vendor"] };
+    selectorsChanged.audit!.typographyVariants!.ignoreSelectors = [".type-vendor"];
+    selectorsChanged.audit!.paletteDiscipline!.ignoreSelectors = [".palette-vendor"];
+    selectorsChanged.audit!.densityComplexity!.ignoreSelectors = [".density-vendor"];
+    expect(compileDesignGuide(selectorsChanged)).toEqual(compiled);
+
+    const changedBudgets = [
+      ["typographyVariants", "maxDistinctVariants", 9],
+      ["paletteDiscipline", "maxDistinctColors", 25],
+      ["paletteDiscipline", "maxChromaticHueFamilies", 5],
+      ["densityComplexity", "maxVisibleElements", 121],
+      ["densityComplexity", "maxTextClusters", 49]
+    ] as const;
+    for (const [section, budget, value] of changedBudgets) {
+      const changed = structuredClone(guide) as unknown as {
+        audit: Record<string, Record<string, number>>;
+      };
+      changed.audit[section]![budget] = value;
+      const changedResult = compileDesignGuide(changed as unknown as ReturnType<typeof createExampleDesignGuide>);
+      expect(changedResult.sourceHash).not.toBe(compiled.sourceHash);
+      expect(changedResult.rules.find((rule) => rule.id === (
+        section === "typographyVariants"
+          ? "typography.variant-count.budget"
+          : section === "paletteDiscipline"
+            ? "color.palette.count-discipline"
+            : "layout.density.complexity-budget"
+      ))?.subject).not.toBe(compiled.rules.find((rule) => rule.id === (
+        section === "typographyVariants"
+          ? "typography.variant-count.budget"
+          : section === "paletteDiscipline"
+            ? "color.palette.count-discipline"
+            : "layout.density.complexity-budget"
+      ))?.subject);
+    }
+  });
+
+  it("keeps the maximum visual-budget configuration and full copy fixture under the hard ceiling", () => {
+    const guide = createExampleDesignGuide();
+    guide.audit = {
+      typographyVariants: { maxDistinctVariants: 2_000 },
+      paletteDiscipline: {
+        maxDistinctColors: 5_000,
+        maxChromaticHueFamilies: 12
+      },
+      densityComplexity: {
+        maxVisibleElements: 10_000,
+        maxTextClusters: 20_000
+      }
+    };
+    const result = compileDesignGuide(guide, createExampleCopyStyle());
+    expect(result.tokenEstimate).toEqual({
+      method: GUIDE_TOKEN_ESTIMATE_METHOD,
+      estimated: 1_988
+    });
+    expect(result.tokenEstimate.estimated).toBeLessThanOrEqual(GUIDE_TOKEN_HARD_CEILING);
+  });
+
   it("is byte deterministic across repeats, key insertion order, and NFC-equivalent signatures", () => {
     const guide = createExampleDesignGuide();
     guide.signatureElement = "Caf\u0065\u0301 status rail";
@@ -57,7 +227,7 @@ describe("pure guide compiler", () => {
     const base = createExampleDesignGuide();
     const compiledBase = compileDesignGuide(base);
     expect(compiledBase.sourceHash).toBe(
-      "e775c105733d39aa086f2e5aa9bc189bb4ba2850cc163e0762f4b86b14893243"
+      "a124481de20b16ed03e917741a8e738d823b32be8b7356f2c7d439d14ba1f127"
     );
 
     const selectorOnly = structuredClone(base);
@@ -124,7 +294,7 @@ describe("pure guide compiler", () => {
     const copyStyle = createExampleCopyStyle();
     const compiledWithCopy = compileDesignGuide(base, copyStyle);
     expect(compiledWithCopy.sourceHash).toBe(
-      "4652280f8dbbb982e13d450cbc1d3659e24ed73c02caa1387491343b21917ef9"
+      "db8a0236bf85a680e1295289fae094efa730eef547026ed29b9541fdab4ad862"
     );
     for (const overlay of overlays) {
       expect(compileDesignGuide(overlay, copyStyle)).toEqual(compiledWithCopy);
@@ -159,7 +329,7 @@ describe("pure guide compiler", () => {
 
     // Hexing the guide is presentation only: it must not move the source hash.
     expect(compileDesignGuide(createExampleDesignGuide()).sourceHash).toBe(
-      "e775c105733d39aa086f2e5aa9bc189bb4ba2850cc163e0762f4b86b14893243"
+      "a124481de20b16ed03e917741a8e738d823b32be8b7356f2c7d439d14ba1f127"
     );
   });
 
@@ -195,7 +365,7 @@ describe("pure guide compiler", () => {
     expect(result.designTokensJson).toContain('"unit"');
     expect(result.designTokensJson).toContain('"px"');
     expect(compileDesignGuide(createExampleDesignGuide()).sourceHash).toBe(
-      "e775c105733d39aa086f2e5aa9bc189bb4ba2850cc163e0762f4b86b14893243"
+      "a124481de20b16ed03e917741a8e738d823b32be8b7356f2c7d439d14ba1f127"
     );
   });
 
