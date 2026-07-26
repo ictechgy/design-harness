@@ -499,9 +499,9 @@ configured:
 2. Apply the visibility, viewport, overflow clipping, and unsupported
    clip/mask rules from section 6.2 to its `Range.getClientRects()`.
 3. Qualify the owner as soon as one positive clipped fragment is found.
-4. If no fragment qualifies, classify the owner as ineligible. If every
-   potentially qualifying fragment is unsupported, classify it as skipped and
-   make the visible-element component a lower bound.
+4. If no fragment qualifies and at least one direct-text fragment was
+   unsupported, classify the owner as skipped and make the visible-element
+   component a lower bound. Otherwise classify it as ineligible.
 
 This test does not build flow roots, retain cluster fragments, or run pairwise
 edges. The full text-cluster traversal remains conditional on
