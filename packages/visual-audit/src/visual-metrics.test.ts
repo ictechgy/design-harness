@@ -149,6 +149,13 @@ describe("analyzeTypographyVariants", () => {
     for (const counts of [
       { ...validCounts, collectedElementCount: 0 },
       { ...validCounts, candidateElementCount: 2 },
+      {
+        candidateElementCount: 2_001,
+        collectedElementCount: 0,
+        ignoredElementCount: 2_001,
+        skippedElementCount: 0,
+        skippedByReason: {}
+      },
       { ...validCounts, skippedElementCount: 1 },
       {
         ...validCounts,
@@ -280,6 +287,17 @@ describe("analyzePaletteDiscipline", () => {
       candidates,
       palettePolicy(),
       { ...counts, candidateSlotCount: 3 }
+    )).toEqual({ ok: false, error: { code: "evidence-count-mismatch" } });
+    expect(analyzePaletteDiscipline(
+      [],
+      palettePolicy(),
+      {
+        candidateSlotCount: 5_001,
+        collectedSlotCount: 0,
+        ignoredSlotCount: 5_001,
+        skippedSlotCount: 0,
+        skippedByReason: {}
+      }
     )).toEqual({ ok: false, error: { code: "evidence-count-mismatch" } });
   });
 });
@@ -520,6 +538,22 @@ describe("analyzeDensityComplexity", () => {
     });
 
     expect(analyzeDensityComplexity({
+      visibleElements: {
+        elementUniverseCount: 10_001,
+        visibleElementCount: 0,
+        ignoredElementCount: 10_001,
+        ineligibleElementCount: 0,
+        skippedElementCount: 0,
+        skippedByReason: {},
+        samples: [],
+        omittedSampleCount: 0
+      }
+    }, densityPolicy({ text: false }))).toEqual({
+      ok: false,
+      error: { code: "evidence-count-mismatch", component: "visible-elements" }
+    });
+
+    expect(analyzeDensityComplexity({
       textClusters: {
         textNodeUniverseCount: 1,
         ignoredTextNodeCount: 0,
@@ -535,17 +569,33 @@ describe("analyzeDensityComplexity", () => {
       error: { code: "invalid-candidate", component: "text-clusters" }
     });
 
+    expect(analyzeDensityComplexity({
+      textClusters: {
+        textNodeUniverseCount: 20_001,
+        ignoredTextNodeCount: 20_001,
+        ineligibleTextNodeCount: 0,
+        skippedTextNodeCount: 0,
+        evaluatedTextNodeCount: 0,
+        skippedByReason: {},
+        textFragmentCount: 0,
+        fragments: []
+      }
+    }, densityPolicy({ visible: false }))).toEqual({
+      ok: false,
+      error: { code: "evidence-count-mismatch", component: "text-clusters" }
+    });
+
     const overCap = Array.from(
       { length: 20_001 },
       (_, index) => fragment(`root-${index}`, `#f-${index}`, index * 2, 0, index * 2 + 1, 1)
     );
     expect(analyzeDensityComplexity({
       textClusters: {
-        textNodeUniverseCount: overCap.length,
+        textNodeUniverseCount: 20_000,
         ignoredTextNodeCount: 0,
         ineligibleTextNodeCount: 0,
         skippedTextNodeCount: 0,
-        evaluatedTextNodeCount: overCap.length,
+        evaluatedTextNodeCount: 20_000,
         skippedByReason: {},
         textFragmentCount: overCap.length,
         fragments: overCap

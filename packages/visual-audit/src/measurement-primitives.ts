@@ -86,6 +86,8 @@ export interface ContrastRiskResult {
 /* -------------------------------------------------------------------------------------------------- */
 
 export const MAX_COMPUTED_FONT_FAMILY_SCALARS = 1_024;
+export const MAX_TYPOGRAPHY_VARIANT_CANDIDATES = 2_000;
+export const MAX_PALETTE_DISCIPLINE_SLOTS = 5_000;
 export const TYPOGRAPHY_SIZE_MILLIPX_SCALE = 1_000;
 export const TYPOGRAPHY_WEIGHT_MILLI_SCALE = 1_000;
 export const TYPOGRAPHY_STYLE_MICRODEGREE_SCALE = 1_000_000;

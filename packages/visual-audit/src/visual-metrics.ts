@@ -26,7 +26,11 @@ import type {
 import {
   DensityClusterError,
   MAX_EVIDENCE_SAMPLES,
+  MAX_DOM_ELEMENTS,
+  MAX_PALETTE_DISCIPLINE_SLOTS,
   MAX_TEXT_FRAGMENTS,
+  MAX_TEXT_NODES,
+  MAX_TYPOGRAPHY_VARIANT_CANDIDATES,
   TypographyTupleNormalizationError,
   countDensityTextClusters,
   hueFamilyCoverFromRgba8,
@@ -230,6 +234,7 @@ export function analyzeTypographyVariants(
   }
   if (
     !validCount(counts.candidateElementCount)
+    || counts.candidateElementCount > MAX_TYPOGRAPHY_VARIANT_CANDIDATES
     || !validCount(counts.collectedElementCount)
     || !validCount(counts.ignoredElementCount)
     || !validCount(counts.skippedElementCount)
@@ -356,6 +361,7 @@ export function analyzePaletteDiscipline(
   }
   if (
     !validCount(counts.candidateSlotCount)
+    || counts.candidateSlotCount > MAX_PALETTE_DISCIPLINE_SLOTS
     || !validCount(counts.collectedSlotCount)
     || !validCount(counts.ignoredSlotCount)
     || !validCount(counts.skippedSlotCount)
@@ -558,6 +564,7 @@ function analyzeDensityVisibleElements(
 ): DensityComponentResult<DensityVisibleElementSummary> {
   if (
     !validCount(collection.elementUniverseCount)
+    || collection.elementUniverseCount > MAX_DOM_ELEMENTS
     || !validCount(collection.visibleElementCount)
     || !validCount(collection.ignoredElementCount)
     || !validCount(collection.ineligibleElementCount)
@@ -625,6 +632,7 @@ function analyzeDensityTextClusters(
 ): DensityComponentResult<DensityTextClusterSummary> {
   if (
     !validCount(collection.textNodeUniverseCount)
+    || collection.textNodeUniverseCount > MAX_TEXT_NODES
     || !validCount(collection.ignoredTextNodeCount)
     || !validCount(collection.ineligibleTextNodeCount)
     || !validCount(collection.skippedTextNodeCount)
