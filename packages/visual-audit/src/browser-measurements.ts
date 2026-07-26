@@ -38,14 +38,22 @@ export interface ViewportCollectionResult {
   spacingAdherenceCollection?: SpacingAdherenceCollectionCounts;
   spacingAdherenceRootFontSizePx?: number;
   spacingAdherenceError?: SpacingAdherenceMeasurementError;
+  typographyVariantCandidates?: TypographyVariantCandidate[];
+  typographyVariantCollection?: TypographyVariantCollectionCounts;
+  typographyVariantError?: TypographyVariantMeasurementError;
+  paletteDisciplineCandidates?: PaletteDisciplineCandidate[];
+  paletteDisciplineCollection?: PaletteDisciplineCollectionCounts;
+  paletteDisciplineError?: PaletteDisciplineMeasurementError;
+  densityComplexityCollection?: DensityComplexityCollection;
+  densityComplexityError?: DensityComplexityMeasurementError;
 }
 
 /**
  * What the page hands back: measurements with contrast left unscored.
  *
  * The closure is serialised to source text and evaluated in the page, so it cannot call imported helpers.
- * It therefore collects raw colour values and `collectViewportMeasurements` scores them in Node, where the
- * arithmetic is unit-testable.
+ * It therefore collects raw colour/style/geometry evidence and
+ * `collectViewportMeasurements` scores or forwards it in Node, where the arithmetic is unit-testable.
  */
 interface RawViewportCollectionResult extends ViewportCollectionResult {
   contrastCandidates: ContrastCandidate[];
@@ -62,6 +70,17 @@ export interface ViewportMeasurementConfig {
   };
   spacing?: {
     ignoreSelectors: string[];
+  };
+  typographyVariants?: {
+    ignoreSelectors: string[];
+  };
+  paletteDiscipline?: {
+    ignoreSelectors: string[];
+  };
+  densityComplexity?: {
+    ignoreSelectors: string[];
+    collectVisibleElements: boolean;
+    collectTextClusters: boolean;
   };
 }
 
@@ -100,6 +119,151 @@ export interface SpacingAdherenceMeasurementError {
   limit?: number;
 }
 
+export interface VisualMetricRegion {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+export interface TypographyVariantCandidate {
+  selector: string;
+  region: VisualMetricRegion;
+  fontFamily: string;
+  fontSize: string;
+  fontWeight: string;
+  fontStyle: string;
+}
+
+export type TypographyVariantSkipReason = "font-family-too-long";
+
+export interface TypographyVariantCollectionCounts {
+  candidateElementCount: number;
+  collectedElementCount: number;
+  ignoredElementCount: number;
+  skippedElementCount: number;
+  skippedByReason: Partial<Record<TypographyVariantSkipReason, number>>;
+}
+
+export interface TypographyVariantMeasurementError {
+  code:
+    | "invalid-selector"
+    | "selector-evaluation"
+    | "candidate-limit"
+    | "computed-style"
+    | "accounting-invariant"
+    | "collection-exception";
+  selectorIndex?: number;
+  elementIndex?: number;
+  candidateCount?: number;
+  limit?: number;
+}
+
+export interface PaletteDisciplineCandidate {
+  selector: string;
+  region: VisualMetricRegion;
+  property: ColorPaintProperty;
+  value: string;
+}
+
+export type PaletteDisciplineSkipReason = "computed-color-too-long";
+
+export interface PaletteDisciplineCollectionCounts {
+  candidateSlotCount: number;
+  collectedSlotCount: number;
+  ignoredSlotCount: number;
+  skippedSlotCount: number;
+  skippedByReason: Partial<Record<PaletteDisciplineSkipReason, number>>;
+}
+
+export interface PaletteDisciplineMeasurementError {
+  code:
+    | "invalid-selector"
+    | "selector-evaluation"
+    | "candidate-limit"
+    | "computed-color"
+    | "accounting-invariant"
+    | "collection-exception";
+  selectorIndex?: number;
+  elementIndex?: number;
+  candidateCount?: number;
+  limit?: number;
+}
+
+export type DensityComplexitySkipReason = "unsupported-clip-or-mask";
+
+export interface DensityVisibleElementSample {
+  selector: string;
+  region: VisualMetricRegion;
+}
+
+export interface DensityVisibleElementCollection {
+  elementUniverseCount: number;
+  visibleElementCount: number;
+  ignoredElementCount: number;
+  ineligibleElementCount: number;
+  skippedElementCount: number;
+  skippedByReason: Partial<Record<DensityComplexitySkipReason, number>>;
+  samples: DensityVisibleElementSample[];
+  omittedSampleCount: number;
+}
+
+export interface DensityTextFragment {
+  rootId: string;
+  selector: string;
+  left: number;
+  top: number;
+  right: number;
+  bottom: number;
+}
+
+export interface DensityTextClusterCollection {
+  textNodeUniverseCount: number;
+  ignoredTextNodeCount: number;
+  ineligibleTextNodeCount: number;
+  skippedTextNodeCount: number;
+  evaluatedTextNodeCount: number;
+  skippedByReason: Partial<Record<DensityComplexitySkipReason, number>>;
+  textFragmentCount: number;
+  fragments: DensityTextFragment[];
+}
+
+export interface DensityComplexityCollection {
+  visibleElements?: DensityVisibleElementCollection;
+  textClusters?: DensityTextClusterCollection;
+}
+
+export interface DensityComplexityMeasurementError {
+  code:
+    | "invalid-selector"
+    | "selector-evaluation"
+    | "dom-limit"
+    | "text-node-limit"
+    | "fragment-limit"
+    | "accounting-invariant"
+    | "collection-exception";
+  selectorIndex?: number;
+  elementIndex?: number;
+  textNodeIndex?: number;
+  candidateCount?: number;
+  limit?: number;
+}
+
+interface DensityClippedRect {
+  left: number;
+  top: number;
+  right: number;
+  bottom: number;
+}
+
+type DensityVisibilityAssessment =
+  | { kind: "visible"; rects: DensityClippedRect[] }
+  | { kind: "ineligible" }
+  | {
+      kind: "skipped";
+      reason: DensityComplexitySkipReason;
+    };
+
 export async function collectViewportMeasurements(page: {
   evaluate: <T>(pageFunction: ((arg?: unknown) => T | Promise<T>), arg?: unknown) => Promise<T>;
 }, config?: ViewportMeasurementConfig): Promise<ViewportCollectionResult> {
@@ -111,6 +275,14 @@ export async function collectViewportMeasurements(page: {
     const MAX_COMPUTED_COLOR_LENGTH = 256;
     const MAX_SPACING_ADHERENCE_SLOTS = 25_000;
     const MAX_COMPUTED_SPACING_LENGTH = 256;
+    const MAX_TYPOGRAPHY_VARIANT_CANDIDATES = 2_000;
+    const MAX_COMPUTED_TYPOGRAPHY_FAMILY_LENGTH = 1_024;
+    const MAX_PALETTE_DISCIPLINE_SLOTS = 5_000;
+    const MAX_COMPUTED_PALETTE_COLOR_LENGTH = 256;
+    const MAX_DENSITY_DOM_ELEMENTS = 10_000;
+    const MAX_DENSITY_TEXT_NODES = 20_000;
+    const MAX_DENSITY_TEXT_FRAGMENTS = 20_000;
+    const MAX_DENSITY_EVIDENCE_SAMPLES = 10;
     const MAX_BROWSER_FINDING_SAMPLES = 10;
     const FINDING_MATERIALIZATION_LIMIT = 5;
     const measurementConfig = rawConfig && typeof rawConfig === "object"
@@ -132,6 +304,29 @@ export async function collectViewportMeasurements(page: {
       measurementConfig?.spacing?.ignoreSelectors
     )
       ? measurementConfig.spacing.ignoreSelectors
+      : [];
+    const typographyVariantsEnabled = measurementConfig?.typographyVariants !== undefined;
+    const typographyVariantIgnoreSelectors = Array.isArray(
+      measurementConfig?.typographyVariants?.ignoreSelectors
+    )
+      ? measurementConfig.typographyVariants.ignoreSelectors
+      : [];
+    const paletteDisciplineEnabled = measurementConfig?.paletteDiscipline !== undefined;
+    const paletteDisciplineIgnoreSelectors = Array.isArray(
+      measurementConfig?.paletteDiscipline?.ignoreSelectors
+    )
+      ? measurementConfig.paletteDiscipline.ignoreSelectors
+      : [];
+    const densityCollectVisibleElements =
+      measurementConfig?.densityComplexity?.collectVisibleElements === true;
+    const densityCollectTextClusters =
+      measurementConfig?.densityComplexity?.collectTextClusters === true;
+    const densityComplexityEnabled =
+      densityCollectVisibleElements || densityCollectTextClusters;
+    const densityComplexityIgnoreSelectors = Array.isArray(
+      measurementConfig?.densityComplexity?.ignoreSelectors
+    )
+      ? measurementConfig.densityComplexity.ignoreSelectors
       : [];
     const notices: AuditNotice[] = [];
     const unusableMatcherKeys = new Set<string>();
@@ -230,11 +425,17 @@ export async function collectViewportMeasurements(page: {
     let ignoredFontFamilyElementCount = 0;
     let colorAdherenceError: ColorAdherenceMeasurementError | undefined;
     let spacingAdherenceError: SpacingAdherenceMeasurementError | undefined;
+    let typographyVariantError: TypographyVariantMeasurementError | undefined;
+    let paletteDisciplineError: PaletteDisciplineMeasurementError | undefined;
+    let densityComplexityError: DensityComplexityMeasurementError | undefined;
 
     prepareSurfaceMatchers();
     prepareFontFamilySelectors();
     prepareColorAdherenceSelectors();
     prepareSpacingAdherenceSelectors();
+    prepareTypographyVariantSelectors();
+    preparePaletteDisciplineSelectors();
+    prepareDensityComplexitySelectors();
 
     const textElements = Array.from(document.body.querySelectorAll<HTMLElement>("body *"))
       .filter((element) => {
@@ -360,6 +561,18 @@ export async function collectViewportMeasurements(page: {
     const textInventory = collectTextInventory();
     const colorAdherenceCollectionResult = collectColorAdherenceCandidates();
     const spacingAdherenceCollectionResult = collectSpacingAdherenceCandidates();
+    const typographyVariantCollectionResult = typographyVariantsEnabled
+      && typographyVariantError === undefined
+      ? collectTypographyVariantCandidates()
+      : undefined;
+    const paletteDisciplineCollectionResult = paletteDisciplineEnabled
+      && paletteDisciplineError === undefined
+      ? collectPaletteDisciplineCandidates()
+      : undefined;
+    const densityComplexityCollectionResult = densityComplexityEnabled
+      && densityComplexityError === undefined
+      ? collectDensityComplexity()
+      : undefined;
     const textLength = document.body.innerText.trim().length;
     const likelyBlank = textLength === 0 && textElements.length === 0;
     const emittedHeadingIssues = likelyBlank
@@ -522,7 +735,31 @@ export async function collectViewportMeasurements(page: {
         spacingAdherenceCollection: spacingAdherenceCollectionResult.counts,
         spacingAdherenceRootFontSizePx: spacingAdherenceCollectionResult.rootFontSizePx
       } : {}),
-      ...(spacingAdherenceError ? { spacingAdherenceError } : {})
+      ...(spacingAdherenceError ? { spacingAdherenceError } : {}),
+      ...(typographyVariantsEnabled
+        && typographyVariantError === undefined
+        && typographyVariantCollectionResult
+        ? {
+            typographyVariantCandidates: typographyVariantCollectionResult.candidates,
+            typographyVariantCollection: typographyVariantCollectionResult.counts
+          }
+        : {}),
+      ...(typographyVariantError ? { typographyVariantError } : {}),
+      ...(paletteDisciplineEnabled
+        && paletteDisciplineError === undefined
+        && paletteDisciplineCollectionResult
+        ? {
+            paletteDisciplineCandidates: paletteDisciplineCollectionResult.candidates,
+            paletteDisciplineCollection: paletteDisciplineCollectionResult.counts
+          }
+        : {}),
+      ...(paletteDisciplineError ? { paletteDisciplineError } : {}),
+      ...(densityComplexityEnabled
+        && densityComplexityError === undefined
+        && densityComplexityCollectionResult
+        ? { densityComplexityCollection: densityComplexityCollectionResult }
+        : {}),
+      ...(densityComplexityError ? { densityComplexityError } : {})
     };
 
     function materializedSampleCount(samples: unknown[]): number {
@@ -606,6 +843,19 @@ export async function collectViewportMeasurements(page: {
           y: Math.round(rect.y),
           width: Math.round(rect.width),
           height: Math.round(rect.height)
+        }
+      };
+    }
+
+    function visualMetricLocationFor(element: Element) {
+      const rect = element.getBoundingClientRect();
+      return {
+        selector: selectorFor(element),
+        region: {
+          x: rect.x,
+          y: rect.y,
+          width: rect.width,
+          height: rect.height
         }
       };
     }
@@ -813,6 +1063,266 @@ export async function collectViewportMeasurements(page: {
         candidates,
         counts: {
           candidateSlotCount,
+          ignoredSlotCount,
+          skippedSlotCount,
+          skippedByReason
+        }
+      };
+    }
+
+    function collectTypographyVariantCandidates(): {
+      candidates: TypographyVariantCandidate[];
+      counts: TypographyVariantCollectionCounts;
+    } {
+      const candidates: TypographyVariantCandidate[] = [];
+      let candidateElementCount = 0;
+      let ignoredElementCount = 0;
+      let skippedElementCount = 0;
+      const skippedByReason: Partial<Record<TypographyVariantSkipReason, number>> = {};
+      const emptyResult = () => ({
+        candidates: [] as TypographyVariantCandidate[],
+        counts: {
+          candidateElementCount: 0,
+          collectedElementCount: 0,
+          ignoredElementCount: 0,
+          skippedElementCount: 0,
+          skippedByReason: {} as Partial<Record<TypographyVariantSkipReason, number>>
+        }
+      });
+
+      try {
+        const elements = [
+          document.body,
+          ...Array.from(document.body.querySelectorAll("*"))
+        ];
+        for (const [elementIndex, element] of elements.entries()) {
+          if (!(element instanceof HTMLElement) || !rendersOwnText(element)) {
+            continue;
+          }
+
+          let visibleInViewport = false;
+          try {
+            visibleInViewport = isAdherenceElementVisibleInViewport(element);
+          } catch {
+            typographyVariantError = { code: "computed-style", elementIndex };
+            return emptyResult();
+          }
+          if (!visibleInViewport) {
+            continue;
+          }
+
+          candidateElementCount += 1;
+          if (candidateElementCount > MAX_TYPOGRAPHY_VARIANT_CANDIDATES) {
+            typographyVariantError = {
+              code: "candidate-limit",
+              candidateCount: candidateElementCount,
+              limit: MAX_TYPOGRAPHY_VARIANT_CANDIDATES
+            };
+            return emptyResult();
+          }
+
+          let ignored = false;
+          try {
+            ignored = typographyVariantIgnoreSelectors.some(
+              (selector) => element.closest(selector) !== null
+            );
+          } catch {
+            typographyVariantError = { code: "selector-evaluation", elementIndex };
+            return emptyResult();
+          }
+          if (ignored) {
+            ignoredElementCount += 1;
+            continue;
+          }
+
+          let style: CSSStyleDeclaration;
+          let location: ReturnType<typeof visualMetricLocationFor>;
+          try {
+            style = window.getComputedStyle(element);
+            location = visualMetricLocationFor(element);
+          } catch {
+            typographyVariantError = { code: "computed-style", elementIndex };
+            return emptyResult();
+          }
+
+          if ([...style.fontFamily].length > MAX_COMPUTED_TYPOGRAPHY_FAMILY_LENGTH) {
+            skippedElementCount += 1;
+            skippedByReason["font-family-too-long"] =
+              (skippedByReason["font-family-too-long"] ?? 0) + 1;
+            continue;
+          }
+
+          candidates.push({
+            selector: location.selector,
+            region: location.region,
+            fontFamily: style.fontFamily,
+            fontSize: style.fontSize,
+            fontWeight: style.fontWeight,
+            fontStyle: style.fontStyle
+          });
+        }
+      } catch {
+        typographyVariantError ??= { code: "collection-exception" };
+        return emptyResult();
+      }
+
+      if (
+        candidateElementCount
+        !== candidates.length + ignoredElementCount + skippedElementCount
+        || sumOptionalCounts(skippedByReason) !== skippedElementCount
+      ) {
+        typographyVariantError = { code: "accounting-invariant" };
+        return emptyResult();
+      }
+
+      return {
+        candidates,
+        counts: {
+          candidateElementCount,
+          collectedElementCount: candidates.length,
+          ignoredElementCount,
+          skippedElementCount,
+          skippedByReason
+        }
+      };
+    }
+
+    function collectPaletteDisciplineCandidates(): {
+      candidates: PaletteDisciplineCandidate[];
+      counts: PaletteDisciplineCollectionCounts;
+    } {
+      const candidates: PaletteDisciplineCandidate[] = [];
+      let candidateSlotCount = 0;
+      let ignoredSlotCount = 0;
+      let skippedSlotCount = 0;
+      const skippedByReason: Partial<Record<PaletteDisciplineSkipReason, number>> = {};
+      const emptyResult = () => ({
+        candidates: [] as PaletteDisciplineCandidate[],
+        counts: {
+          candidateSlotCount: 0,
+          collectedSlotCount: 0,
+          ignoredSlotCount: 0,
+          skippedSlotCount: 0,
+          skippedByReason: {} as Partial<Record<PaletteDisciplineSkipReason, number>>
+        }
+      });
+
+      try {
+        const elements = [
+          document.documentElement,
+          document.body,
+          ...Array.from(document.body.querySelectorAll("*"))
+        ];
+        for (const [elementIndex, element] of elements.entries()) {
+          if (!(element instanceof HTMLElement)) {
+            continue;
+          }
+
+          let visibleInViewport = false;
+          try {
+            visibleInViewport = isAdherenceElementVisibleInViewport(element);
+          } catch {
+            paletteDisciplineError = { code: "computed-color", elementIndex };
+            return emptyResult();
+          }
+          if (!visibleInViewport) {
+            continue;
+          }
+
+          let ignored = false;
+          try {
+            ignored = paletteDisciplineIgnoreSelectors.some(
+              (selector) => element.closest(selector) !== null
+            );
+          } catch {
+            paletteDisciplineError = { code: "selector-evaluation", elementIndex };
+            return emptyResult();
+          }
+
+          let location: ReturnType<typeof visualMetricLocationFor>;
+          let slots: Array<{ property: ColorPaintProperty; value: string }>;
+          try {
+            const style = window.getComputedStyle(element);
+            location = visualMetricLocationFor(element);
+            slots = [];
+            if (rendersOwnText(element)) {
+              slots.push({
+                property: "color",
+                value: style.webkitTextFillColor || style.color
+              });
+            }
+            if (style.backgroundImage === "none") {
+              slots.push({ property: "background-color", value: style.backgroundColor });
+            }
+            if (style.borderImageSource === "none") {
+              for (const border of [
+                ["border-top-color", style.borderTopColor, style.borderTopWidth, style.borderTopStyle],
+                ["border-right-color", style.borderRightColor, style.borderRightWidth, style.borderRightStyle],
+                ["border-bottom-color", style.borderBottomColor, style.borderBottomWidth, style.borderBottomStyle],
+                ["border-left-color", style.borderLeftColor, style.borderLeftWidth, style.borderLeftStyle]
+              ] as const) {
+                if (
+                  Number.parseFloat(border[2]) > 0
+                  && border[3] !== "none"
+                  && border[3] !== "hidden"
+                ) {
+                  slots.push({ property: border[0], value: border[1] });
+                }
+              }
+            }
+          } catch {
+            paletteDisciplineError = { code: "computed-color", elementIndex };
+            return emptyResult();
+          }
+
+          if (candidateSlotCount + slots.length > MAX_PALETTE_DISCIPLINE_SLOTS) {
+            paletteDisciplineError = {
+              code: "candidate-limit",
+              candidateCount: candidateSlotCount + slots.length,
+              limit: MAX_PALETTE_DISCIPLINE_SLOTS
+            };
+            return emptyResult();
+          }
+          candidateSlotCount += slots.length;
+          if (ignored) {
+            ignoredSlotCount += slots.length;
+            continue;
+          }
+
+          for (const slot of slots) {
+            if ([...slot.value].length > MAX_COMPUTED_PALETTE_COLOR_LENGTH) {
+              skippedSlotCount += 1;
+              skippedByReason["computed-color-too-long"] =
+                (skippedByReason["computed-color-too-long"] ?? 0) + 1;
+              continue;
+            }
+            candidates.push({
+              selector: location.selector,
+              region: location.region,
+              property: slot.property,
+              value: slot.value
+            });
+          }
+        }
+      } catch {
+        paletteDisciplineError ??= { code: "collection-exception" };
+        return emptyResult();
+      }
+
+      if (
+        candidateSlotCount
+        !== candidates.length + ignoredSlotCount + skippedSlotCount
+        || sumOptionalCounts(skippedByReason) !== skippedSlotCount
+      ) {
+        paletteDisciplineError = { code: "accounting-invariant" };
+        return emptyResult();
+      }
+
+      return {
+        candidates,
+        counts: {
+          candidateSlotCount,
+          collectedSlotCount: candidates.length,
           ignoredSlotCount,
           skippedSlotCount,
           skippedByReason
@@ -1030,6 +1540,694 @@ export async function collectViewportMeasurements(page: {
       }
     }
 
+    function collectDensityComplexity(): DensityComplexityCollection {
+      const emptyResult = (): DensityComplexityCollection => ({});
+
+      try {
+        const elements = collectDensityDomElements();
+        if (densityComplexityError) {
+          return emptyResult();
+        }
+
+        const observedTextNodes = new WeakSet<Node>();
+        let observedTextNodeCount = 0;
+        const observeTextNode = (
+          node: Node,
+          location: { elementIndex?: number; textNodeIndex?: number }
+        ): boolean => {
+          if (observedTextNodes.has(node)) {
+            return true;
+          }
+          observedTextNodes.add(node);
+          observedTextNodeCount += 1;
+          if (observedTextNodeCount <= MAX_DENSITY_TEXT_NODES) {
+            return true;
+          }
+          densityComplexityError = {
+            code: "text-node-limit",
+            ...location,
+            candidateCount: observedTextNodeCount,
+            limit: MAX_DENSITY_TEXT_NODES
+          };
+          return false;
+        };
+
+        const visibleElements = densityCollectVisibleElements
+          ? collectDensityVisibleElements(elements, observeTextNode)
+          : undefined;
+        if (densityComplexityError) {
+          return emptyResult();
+        }
+
+        const textClusters = densityCollectTextClusters
+          ? collectDensityTextFragments(observeTextNode)
+          : undefined;
+        if (densityComplexityError) {
+          return emptyResult();
+        }
+
+        return {
+          ...(visibleElements ? { visibleElements } : {}),
+          ...(textClusters ? { textClusters } : {})
+        };
+      } catch {
+        densityComplexityError ??= { code: "collection-exception" };
+        return emptyResult();
+      }
+    }
+
+    function collectDensityDomElements(): Element[] {
+      const elements: Element[] = [];
+      const walker = document.createTreeWalker(document.body, 1);
+      let current: Node | null = document.body;
+      while (current) {
+        if (current.nodeType === 1) {
+          elements.push(current as Element);
+          if (elements.length > MAX_DENSITY_DOM_ELEMENTS) {
+            densityComplexityError = {
+              code: "dom-limit",
+              candidateCount: elements.length,
+              limit: MAX_DENSITY_DOM_ELEMENTS
+            };
+            return [];
+          }
+        }
+        current = walker.nextNode();
+      }
+      return elements;
+    }
+
+    function collectDensityVisibleElements(
+      elements: Element[],
+      observeTextNode: (
+        node: Node,
+        location: { elementIndex?: number; textNodeIndex?: number }
+      ) => boolean
+    ): DensityVisibleElementCollection {
+      let elementUniverseCount = 0;
+      let visibleElementCount = 0;
+      let ignoredElementCount = 0;
+      let ineligibleElementCount = 0;
+      let skippedElementCount = 0;
+      let retainedFragmentCount = 0;
+      const skippedByReason:
+        Partial<Record<DensityComplexitySkipReason, number>> = {};
+      const samples: DensityVisibleElementSample[] = [];
+      const insideEligibleAtomicOwner = new WeakSet<Element>();
+
+      for (const [elementIndex, element] of elements.entries()) {
+        const parent = element.parentElement;
+        if (parent && insideEligibleAtomicOwner.has(parent)) {
+          insideEligibleAtomicOwner.add(element);
+          continue;
+        }
+
+        const atomicOwner = isDensityAtomicElement(element);
+        const directTextOwner = !atomicOwner && densityHasDirectTextNode(element);
+        if (!atomicOwner && !directTextOwner) {
+          continue;
+        }
+
+        elementUniverseCount += 1;
+        let ignored = false;
+        try {
+          ignored = densityComplexityIgnoreSelectors.some(
+            (selector) => element.closest(selector) !== null
+          );
+        } catch {
+          densityComplexityError = { code: "selector-evaluation", elementIndex };
+          return emptyDensityVisibleElementCollection();
+        }
+        if (ignored) {
+          ignoredElementCount += 1;
+          continue;
+        }
+        if (densityElementIsInExcludedSubtree(element)) {
+          ineligibleElementCount += 1;
+          continue;
+        }
+
+        let assessment: DensityVisibilityAssessment;
+        if (atomicOwner) {
+          assessment = assessDensityElementVisibility(element);
+        } else {
+          assessment = { kind: "ineligible" };
+          let sawUnsupportedFragment = false;
+          for (const textNode of element.childNodes) {
+            if (
+              textNode.nodeType !== 3
+              || (textNode.textContent ?? "").trim() === ""
+            ) {
+              continue;
+            }
+            if (!observeTextNode(textNode, { elementIndex })) {
+              return emptyDensityVisibleElementCollection();
+            }
+            const fragmentAssessment = assessDensityTextVisibility(textNode);
+            if (fragmentAssessment.kind === "visible") {
+              retainedFragmentCount += fragmentAssessment.rects.length;
+            }
+            if (retainedFragmentCount > MAX_DENSITY_TEXT_FRAGMENTS) {
+              densityComplexityError = {
+                code: "fragment-limit",
+                elementIndex,
+                candidateCount: retainedFragmentCount,
+                limit: MAX_DENSITY_TEXT_FRAGMENTS
+              };
+              return emptyDensityVisibleElementCollection();
+            }
+            if (fragmentAssessment.kind === "visible") {
+              assessment = fragmentAssessment;
+              break;
+            }
+            if (fragmentAssessment.kind === "skipped") {
+              sawUnsupportedFragment = true;
+            }
+          }
+          if (assessment.kind !== "visible" && sawUnsupportedFragment) {
+            assessment = {
+              kind: "skipped",
+              reason: "unsupported-clip-or-mask"
+            };
+          }
+        }
+
+        if (assessment.kind === "ineligible") {
+          ineligibleElementCount += 1;
+          continue;
+        }
+        if (assessment.kind === "skipped") {
+          skippedElementCount += 1;
+          incrementDensitySkip(skippedByReason, assessment.reason);
+          continue;
+        }
+
+        visibleElementCount += 1;
+        if (atomicOwner) {
+          // Collapse descendants only after the outer atomic candidate itself proved eligible in the
+          // current viewport. A matching display:contents, zero-box, clipped, or off-viewport ancestor
+          // does not suppress a visible inner control.
+          insideEligibleAtomicOwner.add(element);
+        }
+        if (samples.length < MAX_DENSITY_EVIDENCE_SAMPLES) {
+          samples.push({
+            selector: selectorFor(element),
+            region: densityRegionFromRect(assessment.rects[0])
+          });
+        }
+      }
+
+      if (
+        elementUniverseCount
+        !== ignoredElementCount
+          + ineligibleElementCount
+          + skippedElementCount
+          + visibleElementCount
+        || sumOptionalCounts(skippedByReason) !== skippedElementCount
+      ) {
+        densityComplexityError = { code: "accounting-invariant" };
+        return emptyDensityVisibleElementCollection();
+      }
+
+      return {
+        elementUniverseCount,
+        visibleElementCount,
+        ignoredElementCount,
+        ineligibleElementCount,
+        skippedElementCount,
+        skippedByReason,
+        samples,
+        omittedSampleCount: visibleElementCount - samples.length
+      };
+    }
+
+    function emptyDensityVisibleElementCollection(): DensityVisibleElementCollection {
+      return {
+        elementUniverseCount: 0,
+        visibleElementCount: 0,
+        ignoredElementCount: 0,
+        ineligibleElementCount: 0,
+        skippedElementCount: 0,
+        skippedByReason: {},
+        samples: [],
+        omittedSampleCount: 0
+      };
+    }
+
+    function collectDensityTextFragments(
+      observeTextNode: (
+        node: Node,
+        location: { elementIndex?: number; textNodeIndex?: number }
+      ) => boolean
+    ): DensityTextClusterCollection {
+      let textNodeUniverseCount = 0;
+      let ignoredTextNodeCount = 0;
+      let ineligibleTextNodeCount = 0;
+      let skippedTextNodeCount = 0;
+      let evaluatedTextNodeCount = 0;
+      const skippedByReason:
+        Partial<Record<DensityComplexitySkipReason, number>> = {};
+      const fragments: DensityTextFragment[] = [];
+      const flowRootIds = new Map<Element, string>();
+      const walker = document.createTreeWalker(document.body, 4);
+      let current = walker.nextNode();
+
+      while (current) {
+        const textNodeIndex = textNodeUniverseCount;
+        textNodeUniverseCount += 1;
+        if (!observeTextNode(current, { textNodeIndex })) {
+          return emptyDensityTextClusterCollection();
+        }
+
+        const parent = current.parentElement;
+        if (!parent) {
+          ineligibleTextNodeCount += 1;
+          current = walker.nextNode();
+          continue;
+        }
+
+        let ignored = false;
+        try {
+          ignored = densityComplexityIgnoreSelectors.some(
+            (selector) => parent.closest(selector) !== null
+          );
+        } catch {
+          densityComplexityError = { code: "selector-evaluation", textNodeIndex };
+          return emptyDensityTextClusterCollection();
+        }
+        if (ignored) {
+          ignoredTextNodeCount += 1;
+          current = walker.nextNode();
+          continue;
+        }
+        if (
+          (current.textContent ?? "").trim() === ""
+          || densityTextIsInExcludedSubtree(parent)
+        ) {
+          ineligibleTextNodeCount += 1;
+          current = walker.nextNode();
+          continue;
+        }
+
+        const assessment = assessDensityTextVisibility(current);
+        if (assessment.kind === "ineligible") {
+          ineligibleTextNodeCount += 1;
+          current = walker.nextNode();
+          continue;
+        }
+        if (assessment.kind === "skipped") {
+          skippedTextNodeCount += 1;
+          incrementDensitySkip(skippedByReason, assessment.reason);
+          current = walker.nextNode();
+          continue;
+        }
+
+        const flowRoot = densityFlowRootFor(parent);
+        let rootId = flowRootIds.get(flowRoot);
+        if (!rootId) {
+          rootId = `root-${flowRootIds.size + 1}`;
+          flowRootIds.set(flowRoot, rootId);
+        }
+        const selector = selectorFor(parent);
+        for (const rect of assessment.rects) {
+          if (fragments.length >= MAX_DENSITY_TEXT_FRAGMENTS) {
+            densityComplexityError = {
+              code: "fragment-limit",
+              textNodeIndex,
+              candidateCount: fragments.length + 1,
+              limit: MAX_DENSITY_TEXT_FRAGMENTS
+            };
+            return emptyDensityTextClusterCollection();
+          }
+          fragments.push({
+            rootId,
+            selector,
+            left: rect.left,
+            top: rect.top,
+            right: rect.right,
+            bottom: rect.bottom
+          });
+        }
+        evaluatedTextNodeCount += 1;
+        current = walker.nextNode();
+      }
+
+      if (
+        textNodeUniverseCount
+        !== ignoredTextNodeCount
+          + ineligibleTextNodeCount
+          + skippedTextNodeCount
+          + evaluatedTextNodeCount
+        || fragments.length < evaluatedTextNodeCount
+        || sumOptionalCounts(skippedByReason) !== skippedTextNodeCount
+      ) {
+        densityComplexityError = { code: "accounting-invariant" };
+        return emptyDensityTextClusterCollection();
+      }
+
+      return {
+        textNodeUniverseCount,
+        ignoredTextNodeCount,
+        ineligibleTextNodeCount,
+        skippedTextNodeCount,
+        evaluatedTextNodeCount,
+        skippedByReason,
+        textFragmentCount: fragments.length,
+        fragments
+      };
+    }
+
+    function emptyDensityTextClusterCollection(): DensityTextClusterCollection {
+      return {
+        textNodeUniverseCount: 0,
+        ignoredTextNodeCount: 0,
+        ineligibleTextNodeCount: 0,
+        skippedTextNodeCount: 0,
+        evaluatedTextNodeCount: 0,
+        skippedByReason: {},
+        textFragmentCount: 0,
+        fragments: []
+      };
+    }
+
+    function densityHasDirectTextNode(element: Element): boolean {
+      for (const node of element.childNodes) {
+        if (node.nodeType === 3 && (node.textContent ?? "").trim() !== "") {
+          return true;
+        }
+      }
+      return false;
+    }
+
+    function isDensityAtomicElement(element: Element): boolean {
+      const tag = element.tagName.toLowerCase();
+      if (
+        (tag === "a" && element.hasAttribute("href"))
+        || tag === "button"
+        || (
+          tag === "input"
+          && asciiLower(element.getAttribute("type") ?? "") !== "hidden"
+        )
+        || tag === "select"
+        || tag === "textarea"
+        || tag === "summary"
+        || (
+          element.hasAttribute("contenteditable")
+          && asciiLower(element.getAttribute("contenteditable") ?? "") !== "false"
+        )
+        || (
+          element.hasAttribute("tabindex")
+          && element.getAttribute("tabindex") !== "-1"
+        )
+      ) {
+        return true;
+      }
+
+      const role = asciiLower(element.getAttribute("role") ?? "").trim();
+      switch (role) {
+        case "button":
+        case "link":
+        case "checkbox":
+        case "radio":
+        case "switch":
+        case "tab":
+        case "menuitem":
+        case "menuitemcheckbox":
+        case "menuitemradio":
+        case "option":
+        case "slider":
+        case "spinbutton":
+        case "searchbox":
+        case "textbox":
+        case "combobox":
+        case "listbox":
+        case "treeitem":
+          return true;
+      }
+
+      return tag === "img"
+        || tag === "svg"
+        || tag === "canvas"
+        || tag === "video"
+        || (tag === "audio" && element.hasAttribute("controls"))
+        || tag === "iframe"
+        || tag === "object"
+        || tag === "embed"
+        || tag === "meter"
+        || tag === "progress";
+    }
+
+    function densityElementIsInExcludedSubtree(element: Element): boolean {
+      let current: Element | null = element;
+      while (current) {
+        const tag = current.tagName.toLowerCase();
+        if (
+          tag === "script"
+          || tag === "style"
+          || tag === "noscript"
+          || tag === "template"
+          || current.hasAttribute("hidden")
+          || current.hasAttribute("inert")
+          || asciiLower(current.getAttribute("aria-hidden") ?? "") === "true"
+          || (
+            current !== element
+            && (
+              tag === "svg"
+              || tag === "canvas"
+              || tag === "iframe"
+              || tag === "object"
+              || tag === "embed"
+            )
+          )
+        ) {
+          return true;
+        }
+        current = current.parentElement;
+      }
+      return false;
+    }
+
+    function densityTextIsInExcludedSubtree(parent: Element): boolean {
+      let current: Element | null = parent;
+      while (current) {
+        const tag = current.tagName.toLowerCase();
+        if (
+          tag === "script"
+          || tag === "style"
+          || tag === "noscript"
+          || tag === "template"
+          || tag === "svg"
+          || tag === "canvas"
+          || tag === "iframe"
+          || tag === "object"
+          || tag === "embed"
+          || current.hasAttribute("hidden")
+          || current.hasAttribute("inert")
+          || asciiLower(current.getAttribute("aria-hidden") ?? "") === "true"
+        ) {
+          return true;
+        }
+        current = current.parentElement;
+      }
+      return false;
+    }
+
+    function assessDensityElementVisibility(element: Element): DensityVisibilityAssessment {
+      if (!densityStyleIsVisible(element)) {
+        return { kind: "ineligible" };
+      }
+      const rects = Array.from(element.getClientRects());
+      return clipDensityRects(rects, element, element.parentElement);
+    }
+
+    function assessDensityTextVisibility(textNode: Node): DensityVisibilityAssessment {
+      const parent = textNode.parentElement;
+      if (!parent || !densityStyleIsVisible(parent)) {
+        return { kind: "ineligible" };
+      }
+      const range = document.createRange();
+      range.selectNodeContents(textNode);
+      const rects = Array.from(range.getClientRects());
+      return clipDensityRects(rects, parent, parent);
+    }
+
+    function densityStyleIsVisible(element: Element): boolean {
+      const style = window.getComputedStyle(element);
+      if (style.display === "none" || style.visibility !== "visible") {
+        return false;
+      }
+      let current: Element | null = element;
+      while (current) {
+        const computedOpacity = window.getComputedStyle(current).opacity.trim();
+        const opacity = Number(computedOpacity);
+        if (computedOpacity !== "" && Number.isFinite(opacity) && opacity === 0) {
+          return false;
+        }
+        current = current.parentElement;
+      }
+      return true;
+    }
+
+    function clipDensityRects(
+      rects: ArrayLike<DOMRect>,
+      unsupportedStart: Element,
+      clippingStart: Element | null
+    ): DensityVisibilityAssessment {
+      let hasViewportRect = false;
+      for (const rect of Array.from(rects)) {
+        if (
+          rect.width > 0
+          && rect.height > 0
+          && rect.right > 0
+          && rect.bottom > 0
+          && rect.left < window.innerWidth
+          && rect.top < window.innerHeight
+        ) {
+          hasViewportRect = true;
+          break;
+        }
+      }
+      if (!hasViewportRect) {
+        return { kind: "ineligible" };
+      }
+      if (densityHasUnsupportedClipOrMask(unsupportedStart)) {
+        return {
+          kind: "skipped",
+          reason: "unsupported-clip-or-mask"
+        };
+      }
+
+      const clippedRects: DensityClippedRect[] = [];
+      for (const rect of Array.from(rects)) {
+        let clipped: DensityClippedRect = {
+          left: Math.max(0, rect.left),
+          top: Math.max(0, rect.top),
+          right: Math.min(window.innerWidth, rect.right),
+          bottom: Math.min(window.innerHeight, rect.bottom)
+        };
+        if (clipped.right <= clipped.left || clipped.bottom <= clipped.top) {
+          continue;
+        }
+
+        let ancestor = clippingStart;
+        while (ancestor) {
+          const style = window.getComputedStyle(ancestor);
+          const clipsX = densityOverflowClips(style.overflowX);
+          const clipsY = densityOverflowClips(style.overflowY);
+          if (clipsX || clipsY) {
+            const clipBox = ancestor.getBoundingClientRect();
+            if (clipsX) {
+              clipped.left = Math.max(clipped.left, clipBox.left);
+              clipped.right = Math.min(clipped.right, clipBox.right);
+            }
+            if (clipsY) {
+              clipped.top = Math.max(clipped.top, clipBox.top);
+              clipped.bottom = Math.min(clipped.bottom, clipBox.bottom);
+            }
+            if (clipped.right <= clipped.left || clipped.bottom <= clipped.top) {
+              break;
+            }
+          }
+          ancestor = ancestor.parentElement;
+        }
+        if (clipped.right > clipped.left && clipped.bottom > clipped.top) {
+          clippedRects.push(clipped);
+        }
+      }
+
+      return clippedRects.length > 0
+        ? { kind: "visible", rects: clippedRects }
+        : { kind: "ineligible" };
+    }
+
+    function densityHasUnsupportedClipOrMask(element: Element): boolean {
+      let current: Element | null = element;
+      while (current) {
+        const style = window.getComputedStyle(current);
+        const values = style as unknown as Record<string, string | undefined>;
+        const clip = (values.clip ?? "auto").trim().toLowerCase();
+        const clipPath = (
+          values.clipPath
+          || values.webkitClipPath
+          || "none"
+        ).trim().toLowerCase();
+        if (
+          (clip !== "" && clip !== "auto")
+          || (clipPath !== "" && clipPath !== "none")
+          || cssListContainsNonNone(values.maskImage)
+          || cssListContainsNonNone(values.webkitMaskImage)
+          || cssListContainsNonNone(values.maskBorderSource)
+          || cssListContainsNonNone(values.webkitMaskBoxImageSource)
+        ) {
+          return true;
+        }
+        current = current.parentElement;
+      }
+      return false;
+    }
+
+    function cssListContainsNonNone(value: string | undefined): boolean {
+      if (!value) {
+        return false;
+      }
+      return value
+        .split(",")
+        .map((part) => part.trim().toLowerCase())
+        .some((part) => part !== "" && part !== "none" && !part.startsWith("none "));
+    }
+
+    function densityOverflowClips(value: string): boolean {
+      const normalized = value.trim().toLowerCase();
+      return normalized === "hidden"
+        || normalized === "clip"
+        || normalized === "auto"
+        || normalized === "scroll";
+    }
+
+    function densityFlowRootFor(element: Element): Element {
+      let current: Element | null = element;
+      while (current) {
+        const display = window.getComputedStyle(current).display;
+        if (
+          display !== "inline"
+          && display !== "contents"
+          && !display.startsWith("ruby")
+        ) {
+          return current;
+        }
+        if (current === document.body) {
+          break;
+        }
+        current = current.parentElement;
+      }
+      return document.body;
+    }
+
+    function densityRegionFromRect(rect: DensityClippedRect): VisualMetricRegion {
+      return {
+        x: Math.round(rect.left),
+        y: Math.round(rect.top),
+        width: Math.max(1, Math.round(rect.right - rect.left)),
+        height: Math.max(1, Math.round(rect.bottom - rect.top))
+      };
+    }
+
+    function incrementDensitySkip(
+      target: Partial<Record<DensityComplexitySkipReason, number>>,
+      reason: DensityComplexitySkipReason
+    ): void {
+      target[reason] = (target[reason] ?? 0) + 1;
+    }
+
+    function sumOptionalCounts(counts: Record<string, number | undefined>): number {
+      return Object.values(counts)
+        .reduce<number>((sum, count) => sum + (count ?? 0), 0);
+    }
+
+    function asciiLower(value: string): string {
+      return value.replace(/[A-Z]/g, (character) => character.toLowerCase());
+    }
+
     function classifyTypedSpacingEvidence(
       value: unknown,
       propertyKind: "margin" | "gap"
@@ -1118,6 +2316,48 @@ export async function collectViewportMeasurements(page: {
           document.documentElement.matches(selector);
         } catch {
           spacingAdherenceError = { code: "invalid-selector", selectorIndex };
+          return;
+        }
+      }
+    }
+
+    function prepareTypographyVariantSelectors(): void {
+      if (!typographyVariantsEnabled) {
+        return;
+      }
+      for (const [selectorIndex, selector] of typographyVariantIgnoreSelectors.entries()) {
+        try {
+          document.documentElement.matches(selector);
+        } catch {
+          typographyVariantError = { code: "invalid-selector", selectorIndex };
+          return;
+        }
+      }
+    }
+
+    function preparePaletteDisciplineSelectors(): void {
+      if (!paletteDisciplineEnabled) {
+        return;
+      }
+      for (const [selectorIndex, selector] of paletteDisciplineIgnoreSelectors.entries()) {
+        try {
+          document.documentElement.matches(selector);
+        } catch {
+          paletteDisciplineError = { code: "invalid-selector", selectorIndex };
+          return;
+        }
+      }
+    }
+
+    function prepareDensityComplexitySelectors(): void {
+      if (!densityComplexityEnabled) {
+        return;
+      }
+      for (const [selectorIndex, selector] of densityComplexityIgnoreSelectors.entries()) {
+        try {
+          document.documentElement.matches(selector);
+        } catch {
+          densityComplexityError = { code: "invalid-selector", selectorIndex };
           return;
         }
       }
