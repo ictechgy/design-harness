@@ -18,9 +18,10 @@ const copyFixture = resolve("examples/configs/copy-style.ko-example.yaml");
 
 try {
   await assertGoldenProject();
+  await assertRecognizedPriorMigration();
   await assertExistingClaudeImport();
   await assertOutsideTargetFailsClosed();
-  console.log("Guide smoke passed: compile/check, idempotence, drift, existing import, and containment verified.");
+  console.log("Guide smoke passed: compile/check, profile migration, idempotence, drift, existing import, and containment verified.");
 } finally {
   await rm(tempRoot, { recursive: true, force: true });
 }
@@ -79,6 +80,35 @@ async function assertExistingClaudeImport() {
   const result = await runGuide(target, "compile", [], false);
   assert(result.code === 0, `existing-import compile failed:\n${result.stderr}`);
   assert(await readFile(join(target, "CLAUDE.md"), "utf8") === original, "standalone Claude import changed");
+}
+
+async function assertRecognizedPriorMigration() {
+  const target = join(tempRoot, "recognized-prior");
+  await createProject(target);
+  const seed = await runGuide(target, "compile");
+  assert(seed.code === 0, `recognized-prior seed compile failed:\n${seed.stderr}`);
+
+  const tokenPath = join(target, "design.tokens.json");
+  const prior = JSON.parse(await readFile(tokenPath, "utf8"));
+  prior.$extensions["dev.design-harness"].profile = "design-guide-v0.5a-1";
+  prior.$extensions["dev.design-harness"].catalogVersion = "2026-07-18";
+  await writeFile(tokenPath, `${JSON.stringify(prior, null, 2)}\n`);
+
+  const ownedPaths = ["AGENTS.md", "CLAUDE.md", "DESIGN.md", "design.tokens.json"];
+  const beforeCheck = await snapshot(target, ownedPaths);
+  const check = await runGuide(target, "check");
+  assert(check.code === 1, `recognized-prior check exited ${check.code}, expected 1`);
+  const afterCheck = await snapshot(target, ownedPaths);
+  assertSnapshotsEqual(beforeCheck, afterCheck, "recognized-prior check performed a write");
+
+  const migration = await runGuide(target, "compile");
+  assert(migration.code === 0, `recognized-prior migration failed:\n${migration.stderr}`);
+  const migrated = JSON.parse(await readFile(tokenPath, "utf8"));
+  assert(
+    migrated.$extensions?.["dev.design-harness"]?.profile === "design-guide-v0.5a-2",
+    "recognized-prior token profile was not migrated"
+  );
+  assert(!(await exists(join(target, ".design-harness-guide.lock"))), "profile migration lock residue remained");
 }
 
 async function assertOutsideTargetFailsClosed() {

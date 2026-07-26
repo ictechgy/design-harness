@@ -1,4 +1,6 @@
+import { foldAsciiCase } from "@design-harness/core";
 import type { ContrastRiskSample, ElementSample } from "./checks.js";
+import { parseFontFamilyList } from "./font-family.js";
 
 /**
  * DOM-free measurement computations.
@@ -62,6 +64,561 @@ export interface ContrastRiskResult {
   /** Exact post-skip, below-threshold count before `MAX_CONTRAST_SAMPLES` is applied. */
   detectedCount: number;
   coverage: ContrastCoverage;
+}
+
+/* -------------------------------------------------------------------------------------------------- */
+/* Evidence-backed visual-metric primitives                                                              */
+/* -------------------------------------------------------------------------------------------------- */
+
+/* -------------------------------------------------------------------------------------------------- */
+/* Typography tuple normalization                                                                        */
+/* -------------------------------------------------------------------------------------------------- */
+
+export const MAX_COMPUTED_FONT_FAMILY_SCALARS = 1_024;
+export const MAX_TYPOGRAPHY_VARIANT_CANDIDATES = 2_000;
+export const MAX_PALETTE_DISCIPLINE_SLOTS = 5_000;
+export const TYPOGRAPHY_SIZE_MILLIPX_SCALE = 1_000;
+export const TYPOGRAPHY_WEIGHT_MILLI_SCALE = 1_000;
+export const TYPOGRAPHY_STYLE_MICRODEGREE_SCALE = 1_000_000;
+export const DEFAULT_OBLIQUE_DEGREES = 14;
+
+export interface TypographyTupleInput {
+  /** Raw computed `font-family` serialization. */
+  fontFamily: string;
+  /** Raw computed `font-size` serialization, including the `px` unit. */
+  fontSize: string;
+  /** Raw computed `font-weight` serialization. */
+  fontWeight: string;
+  /** Raw computed `font-style` serialization. */
+  fontStyle: string;
+}
+
+export type NormalizedTypographyStyle = "normal" | "italic" | `oblique:${number}`;
+
+export interface NormalizedTypographyTuple {
+  /** Ordered, duplicate-preserving `kind + U+0000 + ASCII-folded value` members. */
+  families: string[];
+  sizeMilliPx: number;
+  weightMilli: number;
+  style: NormalizedTypographyStyle;
+}
+
+export interface NormalizedTypographyTupleResult {
+  tuple: NormalizedTypographyTuple;
+  /** Canonical JSON identity with the contractually frozen property order. */
+  identity: string;
+}
+
+export type TypographyTupleNormalizationErrorCode =
+  | "font-family-too-long"
+  | "invalid-font-family"
+  | "invalid-font-size"
+  | "invalid-font-weight"
+  | "invalid-font-style";
+
+export class TypographyTupleNormalizationError extends Error {
+  constructor(public readonly code: TypographyTupleNormalizationErrorCode) {
+    super(`Could not normalize typography tuple: ${code}`);
+    this.name = "TypographyTupleNormalizationError";
+  }
+}
+
+const CSS_NUMBER_SOURCE = String.raw`[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:e[+-]?\d+)?`;
+const COMPUTED_FONT_SIZE_PATTERN = new RegExp(String.raw`^(${CSS_NUMBER_SOURCE})px$`, "i");
+const NUMERIC_FONT_WEIGHT_PATTERN = new RegExp(String.raw`^(${CSS_NUMBER_SOURCE})$`, "i");
+const OBLIQUE_STYLE_PATTERN = new RegExp(
+  String.raw`^oblique(?:\s+(${CSS_NUMBER_SOURCE})deg)?$`,
+  "i"
+);
+
+/**
+ * Normalize a raw computed typography tuple and derive its canonical identity.
+ *
+ * Invalid components throw a typed error so a materializer can account for the
+ * candidate as skipped instead of fabricating a tuple.
+ */
+export function normalizeTypographyTuple(input: TypographyTupleInput): NormalizedTypographyTupleResult {
+  if (unicodeScalarCountExceeds(input.fontFamily, MAX_COMPUTED_FONT_FAMILY_SCALARS)) {
+    throw new TypographyTupleNormalizationError("font-family-too-long");
+  }
+
+  let parsedFamilies: ReturnType<typeof parseFontFamilyList>;
+  try {
+    parsedFamilies = parseFontFamilyList(input.fontFamily);
+  } catch {
+    throw new TypographyTupleNormalizationError("invalid-font-family");
+  }
+
+  const sizeMatch = input.fontSize.trim().match(COMPUTED_FONT_SIZE_PATTERN);
+  const sizePx = sizeMatch ? Number(sizeMatch[1]) : Number.NaN;
+  if (!(sizePx > 0) || !Number.isFinite(sizePx)) {
+    throw new TypographyTupleNormalizationError("invalid-font-size");
+  }
+  const sizeMilliPx = quantizeSafeInteger(
+    sizePx,
+    TYPOGRAPHY_SIZE_MILLIPX_SCALE,
+    "invalid-font-size"
+  );
+
+  const weightInput = foldAsciiCase(input.fontWeight.trim());
+  let weight: number;
+  if (weightInput === "normal") {
+    weight = 400;
+  } else if (weightInput === "bold") {
+    weight = 700;
+  } else {
+    const weightMatch = weightInput.match(NUMERIC_FONT_WEIGHT_PATTERN);
+    weight = weightMatch ? Number(weightMatch[1]) : Number.NaN;
+  }
+  if (!Number.isFinite(weight) || weight < 1 || weight > 1_000) {
+    throw new TypographyTupleNormalizationError("invalid-font-weight");
+  }
+  const weightMilli = quantizeSafeInteger(
+    weight,
+    TYPOGRAPHY_WEIGHT_MILLI_SCALE,
+    "invalid-font-weight"
+  );
+
+  const styleInput = foldAsciiCase(input.fontStyle.trim());
+  let style: NormalizedTypographyStyle;
+  if (styleInput === "normal" || styleInput === "italic") {
+    style = styleInput;
+  } else {
+    const styleMatch = styleInput.match(OBLIQUE_STYLE_PATTERN);
+    if (!styleMatch) {
+      throw new TypographyTupleNormalizationError("invalid-font-style");
+    }
+    const angle = styleMatch[1] === undefined ? DEFAULT_OBLIQUE_DEGREES : Number(styleMatch[1]);
+    if (!Number.isFinite(angle)) {
+      throw new TypographyTupleNormalizationError("invalid-font-style");
+    }
+    const microdegrees = quantizeSafeInteger(
+      angle,
+      TYPOGRAPHY_STYLE_MICRODEGREE_SCALE,
+      "invalid-font-style"
+    );
+    style = `oblique:${microdegrees}`;
+  }
+
+  const tuple: NormalizedTypographyTuple = {
+    families: parsedFamilies.map(
+      ({ kind, value }) => `${kind}\u0000${foldAsciiCase(value)}`
+    ),
+    sizeMilliPx,
+    weightMilli,
+    style
+  };
+  return { tuple, identity: typographyTupleIdentity(tuple) };
+}
+
+/** Canonical JSON serialization of a normalized typography tuple. */
+export function typographyTupleIdentity(tuple: NormalizedTypographyTuple): string {
+  return JSON.stringify({
+    families: tuple.families,
+    sizeMilliPx: tuple.sizeMilliPx,
+    weightMilli: tuple.weightMilli,
+    style: tuple.style
+  });
+}
+
+function unicodeScalarCountExceeds(value: string, maximum: number): boolean {
+  let count = 0;
+  for (const _character of value) {
+    count += 1;
+    if (count > maximum) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function quantizeSafeInteger(
+  value: number,
+  scale: number,
+  errorCode: TypographyTupleNormalizationErrorCode
+): number {
+  const quantized = Math.round(value * scale);
+  if (!Number.isSafeInteger(quantized)) {
+    throw new TypographyTupleNormalizationError(errorCode);
+  }
+  return Object.is(quantized, -0) ? 0 : quantized;
+}
+
+/* -------------------------------------------------------------------------------------------------- */
+/* Palette RGBA8 identity and OKLab hue cover                                                            */
+/* -------------------------------------------------------------------------------------------------- */
+
+export const OKLAB_CHROMA_QUANTIZATION_SCALE = 1_000_000;
+export const OKLAB_ACHROMATIC_CUTOFF = 30_000;
+export const HUE_MICRODEGREE_SCALE = 1_000_000;
+export const HUE_TURN_MICRODEGREES = 360_000_000;
+export const HUE_FAMILY_SPAN_MICRODEGREES = 30_000_000;
+
+export interface Rgba8 {
+  red: number;
+  green: number;
+  blue: number;
+  alpha: number;
+}
+
+export interface QuantizedOklabChromaHue {
+  /** `round(OKLab chroma * 1_000_000)`. */
+  chromaMicro: number;
+  /** Quantized hue in `[0, 360_000_000)`, or null below the achromatic cutoff. */
+  hueMicrodegrees: number | null;
+}
+
+export interface CircularHueCover {
+  count: number;
+  /** Numerically sorted clockwise arc starts in microdegrees. */
+  starts: number[];
+}
+
+/** Clamp and quantize a parsed CSS color to its exact rendered RGBA8 tuple. */
+export function rgba8FromParsedColor(color: ParsedColor): Rgba8 | null {
+  if (![color.red, color.green, color.blue, color.alpha].every(Number.isFinite)) {
+    return null;
+  }
+  return {
+    red: Math.round(clamp(color.red, 0, 255)),
+    green: Math.round(clamp(color.green, 0, 255)),
+    blue: Math.round(clamp(color.blue, 0, 255)),
+    alpha: Math.round(clamp(color.alpha, 0, 1) * 255)
+  };
+}
+
+/** Exact distinct-palette identity. Alpha remains identity-bearing. */
+export function rgba8Identity(color: Rgba8): string {
+  assertRgba8(color);
+  return `${color.red},${color.green},${color.blue},${color.alpha}`;
+}
+
+/** The frozen cutoff is closed on its chromatic side: 29_999 is out, 30_000 is in. */
+export function isChromaticOklabChroma(chromaMicro: number): boolean {
+  return Number.isSafeInteger(chromaMicro) && chromaMicro >= OKLAB_ACHROMATIC_CUTOFF;
+}
+
+/**
+ * Decode an sRGB byte triple and quantize its OKLab chroma and hue using the
+ * frozen binary64 formula. Alpha does not participate.
+ */
+export function oklabChromaHueFromRgba8(color: Rgba8): QuantizedOklabChromaHue {
+  assertRgba8(color);
+  const red = decodeSrgbByte(color.red);
+  const green = decodeSrgbByte(color.green);
+  const blue = decodeSrgbByte(color.blue);
+
+  const long = Math.cbrt(0.4122214708 * red + 0.5363325363 * green + 0.0514459929 * blue);
+  const medium = Math.cbrt(0.2119034982 * red + 0.6806995451 * green + 0.1073969566 * blue);
+  const short = Math.cbrt(0.0883024619 * red + 0.2817188376 * green + 0.6299787005 * blue);
+  const aAxis = 1.9779984951 * long - 2.4285922050 * medium + 0.4505937099 * short;
+  const bAxis = 0.0259040371 * long + 0.7827717662 * medium - 0.8086757660 * short;
+  const chromaMicro = Math.round(
+    Math.hypot(aAxis, bAxis) * OKLAB_CHROMA_QUANTIZATION_SCALE
+  );
+
+  if (!isChromaticOklabChroma(chromaMicro)) {
+    return { chromaMicro, hueMicrodegrees: null };
+  }
+
+  const hueDegrees = positiveModulo(Math.atan2(bAxis, aAxis) * 180 / Math.PI, 360);
+  const hueMicrodegrees = positiveModulo(
+    Math.round(hueDegrees * HUE_MICRODEGREE_SCALE),
+    HUE_TURN_MICRODEGREES
+  );
+  return { chromaMicro, hueMicrodegrees };
+}
+
+/**
+ * Minimum closed clockwise 30-degree circular cover. Inputs are integer
+ * microdegrees; order, duplicates, and whole-turn offsets do not affect output.
+ */
+export function minimumCircularHueCover(huesMicrodegrees: Iterable<number>): CircularHueCover {
+  const unique = new Set<number>();
+  for (const hue of huesMicrodegrees) {
+    if (!Number.isSafeInteger(hue)) {
+      throw new RangeError("Hue values must be safe integer microdegrees");
+    }
+    unique.add(positiveModulo(hue, HUE_TURN_MICRODEGREES));
+  }
+  const hues = [...unique].sort((left, right) => left - right);
+  if (hues.length === 0) {
+    return { count: 0, starts: [] };
+  }
+
+  let best: number[] | undefined;
+  for (let rotation = 0; rotation < hues.length; rotation += 1) {
+    const unwrapped = hues.map((_hue, offset) => {
+      const index = (rotation + offset) % hues.length;
+      return hues[index] + (index < rotation ? HUE_TURN_MICRODEGREES : 0);
+    });
+    const starts: number[] = [];
+    let index = 0;
+    while (index < unwrapped.length) {
+      const start = unwrapped[index];
+      starts.push(positiveModulo(start, HUE_TURN_MICRODEGREES));
+      index += 1;
+      while (
+        index < unwrapped.length
+        && unwrapped[index] <= start + HUE_FAMILY_SPAN_MICRODEGREES
+      ) {
+        index += 1;
+      }
+    }
+    starts.sort((left, right) => left - right);
+    if (
+      best === undefined
+      || starts.length < best.length
+      || (starts.length === best.length && numericArrayLexicographicallyBefore(starts, best))
+    ) {
+      best = starts;
+    }
+  }
+
+  return { count: best!.length, starts: best! };
+}
+
+/**
+ * Collapse alpha variants to distinct nontransparent RGB triples, exclude
+ * achromatic triples, then compute the frozen hue cover.
+ */
+export function hueFamilyCoverFromRgba8(colors: Iterable<Rgba8>): CircularHueCover {
+  const seenRgb = new Set<string>();
+  const hues: number[] = [];
+  for (const color of colors) {
+    assertRgba8(color);
+    if (color.alpha === 0) {
+      continue;
+    }
+    const rgbIdentity = `${color.red},${color.green},${color.blue}`;
+    if (seenRgb.has(rgbIdentity)) {
+      continue;
+    }
+    seenRgb.add(rgbIdentity);
+    const { hueMicrodegrees } = oklabChromaHueFromRgba8(color);
+    if (hueMicrodegrees !== null) {
+      hues.push(hueMicrodegrees);
+    }
+  }
+  return minimumCircularHueCover(hues);
+}
+
+function decodeSrgbByte(byte: number): number {
+  const value = byte / 255;
+  return value <= 0.04045
+    ? value / 12.92
+    : ((value + 0.055) / 1.055) ** 2.4;
+}
+
+function assertRgba8(color: Rgba8): void {
+  if (![color.red, color.green, color.blue, color.alpha].every(
+    (value) => Number.isInteger(value) && value >= 0 && value <= 255
+  )) {
+    throw new RangeError("RGBA8 channels must be integers in 0..255");
+  }
+}
+
+function numericArrayLexicographicallyBefore(left: number[], right: number[]): boolean {
+  for (let index = 0; index < left.length; index += 1) {
+    if (left[index] !== right[index]) {
+      return left[index] < right[index];
+    }
+  }
+  return false;
+}
+
+function positiveModulo(value: number, modulus: number): number {
+  const remainder = value % modulus;
+  if (remainder === 0) {
+    return 0;
+  }
+  return remainder < 0 ? remainder + modulus : remainder;
+}
+
+function clamp(value: number, minimum: number, maximum: number): number {
+  return value < minimum ? minimum : value > maximum ? maximum : value;
+}
+
+/* -------------------------------------------------------------------------------------------------- */
+/* Density fragment connectivity                                                                         */
+/* -------------------------------------------------------------------------------------------------- */
+
+export const MAX_DOM_ELEMENTS = 10_000;
+export const MAX_TEXT_NODES = 20_000;
+export const MAX_TEXT_FRAGMENTS = 20_000;
+export const MAX_EDGE_TESTS = 1_000_000;
+export const MAX_EVIDENCE_SAMPLES = 10;
+
+export const MIN_VERTICAL_OVERLAP = 0.50;
+export const MAX_INLINE_GAP_HEIGHTS = 1.00;
+export const MIN_NEXT_LINE_X_OVERLAP = 0.25;
+export const MAX_NEXT_LINE_GAP_HEIGHTS = 1.00;
+export const MAX_LEFT_EDGE_DELTA_HEIGHTS = 1.00;
+
+/** One positive, viewport-clipped text rectangle collected by the browser. */
+export interface DensityTextFragment {
+  /** Browser-assigned identity for the fragment's nearest block-like flow root. */
+  rootId: string;
+  left: number;
+  top: number;
+  right: number;
+  bottom: number;
+}
+
+export interface DensityTextClusterCount {
+  clusterCount: number;
+  /** Exact number of unordered within-root pairs examined. */
+  edgeTests: number;
+  /**
+   * Connected components expressed as original fragment indices. Indices are
+   * sorted within each component; components are sorted by their first index.
+   */
+  components: number[][];
+}
+
+export type DensityClusterErrorCode =
+  | "invalid-fragment"
+  | "fragment-cap-exceeded"
+  | "edge-cap-exceeded";
+
+export class DensityClusterError extends Error {
+  constructor(
+    public readonly code: DensityClusterErrorCode,
+    public readonly edgeTests: number
+  ) {
+    super(`Could not count density text clusters: ${code}`);
+    this.name = "DensityClusterError";
+  }
+}
+
+/** Frozen geometric adjacency predicate; fragments in different flow roots never connect. */
+export function densityFragmentsAreAdjacent(
+  left: DensityTextFragment,
+  right: DensityTextFragment
+): boolean {
+  assertDensityTextFragment(left);
+  assertDensityTextFragment(right);
+  return left.rootId === right.rootId && fragmentGeometryIsAdjacent(left, right);
+}
+
+/**
+ * Count union-find connected components across a flat fragment list, grouping
+ * exclusively by `rootId` and enforcing the frozen fragment and edge caps.
+ */
+export function countDensityTextClusters(
+  fragments: readonly DensityTextFragment[]
+): DensityTextClusterCount {
+  if (fragments.length > MAX_TEXT_FRAGMENTS) {
+    throw new DensityClusterError("fragment-cap-exceeded", 0);
+  }
+
+  const byRoot = new Map<string, Array<{ fragment: DensityTextFragment; originalIndex: number }>>();
+  for (let originalIndex = 0; originalIndex < fragments.length; originalIndex += 1) {
+    const fragment = fragments[originalIndex];
+    assertDensityTextFragment(fragment);
+    const group = byRoot.get(fragment.rootId);
+    if (group) {
+      group.push({ fragment, originalIndex });
+    } else {
+      byRoot.set(fragment.rootId, [{ fragment, originalIndex }]);
+    }
+  }
+
+  let edgeTests = 0;
+  const components: number[][] = [];
+  for (const group of byRoot.values()) {
+    const parents = group.map((_entry, index) => index);
+
+    for (let left = 0; left < group.length; left += 1) {
+      for (let right = left + 1; right < group.length; right += 1) {
+        edgeTests += 1;
+        if (edgeTests > MAX_EDGE_TESTS) {
+          throw new DensityClusterError("edge-cap-exceeded", edgeTests);
+        }
+        if (fragmentGeometryIsAdjacent(group[left].fragment, group[right].fragment)) {
+          unionParents(parents, left, right);
+        }
+      }
+    }
+
+    const indicesByRoot = new Map<number, number[]>();
+    for (let index = 0; index < parents.length; index += 1) {
+      const root = findParent(parents, index);
+      const component = indicesByRoot.get(root);
+      if (component) {
+        component.push(group[index].originalIndex);
+      } else {
+        indicesByRoot.set(root, [group[index].originalIndex]);
+      }
+    }
+    for (const component of indicesByRoot.values()) {
+      component.sort((left, right) => left - right);
+      components.push(component);
+    }
+  }
+
+  components.sort((left, right) => left[0] - right[0]);
+  return { clusterCount: components.length, edgeTests, components };
+}
+
+function assertDensityTextFragment(fragment: DensityTextFragment): void {
+  if (
+    typeof fragment.rootId !== "string"
+    || ![fragment.left, fragment.top, fragment.right, fragment.bottom].every(Number.isFinite)
+    || !(fragment.right > fragment.left)
+    || !(fragment.bottom > fragment.top)
+  ) {
+    throw new DensityClusterError("invalid-fragment", 0);
+  }
+}
+
+function fragmentGeometryIsAdjacent(
+  left: DensityTextFragment,
+  right: DensityTextFragment
+): boolean {
+  const gapX = Math.max(0, Math.max(left.left, right.left) - Math.min(left.right, right.right));
+  const gapY = Math.max(0, Math.max(left.top, right.top) - Math.min(left.bottom, right.bottom));
+  const overlapX = Math.max(0, Math.min(left.right, right.right) - Math.max(left.left, right.left));
+  const overlapY = Math.max(0, Math.min(left.bottom, right.bottom) - Math.max(left.top, right.top));
+  const leftHeight = left.bottom - left.top;
+  const rightHeight = right.bottom - right.top;
+  const maximumHeight = Math.max(leftHeight, rightHeight);
+  const minimumHeight = Math.min(leftHeight, rightHeight);
+  const minimumWidth = Math.min(left.right - left.left, right.right - right.left);
+
+  return (gapX === 0 && gapY === 0)
+    || (
+      overlapY >= MIN_VERTICAL_OVERLAP * minimumHeight
+      && gapX <= MAX_INLINE_GAP_HEIGHTS * maximumHeight
+    )
+    || (
+      gapY <= MAX_NEXT_LINE_GAP_HEIGHTS * maximumHeight
+      && (
+        overlapX >= MIN_NEXT_LINE_X_OVERLAP * minimumWidth
+        || Math.abs(left.left - right.left) <= MAX_LEFT_EDGE_DELTA_HEIGHTS * maximumHeight
+      )
+    );
+}
+
+function findParent(parents: number[], index: number): number {
+  let root = index;
+  while (parents[root] !== root) {
+    root = parents[root];
+  }
+  while (parents[index] !== index) {
+    const next = parents[index];
+    parents[index] = root;
+    index = next;
+  }
+  return root;
+}
+
+function unionParents(parents: number[], left: number, right: number): void {
+  const leftRoot = findParent(parents, left);
+  const rightRoot = findParent(parents, right);
+  if (leftRoot !== rightRoot) {
+    parents[rightRoot] = leftRoot;
+  }
 }
 
 /* -------------------------------------------------------------------------------------------------- */

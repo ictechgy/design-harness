@@ -125,10 +125,30 @@ export interface DesignGuideSpacingAudit {
   ignoreSelectors: string[];
 }
 
+export interface DesignGuideTypographyVariantsAudit {
+  maxDistinctVariants: number;
+  ignoreSelectors?: string[];
+}
+
+export interface DesignGuidePaletteDisciplineAudit {
+  maxDistinctColors?: number;
+  maxChromaticHueFamilies?: number;
+  ignoreSelectors?: string[];
+}
+
+export interface DesignGuideDensityComplexityAudit {
+  maxVisibleElements?: number;
+  maxTextClusters?: number;
+  ignoreSelectors?: string[];
+}
+
 export interface DesignGuideAudit {
   fontFamily?: DesignGuideFontFamilyAudit;
   color?: DesignGuideColorAudit;
   spacing?: DesignGuideSpacingAudit;
+  typographyVariants?: DesignGuideTypographyVariantsAudit;
+  paletteDiscipline?: DesignGuidePaletteDisciplineAudit;
+  densityComplexity?: DesignGuideDensityComplexityAudit;
 }
 
 export interface DesignGuide {
@@ -169,6 +189,58 @@ export interface SpacingAdherencePolicy {
   allowedValues: DtcgDimensionValue[];
   ignoreSelectors: string[];
   policyId: "spacing-adherence-v1";
+}
+
+export interface TypographyVariantBudgetPolicy {
+  maxDistinctVariants: number;
+  ignoreSelectors: string[];
+  policyId: "typography-variant-budget-v1";
+  methodId: "rendered-typography-variants-v1";
+}
+
+export interface PaletteDisciplineBudgetPolicy {
+  maxDistinctColors?: number;
+  maxChromaticHueFamilies?: number;
+  ignoreSelectors: string[];
+  policyId: "palette-discipline-budget-v1";
+  methodId: "rendered-rgba8-oklch-cover30-v1";
+}
+
+export interface DensityComplexityBudgetPolicy {
+  maxVisibleElements?: number;
+  maxTextClusters?: number;
+  ignoreSelectors: string[];
+  policyId: "density-complexity-budget-v1";
+  methodId: "viewport-dom-density-v1";
+  visibleElementMethodId: "visible-content-elements-v1";
+  textClusterMethodId: "text-flow-connectivity-v1";
+}
+
+export interface VisualMetricsRuntimePolicies {
+  typographyVariants?: TypographyVariantBudgetPolicy;
+  paletteDiscipline?: PaletteDisciplineBudgetPolicy;
+  densityComplexity?: DensityComplexityBudgetPolicy;
+}
+
+export type TypographyVariantBudgetGenerationPolicy = Omit<
+  TypographyVariantBudgetPolicy,
+  "ignoreSelectors"
+>;
+
+export type PaletteDisciplineBudgetGenerationPolicy = Omit<
+  PaletteDisciplineBudgetPolicy,
+  "ignoreSelectors"
+>;
+
+export type DensityComplexityBudgetGenerationPolicy = Omit<
+  DensityComplexityBudgetPolicy,
+  "ignoreSelectors"
+>;
+
+export interface VisualMetricsGenerationPolicies {
+  typographyVariants?: TypographyVariantBudgetGenerationPolicy;
+  paletteDiscipline?: PaletteDisciplineBudgetGenerationPolicy;
+  densityComplexity?: DensityComplexityBudgetGenerationPolicy;
 }
 
 export const COPY_SURFACES = ["button", "error", "marketing", "body"] as const;

@@ -1,0 +1,855 @@
+{
+  "schemaVersion": "visual-metrics-calibration/v1",
+  "provenance": {
+    "fixtureAuthorship": "project-authored synthetic fixtures plus the existing project merchant dashboard",
+    "license": "Apache-2.0",
+    "hashAlgorithm": "sha256",
+    "hashInput": "raw-file-bytes",
+    "recordedAt": "2026-07-26"
+  },
+  "viewport": {
+    "name": "desktop",
+    "width": 1440,
+    "height": 900,
+    "deviceScaleFactor": 1,
+    "isMobile": false
+  },
+  "contracts": {
+    "typography": {
+      "criterionId": "typography.variant-count.budget",
+      "checkName": "typography-variant-count-budget",
+      "policyId": "typography-variant-budget-v1",
+      "methodId": "rendered-typography-variants-v1"
+    },
+    "palette": {
+      "criterionId": "color.palette.count-discipline",
+      "checkName": "palette-count-discipline",
+      "policyId": "palette-discipline-budget-v1",
+      "methodId": "rendered-rgba8-oklch-cover30-v1"
+    },
+    "density": {
+      "criterionId": "layout.density.complexity-budget",
+      "checkName": "density-complexity-budget",
+      "policyId": "density-complexity-budget-v1",
+      "methodId": "viewport-dom-density-v1",
+      "visibleElementMethodId": "visible-content-elements-v1",
+      "textClusterMethodId": "text-flow-connectivity-v1"
+    }
+  },
+  "corpus": {
+    "projection": {
+      "profile": "visual-metrics-corpus-portable-v1",
+      "omittedFields": [
+        "measurement.density.textClusters.textFragmentCount",
+        "measurement.density.textClusters.edgeTestCount"
+      ]
+    },
+    "repeatCount": 3,
+    "policy": {
+      "typography": {
+        "policyId": "typography-variant-budget-v1",
+        "methodId": "rendered-typography-variants-v1",
+        "maxDistinctVariants": 64
+      },
+      "palette": {
+        "policyId": "palette-discipline-budget-v1",
+        "methodId": "rendered-rgba8-oklch-cover30-v1",
+        "maxDistinctColors": 64,
+        "maxChromaticHueFamilies": 12
+      },
+      "density": {
+        "policyId": "density-complexity-budget-v1",
+        "methodId": "viewport-dom-density-v1",
+        "visibleElementMethodId": "visible-content-elements-v1",
+        "textClusterMethodId": "text-flow-connectivity-v1",
+        "maxVisibleElements": 500,
+        "maxTextClusters": 200
+      }
+    },
+    "entries": [
+      {
+        "id": "clean-corpus-surface-defective",
+        "path": "examples/ui-quality-fixtures/clean-corpus-surface-defective.html",
+        "fixtureSha256": "1ac97a7621762425c9baa9093179337e3d1825388eb312d642bb504a9840bb07",
+        "projectionSha256": "4618aa382e0fa66f109a617c2359b3e551a001549de567030dae1cdb33b51ce0",
+        "expectedNotices": []
+      },
+      {
+        "id": "clean-corpus-surface",
+        "path": "examples/ui-quality-fixtures/clean-corpus-surface.html",
+        "fixtureSha256": "730f86d7f6945bd7422d4cb490d90b3886d24f7434bcb66e451c0d5e6a9b9fa8",
+        "projectionSha256": "6bb924c0acfcd3876f7c93b87490592f29b936c7068aba516558b907e92c1ddf",
+        "expectedNotices": []
+      },
+      {
+        "id": "clean-corpus-tokens-defective",
+        "path": "examples/ui-quality-fixtures/clean-corpus-tokens-defective.html",
+        "fixtureSha256": "cf924501a4f74c3ee3aa88497da8ceac26c7f9548c293621cdf77caccb3f394d",
+        "projectionSha256": "c6a836aafb18c4ada3b5415608672121282d003e31da849e997af26f2f04f916",
+        "expectedNotices": []
+      },
+      {
+        "id": "clean-corpus-tokens",
+        "path": "examples/ui-quality-fixtures/clean-corpus-tokens.html",
+        "fixtureSha256": "3ddc39454a415c6275e1a326c80080e9733af40e260937fdbae9a9c27c9ecbad",
+        "projectionSha256": "59c19677c855074d4b425c9e14b54b178e570b2b686d7e649a3555df99d465ca",
+        "expectedNotices": []
+      },
+      {
+        "id": "color-adherence-bad",
+        "path": "examples/ui-quality-fixtures/color-adherence-bad.html",
+        "fixtureSha256": "c4122839feeb93087c9e47a68497b7eae33799d5d94a38842f60384af82af5a0",
+        "projectionSha256": "e64169d59461c98704cc7b8e9255a7ec156ddaa4a53c4af3471bbec82bd5efc9",
+        "expectedNotices": []
+      },
+      {
+        "id": "color-adherence-errors",
+        "path": "examples/ui-quality-fixtures/color-adherence-errors.html",
+        "fixtureSha256": "a4995a571c2d9ed4491230af43564c36d6ada0a0050be99d3d46f9ddd48d6f98",
+        "projectionSha256": "77de62f169909af58b8c696f20c3c82d78047252d56c0c8e7a5316143af1ba1a",
+        "expectedNotices": []
+      },
+      {
+        "id": "color-adherence-good",
+        "path": "examples/ui-quality-fixtures/color-adherence-good.html",
+        "fixtureSha256": "f38d140f463f936ab12d5d99d75f647c1a765e38342ce4c56389d2b95e0974e5",
+        "projectionSha256": "e64169d59461c98704cc7b8e9255a7ec156ddaa4a53c4af3471bbec82bd5efc9",
+        "expectedNotices": []
+      },
+      {
+        "id": "color-adherence-ignored",
+        "path": "examples/ui-quality-fixtures/color-adherence-ignored.html",
+        "fixtureSha256": "aa2aaa618910ce03050deada465258fa6193678bb0eb80894c1ac65a6182ef19",
+        "projectionSha256": "f843da7c84f23c921e3e62636ec0f93d166f952eb7aa275269b1452f36425f98",
+        "expectedNotices": []
+      },
+      {
+        "id": "color-adherence-incomplete",
+        "path": "examples/ui-quality-fixtures/color-adherence-incomplete.html",
+        "fixtureSha256": "ef2fa6e47079646f4bb457c12e83c8a355115ed4b107c3bebd3fc77f53e23086",
+        "projectionSha256": "560ff38e4b693091e1072f1de63ebc8792d989034127e65278f7151516abcc3a",
+        "expectedNotices": [
+          {
+            "code": "palette-discipline-slots-skipped",
+            "viewport": "desktop",
+            "skippedSlotCount": 1,
+            "skippedByReason": {
+              "unsupported-color": 1
+            },
+            "methodId": "rendered-rgba8-oklch-cover30-v1"
+          }
+        ]
+      },
+      {
+        "id": "color-adherence-root-bad",
+        "path": "examples/ui-quality-fixtures/color-adherence-root-bad.html",
+        "fixtureSha256": "6c9d97f304f8fe34560c22d9893228446b944b922070f945dd2755a7725ba9ca",
+        "projectionSha256": "3ae425790099ed68ab86eb7dbc67d7b0f7344f9f8f3aa29c855decaa14efd650",
+        "expectedNotices": []
+      },
+      {
+        "id": "contrast-effect-priority",
+        "path": "examples/ui-quality-fixtures/contrast-effect-priority.html",
+        "fixtureSha256": "77b1396b0d1466475dbd374e218b3eb1b7bce91207c7732843b022fcc1997114",
+        "projectionSha256": "7a465df719b14b255924eec8a0c1a776cb9d0b076f24e9b07f181090c6c1206b",
+        "expectedNotices": []
+      },
+      {
+        "id": "contrast-effects",
+        "path": "examples/ui-quality-fixtures/contrast-effects.html",
+        "fixtureSha256": "3599c04990e3c6e5c5a01b014c0d1a61ceba5807ce72058fd1eca3e6cc27219c",
+        "projectionSha256": "0099fa97bcf6f354bacbfd7e42df67cfa23199eb58f6c84e9cadc29f00227f3b",
+        "expectedNotices": []
+      },
+      {
+        "id": "deterministic-failure",
+        "path": "examples/ui-quality-fixtures/deterministic-failure.html",
+        "fixtureSha256": "24351031d7518eee2734259f516a751b10b0124b6fc04d45d6b2b63222e92522",
+        "projectionSha256": "c7271628d9a49d0a8315ea3fc4f2744c29f82a6152d82d9068fdf9580277a016",
+        "expectedNotices": []
+      },
+      {
+        "id": "deterministic-risk",
+        "path": "examples/ui-quality-fixtures/deterministic-risk.html",
+        "fixtureSha256": "580727c7c137a32137577273aa35177e7a8062fdfb11689c49f9cfa742c09d11",
+        "projectionSha256": "b6f04642fdec454fc5f6352b007aadc418d8410feca5e3d0078f0917faa91955",
+        "expectedNotices": []
+      },
+      {
+        "id": "finding-coverage-over-limit",
+        "path": "examples/ui-quality-fixtures/finding-coverage-over-limit.html",
+        "fixtureSha256": "7c435af2fd5aef51a4393ec56f41be169e87e9b9e0f9dd085890f444cb232d79",
+        "projectionSha256": "25c08aa4984114965d3e6494cfd55c4a2e80353c5fcfe328caa0453b3696cffe",
+        "expectedNotices": []
+      },
+      {
+        "id": "font-family-adherence-bad",
+        "path": "examples/ui-quality-fixtures/font-family-adherence-bad.html",
+        "fixtureSha256": "49b8df0cacde2f34db1e30ff0e004be1bc1c2315e5024c9a193171801ff5118c",
+        "projectionSha256": "833244fde7f0c5bc870b4fd116571f145d503c491f468fddc2128dbc58586181",
+        "expectedNotices": []
+      },
+      {
+        "id": "font-family-adherence-errors",
+        "path": "examples/ui-quality-fixtures/font-family-adherence-errors.html",
+        "fixtureSha256": "cd8a11de8cf55b3daedf8b419a50148a0c60b2e7aff86dc3190d237ebb102251",
+        "projectionSha256": "0485510ea55f543645afbc804c1f62debc4e9508a3e4fec370d4e939810eb390",
+        "expectedNotices": []
+      },
+      {
+        "id": "font-family-adherence-good",
+        "path": "examples/ui-quality-fixtures/font-family-adherence-good.html",
+        "fixtureSha256": "555ba4dd2135e35a972ab7ba56056a81bf0e4359e8c3ae94d040db8eadb93ba2",
+        "projectionSha256": "833244fde7f0c5bc870b4fd116571f145d503c491f468fddc2128dbc58586181",
+        "expectedNotices": []
+      },
+      {
+        "id": "font-family-adherence-ignored",
+        "path": "examples/ui-quality-fixtures/font-family-adherence-ignored.html",
+        "fixtureSha256": "6f76fb6806e544d951fadd95af4fc1f6ef07479e8dcc1f0c450cfbef96598a24",
+        "projectionSha256": "6ae2d15a67a6652937471d746034ab8fa6aa33185576a8b868759594e9853b2c",
+        "expectedNotices": []
+      },
+      {
+        "id": "font-family-adherence-real-stack-bad",
+        "path": "examples/ui-quality-fixtures/font-family-adherence-real-stack-bad.html",
+        "fixtureSha256": "2e66aa6ff04f247050f847004d504be37286f93122aea95e09bcbfb0d27084a3",
+        "projectionSha256": "833244fde7f0c5bc870b4fd116571f145d503c491f468fddc2128dbc58586181",
+        "expectedNotices": []
+      },
+      {
+        "id": "font-family-adherence-real-stack-good",
+        "path": "examples/ui-quality-fixtures/font-family-adherence-real-stack-good.html",
+        "fixtureSha256": "1a25ccc67a4f644279351f38a788aef35684697432a891dceadb2c42879fc64b",
+        "projectionSha256": "f8e3d00a80a250de1ea48623ec31c57a71f03bc4dcd333201eb7d000b9ef6bc0",
+        "expectedNotices": []
+      },
+      {
+        "id": "heuristic-needs-review",
+        "path": "examples/ui-quality-fixtures/heuristic-needs-review.html",
+        "fixtureSha256": "068046e79313be6c84386d7e15df6f842528a7ebdd77d8bb530551aeda7f0e9c",
+        "projectionSha256": "ba76acd219996481a4ca96051f4f7c3b7c8cf79a6dcdb7c03058e37390ca8a5f",
+        "expectedNotices": []
+      },
+      {
+        "id": "interaction-state-bad",
+        "path": "examples/ui-quality-fixtures/interaction-state-bad.html",
+        "fixtureSha256": "d46aeb6fba042a1c95d45f0d4c409ae685b556051c65a184a89e341618d7d43c",
+        "projectionSha256": "f03d1e073c91f2ec9d67b68d3695607b2ac29c958f75d7226aa3ae958d19d889",
+        "expectedNotices": []
+      },
+      {
+        "id": "interaction-state-good",
+        "path": "examples/ui-quality-fixtures/interaction-state-good.html",
+        "fixtureSha256": "a6f10cffcbc6bc0e586b7708ec357a8f0b1e89e51c85466acb19c3a7b539da14",
+        "projectionSha256": "0540638d67d2fab9b745d7ddeee1108f2eaee3ce434e689067fa56f9ef7ee0fe",
+        "expectedNotices": []
+      },
+      {
+        "id": "korean-line-length-bad",
+        "path": "examples/ui-quality-fixtures/korean-line-length-bad.html",
+        "fixtureSha256": "936e416686f597ee92d989b2a68f49940a13e2b7e22e1e8c61546cdeca921b56",
+        "projectionSha256": "833244fde7f0c5bc870b4fd116571f145d503c491f468fddc2128dbc58586181",
+        "expectedNotices": []
+      },
+      {
+        "id": "korean-line-length-good",
+        "path": "examples/ui-quality-fixtures/korean-line-length-good.html",
+        "fixtureSha256": "686a0837ca3ac28e4d3fe593acb55d7766200c62b999c99bcb3b94ac716ac13b",
+        "projectionSha256": "5e6874baf38e8012c9034876e5d5caee2c83db8af0f53a34b635e7f2b18690e4",
+        "expectedNotices": []
+      },
+      {
+        "id": "korean-status-bad",
+        "path": "examples/ui-quality-fixtures/korean-status-bad.html",
+        "fixtureSha256": "19cce54e6860bbc296464aa1674b25353b67816b557157f65dae38d8afcd6e76",
+        "projectionSha256": "980415ae5e0b1d57ce4278e238edb6c54e0fd3259da535d952ce74625675fe40",
+        "expectedNotices": []
+      },
+      {
+        "id": "korean-status-good",
+        "path": "examples/ui-quality-fixtures/korean-status-good.html",
+        "fixtureSha256": "2031b3020820a9b4be74dec1083aa992eb027ad2f9bc4a940065ac755ae77919",
+        "projectionSha256": "980415ae5e0b1d57ce4278e238edb6c54e0fd3259da535d952ce74625675fe40",
+        "expectedNotices": []
+      },
+      {
+        "id": "korean-copy-bad",
+        "path": "examples/ui-quality-fixtures/korean/copy-bad.html",
+        "fixtureSha256": "a16ebd0f89ab6e64ac2cefb1be79fd737e7e8b7a9afe02b11ef9f774f1b8180a",
+        "projectionSha256": "29a5713571ac5ec5dbd8bf328b1facabf3a2bf003191e02177f19848463a42fa",
+        "expectedNotices": []
+      },
+      {
+        "id": "korean-copy-good",
+        "path": "examples/ui-quality-fixtures/korean/copy-good.html",
+        "fixtureSha256": "ba502b51853b4c49fd1e164a8013b8e00b06c8d25bb75a7f4f9f7e187467e57b",
+        "projectionSha256": "5dbd3bb713ede054fa835c12cd29a21ae7c403f3567e1921d22b842b867d7baa",
+        "expectedNotices": []
+      },
+      {
+        "id": "midjourney-derived-scanability-bad",
+        "path": "examples/ui-quality-fixtures/midjourney-derived/scanability-bad.html",
+        "fixtureSha256": "dcb4b4e4b26cb260202a4bb76a053ec999cf4daeed59ed15017a070c0771d984",
+        "projectionSha256": "bd497c25575099018f43658ff25295abed61d01196434f9649bbdac07db4d931",
+        "expectedNotices": []
+      },
+      {
+        "id": "midjourney-derived-scanability-good",
+        "path": "examples/ui-quality-fixtures/midjourney-derived/scanability-good.html",
+        "fixtureSha256": "5ab55f88b56e905de1b03ffcab36518cb16bf557fe9e18e85df8a884e21e4c94",
+        "projectionSha256": "228d81e1d1d4efa465e7046e495d56349a684473534c6527b7d0fc471b2565b7",
+        "expectedNotices": []
+      },
+      {
+        "id": "midjourney-derived-state-and-color-bad",
+        "path": "examples/ui-quality-fixtures/midjourney-derived/state-and-color-bad.html",
+        "fixtureSha256": "bc130e06ef77e4b6e2a078a0d28dc8c9acc85f8021dae309347143ecc6b65e71",
+        "projectionSha256": "c4c807bf98f27d5f2fab31b15662ee417347cd9826b908e778f64c389f2e754b",
+        "expectedNotices": []
+      },
+      {
+        "id": "midjourney-derived-state-and-color-good",
+        "path": "examples/ui-quality-fixtures/midjourney-derived/state-and-color-good.html",
+        "fixtureSha256": "3af407e57dc21093b2eb5f418a62f637b0393862b0b3228f9f91f7cf862a4b13",
+        "projectionSha256": "4df71444f35cf77fd3a0a571bc857515ed88ec0d24f17f6fbdb5d7426b3afefd",
+        "expectedNotices": []
+      },
+      {
+        "id": "page-lang-bad",
+        "path": "examples/ui-quality-fixtures/page-lang-bad.html",
+        "fixtureSha256": "172b22bec381af66d0d1e1804b1d46b327d10d6e9ef098487f569a72fb9912fa",
+        "projectionSha256": "833244fde7f0c5bc870b4fd116571f145d503c491f468fddc2128dbc58586181",
+        "expectedNotices": []
+      },
+      {
+        "id": "page-lang-good",
+        "path": "examples/ui-quality-fixtures/page-lang-good.html",
+        "fixtureSha256": "c708d240124df0383543476e48aa1b5a128341fd2224ce7114849ee74f0e2856",
+        "projectionSha256": "833244fde7f0c5bc870b4fd116571f145d503c491f468fddc2128dbc58586181",
+        "expectedNotices": []
+      },
+      {
+        "id": "responsive-readability-bad",
+        "path": "examples/ui-quality-fixtures/responsive-readability-bad.html",
+        "fixtureSha256": "e80a5fccb60f50468d692625030a9b041d45126126790ff035edc91de1079c92",
+        "projectionSha256": "40ccdec1d9a4f06a618a09758a739174d582f2e978f469a97d56118b8f88321e",
+        "expectedNotices": []
+      },
+      {
+        "id": "responsive-readability-good",
+        "path": "examples/ui-quality-fixtures/responsive-readability-good.html",
+        "fixtureSha256": "7fe4615c61eda2bc5c0329e71ca57e34f2f787780da296a6992d9355b79f2fba",
+        "projectionSha256": "4d71a7dde2507c1a66af0281ed1767f308c8ff2865b497aea10817da997d53ff",
+        "expectedNotices": []
+      },
+      {
+        "id": "semantic-a11y-bad",
+        "path": "examples/ui-quality-fixtures/semantic-a11y-bad.html",
+        "fixtureSha256": "0366e165f5d31cd2c4993be35942af994939b45b846cdabe4a7b7c9208dd1043",
+        "projectionSha256": "8380529bf28bf3843dae41af4f7901b0272f8d11400fed1a02187df636c3fdb8",
+        "expectedNotices": []
+      },
+      {
+        "id": "semantic-a11y-good",
+        "path": "examples/ui-quality-fixtures/semantic-a11y-good.html",
+        "fixtureSha256": "d563c05395600bf1e87b1a2c79829a77f9e35bc63783e2f606f2ca65c732b3af",
+        "projectionSha256": "1287c9ec3021231ec83846ca6b40254ef69978f6172ab390481d7ba587d36e81",
+        "expectedNotices": []
+      },
+      {
+        "id": "spacing-adherence-bad",
+        "path": "examples/ui-quality-fixtures/spacing-adherence-bad.html",
+        "fixtureSha256": "34a47d8355a07d0ca1b911153d890b5239eb1b3f680c47a8c078e9238a8f274c",
+        "projectionSha256": "c1e47b599ee8646fe7ee0c9e7d70954909f805d810e98f033045d5c47ebbae0c",
+        "expectedNotices": []
+      },
+      {
+        "id": "spacing-adherence-errors",
+        "path": "examples/ui-quality-fixtures/spacing-adherence-errors.html",
+        "fixtureSha256": "de086681c722239a3118a66b85bf2fc3282e88746ca6f368fc9dbce726d9ae05",
+        "projectionSha256": "77de62f169909af58b8c696f20c3c82d78047252d56c0c8e7a5316143af1ba1a",
+        "expectedNotices": []
+      },
+      {
+        "id": "spacing-adherence-good",
+        "path": "examples/ui-quality-fixtures/spacing-adherence-good.html",
+        "fixtureSha256": "f8638f827b1437acb48504ec47c9341d75180691a5bb8246153f294ba2cc278e",
+        "projectionSha256": "c1e47b599ee8646fe7ee0c9e7d70954909f805d810e98f033045d5c47ebbae0c",
+        "expectedNotices": []
+      },
+      {
+        "id": "spacing-adherence-ignored",
+        "path": "examples/ui-quality-fixtures/spacing-adherence-ignored.html",
+        "fixtureSha256": "1062a4ac21110651550fc950bfce97728898754fba8c2979e3e073dd55386bf2",
+        "projectionSha256": "79be81fa02ca35a0f6d92f9191b662285751c2a513d40da45e03c4cf76da1753",
+        "expectedNotices": []
+      },
+      {
+        "id": "spacing-adherence-incomplete",
+        "path": "examples/ui-quality-fixtures/spacing-adherence-incomplete.html",
+        "fixtureSha256": "9fad13a933b3a25cf757c2b7a9cc9ad4a6076445d162c20dd92b5d7ae6cb5df6",
+        "projectionSha256": "77de62f169909af58b8c696f20c3c82d78047252d56c0c8e7a5316143af1ba1a",
+        "expectedNotices": []
+      },
+      {
+        "id": "tap-target-bad",
+        "path": "examples/ui-quality-fixtures/tap-target-bad.html",
+        "fixtureSha256": "0d5ca141cbd229e97065a7712d8a098b25e7bd56779a755314001708dc8b94cb",
+        "projectionSha256": "48dbc5fb10532cc9c3ed7653b538a5cde3f461104aa6a1570c6a3229fc787dd6",
+        "expectedNotices": []
+      },
+      {
+        "id": "tap-target-good",
+        "path": "examples/ui-quality-fixtures/tap-target-good.html",
+        "fixtureSha256": "f96e14d02c893a4e463d310fb7c168472e5dbe1adebcccbaf0c23385c893b97d",
+        "projectionSha256": "7624e993f88dd6470790762580340ca13622462db310c5ca182d360728e7c4e3",
+        "expectedNotices": []
+      },
+      {
+        "id": "text-evidence",
+        "path": "examples/ui-quality-fixtures/text-evidence.html",
+        "fixtureSha256": "a1ed2bf51395ffaa593bffb5868f9e6bd56f3eba8715651adf88e58764d3bddf",
+        "projectionSha256": "17b3b47f71da451f937553b4e77f2484c4c6fc92ce7230ad1ce72de654f20da5",
+        "expectedNotices": []
+      }
+    ]
+  },
+  "pairs": [
+    {
+      "id": "typography",
+      "goodCaseId": "visual-metrics-typography-good",
+      "badCaseId": "visual-metrics-typography-bad",
+      "isolatedCriterionId": "typography.variant-count.budget"
+    },
+    {
+      "id": "palette",
+      "goodCaseId": "visual-metrics-palette-good",
+      "badCaseId": "visual-metrics-palette-bad",
+      "isolatedCriterionId": "color.palette.count-discipline"
+    },
+    {
+      "id": "density",
+      "goodCaseId": "visual-metrics-density-good",
+      "badCaseId": "visual-metrics-density-bad",
+      "isolatedCriterionId": "layout.density.complexity-budget"
+    }
+  ],
+  "cases": [
+    {
+      "id": "visual-metrics-typography-good",
+      "path": "examples/ui-quality-fixtures/visual-metrics-typography-good.html",
+      "fixtureSha256": "174fdb7a258dc5d57c8735883eb57b7c7f672a0117d3102aa97f16e2e717dda7",
+      "metric": "typography",
+      "role": "good",
+      "policy": {
+        "policyId": "typography-variant-budget-v1",
+        "methodId": "rendered-typography-variants-v1",
+        "maxDistinctVariants": 1
+      },
+      "expected": {
+        "measurement": {
+          "policyId": "typography-variant-budget-v1",
+          "methodId": "rendered-typography-variants-v1",
+          "maxDistinctVariants": 1,
+          "coverage": "complete",
+          "candidateElementCount": 2,
+          "collectedElementCount": 2,
+          "evaluatedElementCount": 2,
+          "ignoredElementCount": 0,
+          "skippedElementCount": 0,
+          "skippedByReason": {},
+          "distinctVariantCount": 1,
+          "emittedVariantCount": 1,
+          "omittedVariantCount": 0
+        },
+        "findings": []
+      }
+    },
+    {
+      "id": "visual-metrics-typography-bad",
+      "path": "examples/ui-quality-fixtures/visual-metrics-typography-bad.html",
+      "fixtureSha256": "474e5303ee5adfacf9667eb22bfb07cb60063928f4f7a25fd8ac4c6024e5a9cb",
+      "metric": "typography",
+      "role": "bad",
+      "policy": {
+        "policyId": "typography-variant-budget-v1",
+        "methodId": "rendered-typography-variants-v1",
+        "maxDistinctVariants": 1
+      },
+      "expected": {
+        "measurement": {
+          "policyId": "typography-variant-budget-v1",
+          "methodId": "rendered-typography-variants-v1",
+          "maxDistinctVariants": 1,
+          "coverage": "complete",
+          "candidateElementCount": 2,
+          "collectedElementCount": 2,
+          "evaluatedElementCount": 2,
+          "ignoredElementCount": 0,
+          "skippedElementCount": 0,
+          "skippedByReason": {},
+          "distinctVariantCount": 2,
+          "emittedVariantCount": 2,
+          "omittedVariantCount": 0
+        },
+        "findings": [
+          {
+            "checkName": "typography-variant-count-budget",
+            "criterionId": "typography.variant-count.budget",
+            "determinism": "heuristic",
+            "resultKind": "risk",
+            "severity": "low",
+            "confidence": "low",
+            "overages": [
+              {
+                "component": "distinctVariantCount",
+                "observedCount": 2,
+                "configuredMaximum": 1,
+                "excess": 1,
+                "coverage": "complete"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "visual-metrics-palette-good",
+      "path": "examples/ui-quality-fixtures/visual-metrics-palette-good.html",
+      "fixtureSha256": "9123be399763bd347eb5731189c81e93dda63e9b457c352c2c3d6b6fd89f787d",
+      "metric": "palette",
+      "role": "good",
+      "policy": {
+        "policyId": "palette-discipline-budget-v1",
+        "methodId": "rendered-rgba8-oklch-cover30-v1",
+        "maxDistinctColors": 2,
+        "maxChromaticHueFamilies": 1
+      },
+      "expected": {
+        "measurement": {
+          "policyId": "palette-discipline-budget-v1",
+          "methodId": "rendered-rgba8-oklch-cover30-v1",
+          "maxDistinctColors": 2,
+          "maxChromaticHueFamilies": 1,
+          "coverage": "complete",
+          "candidateSlotCount": 7,
+          "collectedSlotCount": 7,
+          "evaluatedSlotCount": 3,
+          "ignoredSlotCount": 4,
+          "ignoredByReason": {
+            "transparent": 4
+          },
+          "skippedSlotCount": 0,
+          "skippedByReason": {},
+          "distinctColorCount": 2,
+          "emittedColorCount": 2,
+          "omittedColorCount": 0,
+          "hueFamilyCount": 1
+        },
+        "findings": []
+      }
+    },
+    {
+      "id": "visual-metrics-palette-bad",
+      "path": "examples/ui-quality-fixtures/visual-metrics-palette-bad.html",
+      "fixtureSha256": "0d44cdc4d78f0f36c4d631529c1f30420f87e16a402a6b1814209577fc3df904",
+      "metric": "palette",
+      "role": "bad",
+      "policy": {
+        "policyId": "palette-discipline-budget-v1",
+        "methodId": "rendered-rgba8-oklch-cover30-v1",
+        "maxDistinctColors": 2,
+        "maxChromaticHueFamilies": 1
+      },
+      "expected": {
+        "measurement": {
+          "policyId": "palette-discipline-budget-v1",
+          "methodId": "rendered-rgba8-oklch-cover30-v1",
+          "maxDistinctColors": 2,
+          "maxChromaticHueFamilies": 1,
+          "coverage": "complete",
+          "candidateSlotCount": 7,
+          "collectedSlotCount": 7,
+          "evaluatedSlotCount": 3,
+          "ignoredSlotCount": 4,
+          "ignoredByReason": {
+            "transparent": 4
+          },
+          "skippedSlotCount": 0,
+          "skippedByReason": {},
+          "distinctColorCount": 3,
+          "emittedColorCount": 3,
+          "omittedColorCount": 0,
+          "hueFamilyCount": 2
+        },
+        "findings": [
+          {
+            "checkName": "palette-count-discipline",
+            "criterionId": "color.palette.count-discipline",
+            "determinism": "heuristic",
+            "resultKind": "risk",
+            "severity": "low",
+            "confidence": "low",
+            "overages": [
+              {
+                "component": "distinctColorCount",
+                "observedCount": 3,
+                "configuredMaximum": 2,
+                "excess": 1,
+                "coverage": "complete"
+              },
+              {
+                "component": "hueFamilyCount",
+                "observedCount": 2,
+                "configuredMaximum": 1,
+                "excess": 1,
+                "coverage": "complete"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "visual-metrics-density-good",
+      "path": "examples/ui-quality-fixtures/visual-metrics-density-good.html",
+      "fixtureSha256": "ff2da9fa8fa2577d17414bb224d9a901d93159e9d5a8a7c95bf8806e1ed339cf",
+      "metric": "density",
+      "role": "good",
+      "policy": {
+        "policyId": "density-complexity-budget-v1",
+        "methodId": "viewport-dom-density-v1",
+        "visibleElementMethodId": "visible-content-elements-v1",
+        "textClusterMethodId": "text-flow-connectivity-v1",
+        "maxVisibleElements": 2,
+        "maxTextClusters": 2
+      },
+      "expected": {
+        "measurement": {
+          "policyId": "density-complexity-budget-v1",
+          "methodId": "viewport-dom-density-v1",
+          "visibleElementMethodId": "visible-content-elements-v1",
+          "textClusterMethodId": "text-flow-connectivity-v1",
+          "maxVisibleElements": 2,
+          "maxTextClusters": 2,
+          "visibleElements": {
+            "methodId": "visible-content-elements-v1",
+            "maxVisibleElements": 2,
+            "coverage": "complete",
+            "elementUniverseCount": 2,
+            "visibleElementCount": 2,
+            "ignoredElementCount": 0,
+            "ineligibleElementCount": 0,
+            "skippedElementCount": 0,
+            "skippedByReason": {},
+            "emittedSampleCount": 2,
+            "omittedSampleCount": 0
+          },
+          "textClusters": {
+            "methodId": "text-flow-connectivity-v1",
+            "maxTextClusters": 2,
+            "coverage": "complete",
+            "textNodeUniverseCount": 3,
+            "ignoredTextNodeCount": 0,
+            "ineligibleTextNodeCount": 1,
+            "skippedTextNodeCount": 0,
+            "evaluatedTextNodeCount": 2,
+            "skippedByReason": {},
+            "textFragmentCount": 2,
+            "textClusterCount": 2,
+            "edgeTestCount": 0,
+            "emittedSampleCount": 2,
+            "omittedSampleCount": 0
+          }
+        },
+        "findings": []
+      }
+    },
+    {
+      "id": "visual-metrics-density-bad",
+      "path": "examples/ui-quality-fixtures/visual-metrics-density-bad.html",
+      "fixtureSha256": "52df0dde818e8af34c69ed83b117b19fb322e66e1d261c8bdc4a13f79f78325d",
+      "metric": "density",
+      "role": "bad",
+      "policy": {
+        "policyId": "density-complexity-budget-v1",
+        "methodId": "viewport-dom-density-v1",
+        "visibleElementMethodId": "visible-content-elements-v1",
+        "textClusterMethodId": "text-flow-connectivity-v1",
+        "maxVisibleElements": 2,
+        "maxTextClusters": 2
+      },
+      "expected": {
+        "measurement": {
+          "policyId": "density-complexity-budget-v1",
+          "methodId": "viewport-dom-density-v1",
+          "visibleElementMethodId": "visible-content-elements-v1",
+          "textClusterMethodId": "text-flow-connectivity-v1",
+          "maxVisibleElements": 2,
+          "maxTextClusters": 2,
+          "visibleElements": {
+            "methodId": "visible-content-elements-v1",
+            "maxVisibleElements": 2,
+            "coverage": "complete",
+            "elementUniverseCount": 3,
+            "visibleElementCount": 3,
+            "ignoredElementCount": 0,
+            "ineligibleElementCount": 0,
+            "skippedElementCount": 0,
+            "skippedByReason": {},
+            "emittedSampleCount": 3,
+            "omittedSampleCount": 0
+          },
+          "textClusters": {
+            "methodId": "text-flow-connectivity-v1",
+            "maxTextClusters": 2,
+            "coverage": "complete",
+            "textNodeUniverseCount": 4,
+            "ignoredTextNodeCount": 0,
+            "ineligibleTextNodeCount": 1,
+            "skippedTextNodeCount": 0,
+            "evaluatedTextNodeCount": 3,
+            "skippedByReason": {},
+            "textFragmentCount": 3,
+            "textClusterCount": 3,
+            "edgeTestCount": 0,
+            "emittedSampleCount": 3,
+            "omittedSampleCount": 0
+          }
+        },
+        "findings": [
+          {
+            "checkName": "density-complexity-budget",
+            "criterionId": "layout.density.complexity-budget",
+            "determinism": "heuristic",
+            "resultKind": "risk",
+            "severity": "low",
+            "confidence": "low",
+            "overages": [
+              {
+                "component": "visibleElementCount",
+                "observedCount": 3,
+                "configuredMaximum": 2,
+                "excess": 1,
+                "coverage": "complete"
+              },
+              {
+                "component": "textClusterCount",
+                "observedCount": 3,
+                "configuredMaximum": 2,
+                "excess": 1,
+                "coverage": "complete"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "merchant-dashboard-non-regression",
+      "path": "examples/merchant-dashboard/index.html",
+      "fixtureSha256": "08b4ee2829358e66c14f99a9adbe159268cca9b2998cc1087768176016e3309c",
+      "metric": "all",
+      "role": "non-regression",
+      "policy": {
+        "typography": {
+          "policyId": "typography-variant-budget-v1",
+          "methodId": "rendered-typography-variants-v1",
+          "maxDistinctVariants": 12
+        },
+        "palette": {
+          "policyId": "palette-discipline-budget-v1",
+          "methodId": "rendered-rgba8-oklch-cover30-v1",
+          "maxDistinctColors": 20,
+          "maxChromaticHueFamilies": 2
+        },
+        "density": {
+          "policyId": "density-complexity-budget-v1",
+          "methodId": "viewport-dom-density-v1",
+          "visibleElementMethodId": "visible-content-elements-v1",
+          "textClusterMethodId": "text-flow-connectivity-v1",
+          "maxVisibleElements": 46,
+          "maxTextClusters": 46
+        }
+      },
+      "expected": {
+        "measurement": {
+          "typography": {
+            "policyId": "typography-variant-budget-v1",
+            "methodId": "rendered-typography-variants-v1",
+            "maxDistinctVariants": 12,
+            "coverage": "complete",
+            "candidateElementCount": 46,
+            "collectedElementCount": 46,
+            "evaluatedElementCount": 46,
+            "ignoredElementCount": 0,
+            "skippedElementCount": 0,
+            "skippedByReason": {},
+            "distinctVariantCount": 12,
+            "emittedVariantCount": 5,
+            "omittedVariantCount": 7
+          },
+          "palette": {
+            "policyId": "palette-discipline-budget-v1",
+            "methodId": "rendered-rgba8-oklch-cover30-v1",
+            "maxDistinctColors": 20,
+            "maxChromaticHueFamilies": 2,
+            "coverage": "complete",
+            "candidateSlotCount": 172,
+            "collectedSlotCount": 172,
+            "evaluatedSlotCount": 116,
+            "ignoredSlotCount": 56,
+            "ignoredByReason": {
+              "transparent": 56
+            },
+            "skippedSlotCount": 0,
+            "skippedByReason": {},
+            "distinctColorCount": 20,
+            "emittedColorCount": 5,
+            "omittedColorCount": 15,
+            "hueFamilyCount": 2
+          },
+          "density": {
+            "policyId": "density-complexity-budget-v1",
+            "methodId": "viewport-dom-density-v1",
+            "visibleElementMethodId": "visible-content-elements-v1",
+            "textClusterMethodId": "text-flow-connectivity-v1",
+            "maxVisibleElements": 46,
+            "maxTextClusters": 46,
+            "visibleElements": {
+              "methodId": "visible-content-elements-v1",
+              "maxVisibleElements": 46,
+              "coverage": "complete",
+              "elementUniverseCount": 46,
+              "visibleElementCount": 46,
+              "ignoredElementCount": 0,
+              "ineligibleElementCount": 0,
+              "skippedElementCount": 0,
+              "skippedByReason": {},
+              "emittedSampleCount": 10,
+              "omittedSampleCount": 36
+            },
+            "textClusters": {
+              "methodId": "text-flow-connectivity-v1",
+              "maxTextClusters": 46,
+              "coverage": "complete",
+              "textNodeUniverseCount": 136,
+              "ignoredTextNodeCount": 0,
+              "ineligibleTextNodeCount": 90,
+              "skippedTextNodeCount": 0,
+              "evaluatedTextNodeCount": 46,
+              "skippedByReason": {},
+              "textFragmentCount": 48,
+              "textClusterCount": 46,
+              "edgeTestCount": 3,
+              "emittedSampleCount": 10,
+              "omittedSampleCount": 36
+            }
+          }
+        },
+        "findings": []
+      }
+    }
+  ]
+}

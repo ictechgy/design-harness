@@ -9,7 +9,8 @@ import {
   createMinimalCopyStyle,
   projectColorAdherencePolicy,
   projectFontFamilyAdherencePolicy,
-  projectSpacingAdherencePolicy
+  projectSpacingAdherencePolicy,
+  projectVisualMetricsRuntimePolicies
 } from "@design-harness/core";
 import { BrowserUnavailableError, type AuditUrlOptions } from "@design-harness/visual-audit";
 import { CopyStyleLoadError } from "./copy-style.js";
@@ -48,6 +49,9 @@ describe("runCli", () => {
     expect(audit.mock.calls[0]?.[0]).not.toHaveProperty("fontFamilyPolicy");
     expect(audit.mock.calls[0]?.[0]).not.toHaveProperty("colorPolicy");
     expect(audit.mock.calls[0]?.[0]).not.toHaveProperty("spacingPolicy");
+    expect(audit.mock.calls[0]?.[0]).not.toHaveProperty("typographyVariantsPolicy");
+    expect(audit.mock.calls[0]?.[0]).not.toHaveProperty("paletteDisciplinePolicy");
+    expect(audit.mock.calls[0]?.[0]).not.toHaveProperty("densityComplexityPolicy");
     expect(audit.mock.calls[0]?.[0]).not.toHaveProperty("guide");
     expect(audit.mock.calls[0]?.[0]).not.toHaveProperty("designGuide");
     expect(writeArtifacts).toHaveBeenCalledOnce();
@@ -115,6 +119,43 @@ describe("runCli", () => {
       policyId: "font-family-adherence-v1"
     });
     expect(audit.mock.calls[0]?.[0]).not.toHaveProperty("copyStyle");
+  });
+
+  it("routes configured visual-metric policies into ordinary audit without exposing the guide", async () => {
+    const guide = createExampleDesignGuide();
+    guide.audit = {
+      typographyVariants: {
+        maxDistinctVariants: 8,
+        ignoreSelectors: [".vendor-type"]
+      },
+      paletteDiscipline: {
+        maxDistinctColors: 24,
+        maxChromaticHueFamilies: 4,
+        ignoreSelectors: [".vendor-palette"]
+      },
+      densityComplexity: {
+        maxVisibleElements: 120,
+        maxTextClusters: 48,
+        ignoreSelectors: [".vendor-density"]
+      }
+    };
+    const { dependencies, audit, loadDesignGuide } = successfulDependencies();
+    loadDesignGuide.mockResolvedValue(guide);
+
+    await expect(runCli([
+      ...baseArgv,
+      "--guide",
+      "config/design-guide.yaml"
+    ], dependencies)).resolves.toBe(0);
+
+    const projected = projectVisualMetricsRuntimePolicies(guide);
+    expect(audit.mock.calls[0]?.[0]).toMatchObject({
+      typographyVariantsPolicy: projected.typographyVariants,
+      paletteDisciplinePolicy: projected.paletteDiscipline,
+      densityComplexityPolicy: projected.densityComplexity
+    });
+    expect(audit.mock.calls[0]?.[0]).not.toHaveProperty("guide");
+    expect(audit.mock.calls[0]?.[0]).not.toHaveProperty("designGuide");
   });
 
   it("passes the validated copy style by identity into one audit call", async () => {
@@ -238,6 +279,17 @@ describe("runCli", () => {
 
   it("preflights loop URL and explicit configs once before dispatching the bounded runner", async () => {
     const guide = createExampleDesignGuide();
+    guide.audit = {
+      typographyVariants: { maxDistinctVariants: 8 },
+      paletteDiscipline: {
+        maxDistinctColors: 24,
+        maxChromaticHueFamilies: 4
+      },
+      densityComplexity: {
+        maxVisibleElements: 120,
+        maxTextClusters: 48
+      }
+    };
     const copyStyle = createMinimalCopyStyle();
     const {
       dependencies,
@@ -282,7 +334,10 @@ describe("runCli", () => {
       copyStyle,
       fontFamilyPolicy: projectFontFamilyAdherencePolicy(guide),
       colorPolicy: projectColorAdherencePolicy(guide),
-      spacingPolicy: projectSpacingAdherencePolicy(guide)
+      spacingPolicy: projectSpacingAdherencePolicy(guide),
+      typographyVariantsPolicy: projectVisualMetricsRuntimePolicies(guide).typographyVariants,
+      paletteDisciplinePolicy: projectVisualMetricsRuntimePolicies(guide).paletteDiscipline,
+      densityComplexityPolicy: projectVisualMetricsRuntimePolicies(guide).densityComplexity
     });
     expect(audit).not.toHaveBeenCalled();
     expect(writeArtifacts).not.toHaveBeenCalled();
@@ -329,6 +384,9 @@ describe("runCli", () => {
 
     expect(runLoop.mock.calls[0]?.[0]).not.toHaveProperty("colorPolicy");
     expect(runLoop.mock.calls[0]?.[0]).not.toHaveProperty("spacingPolicy");
+    expect(runLoop.mock.calls[0]?.[0]).not.toHaveProperty("typographyVariantsPolicy");
+    expect(runLoop.mock.calls[0]?.[0]).not.toHaveProperty("paletteDisciplinePolicy");
+    expect(runLoop.mock.calls[0]?.[0]).not.toHaveProperty("densityComplexityPolicy");
     expect(stderr).toHaveBeenCalledWith(expect.stringContaining("condition was reached"));
   });
 
@@ -454,7 +512,7 @@ function guideResult(action: "compile" | "check"): GuideRunResult {
     action,
     ok: true,
     targetDir: "project",
-    profileId: "design-guide-v0.5a-1",
+    profileId: "design-guide-v0.5a-2",
     catalogVersion: "2026-07-18",
     sourceHash: "a".repeat(64),
     tokenEstimate: {

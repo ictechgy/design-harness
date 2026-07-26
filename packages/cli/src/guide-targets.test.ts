@@ -1,4 +1,4 @@
-import { mkdtemp, mkdir, realpath, rm, symlink, writeFile } from "node:fs/promises";
+import { mkdtemp, mkdir, readFile, realpath, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -123,6 +123,72 @@ describe("planGuideTargets", () => {
       .rejects.toMatchObject({ phase: "ownership", path: "design.tokens.json" });
   });
 
+  it("treats the exact recognized-prior token tuple as stale without writing it", async () => {
+    const fixture = await targetFixture();
+    const paths = await resolvedFixture(fixture);
+    const prior = tokenJsonWithOwnership(
+      "design-guide-v0.5a-1",
+      "2026-07-18",
+      "a".repeat(64)
+    );
+    const tokenPath = join(fixture.target, "design.tokens.json");
+    await writeFile(tokenPath, prior);
+
+    const plans = await planGuideTargets({
+      paths,
+      markdown: "rule",
+      designTokensJson: tokenJson("a")
+    });
+    const tokenPlan = plans.find((plan) => plan.name === "design.tokens.json")!;
+
+    expect(DESIGN_GUIDE_PROFILE_ID).toBe("design-guide-v0.5a-2");
+    expect(tokenPlan.status).toBe("changed");
+    expect(JSON.parse(tokenPlan.nextContent.toString()).$extensions["dev.design-harness"]).toMatchObject({
+      profile: "design-guide-v0.5a-2",
+      catalogVersion: GUIDE_CATALOG_VERSION,
+      sourceHash: "a".repeat(64)
+    });
+    expect(checkGuideTargets(plans).artifacts.find(
+      (artifact) => artifact.name === "design.tokens.json"
+    )).toEqual({ name: "design.tokens.json", status: "stale" });
+    expect(await readFile(tokenPath, "utf8")).toBe(prior);
+  });
+
+  it("rejects unrecognized ownership tuples and recognized-prior generated output", async () => {
+    const fixture = await targetFixture();
+    const paths = await resolvedFixture(fixture);
+    const tokenPath = join(fixture.target, "design.tokens.json");
+    const unknownOwnership = [
+      tokenJsonWithOwnership("design-guide-v0.5a-1", "2026-07-17", "a".repeat(64)),
+      tokenJsonWithOwnership("design-guide-v0.5a-unknown", "2026-07-18", "a".repeat(64)),
+      tokenJsonWithOwnership(DESIGN_GUIDE_PROFILE_ID, "2026-07-17", "a".repeat(64)),
+      tokenJsonWithOwnership("design-guide-v0.5a-1", "2026-07-18", "A".repeat(64))
+    ];
+
+    for (const source of unknownOwnership) {
+      await writeFile(tokenPath, source);
+      await expect(planGuideTargets({
+        paths,
+        markdown: "rule",
+        designTokensJson: tokenJson("a")
+      })).rejects.toMatchObject({ phase: "ownership", path: "design.tokens.json" });
+    }
+
+    await rm(tokenPath);
+    await expect(planGuideTargets({
+      paths,
+      markdown: "rule",
+      designTokensJson: tokenJsonWithOwnership(
+        "design-guide-v0.5a-1",
+        "2026-07-18",
+        "a".repeat(64)
+      )
+    })).rejects.toMatchObject({
+      phase: "ownership",
+      path: "generated design.tokens.json"
+    });
+  });
+
   it("classifies current, stale, and missing artifacts without a write dependency", async () => {
     const fixture = await targetFixture();
     const paths = await resolvedFixture(fixture);
@@ -206,13 +272,21 @@ async function resolvedFixture(fixture: { cwd: string; target: string }) {
 }
 
 function tokenJson(hashCharacter: string): string {
+  return tokenJsonWithOwnership(
+    DESIGN_GUIDE_PROFILE_ID,
+    GUIDE_CATALOG_VERSION,
+    hashCharacter.repeat(64)
+  );
+}
+
+function tokenJsonWithOwnership(profile: string, catalogVersion: string, sourceHash: string): string {
   return `${JSON.stringify({
     color: {},
     $extensions: {
       "dev.design-harness": {
-        profile: DESIGN_GUIDE_PROFILE_ID,
-        catalogVersion: GUIDE_CATALOG_VERSION,
-        sourceHash: hashCharacter.repeat(64)
+        profile,
+        catalogVersion,
+        sourceHash
       }
     }
   }, null, 2)}\n`;

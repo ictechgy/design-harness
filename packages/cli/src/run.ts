@@ -2,11 +2,15 @@ import {
   projectColorAdherencePolicy,
   projectFontFamilyAdherencePolicy,
   projectSpacingAdherencePolicy,
+  projectVisualMetricsRuntimePolicies,
   type ColorAdherencePolicy,
   type CopyStyle,
+  type DensityComplexityBudgetPolicy,
   type DesignGuide,
   type FontFamilyAdherencePolicy,
-  type SpacingAdherencePolicy
+  type PaletteDisciplineBudgetPolicy,
+  type SpacingAdherencePolicy,
+  type TypographyVariantBudgetPolicy
 } from "@design-harness/core";
 import {
   BrowserUnavailableError,
@@ -106,6 +110,15 @@ export async function runCli(argv: string[], dependencies: RunCliDependencies = 
       if (prepared.spacingPolicy) {
         loopInput.spacingPolicy = prepared.spacingPolicy;
       }
+      if (prepared.typographyVariantsPolicy) {
+        loopInput.typographyVariantsPolicy = prepared.typographyVariantsPolicy;
+      }
+      if (prepared.paletteDisciplinePolicy) {
+        loopInput.paletteDisciplinePolicy = prepared.paletteDisciplinePolicy;
+      }
+      if (prepared.densityComplexityPolicy) {
+        loopInput.densityComplexityPolicy = prepared.densityComplexityPolicy;
+      }
       const loopDependencies: LoopRunDependencies = {};
       if (dependencies.audit) {
         loopDependencies.audit = dependencies.audit;
@@ -148,6 +161,15 @@ export async function runCli(argv: string[], dependencies: RunCliDependencies = 
     if (prepared.spacingPolicy) {
       auditOptions.spacingPolicy = prepared.spacingPolicy;
     }
+    if (prepared.typographyVariantsPolicy) {
+      auditOptions.typographyVariantsPolicy = prepared.typographyVariantsPolicy;
+    }
+    if (prepared.paletteDisciplinePolicy) {
+      auditOptions.paletteDisciplinePolicy = prepared.paletteDisciplinePolicy;
+    }
+    if (prepared.densityComplexityPolicy) {
+      auditOptions.densityComplexityPolicy = prepared.densityComplexityPolicy;
+    }
 
     const result = await (dependencies.audit ?? auditUrl)(auditOptions);
     await (dependencies.writeArtifacts ?? writeAuditArtifacts)({
@@ -180,6 +202,9 @@ interface PreparedAuditConfiguration {
   fontFamilyPolicy?: FontFamilyAdherencePolicy;
   colorPolicy?: ColorAdherencePolicy;
   spacingPolicy?: SpacingAdherencePolicy;
+  typographyVariantsPolicy?: TypographyVariantBudgetPolicy;
+  paletteDisciplinePolicy?: PaletteDisciplineBudgetPolicy;
+  densityComplexityPolicy?: DensityComplexityBudgetPolicy;
 }
 
 async function prepareAuditConfiguration(
@@ -203,6 +228,9 @@ async function prepareAuditConfiguration(
   const spacingPolicy = designGuide
     ? projectSpacingAdherencePolicy(designGuide)
     : undefined;
+  const visualMetricsPolicies = designGuide
+    ? projectVisualMetricsRuntimePolicies(designGuide)
+    : {};
   const copyStyle = args.copyStylePath
     ? await (dependencies.loadCopyStyle ?? loadCopyStyleFile)(args.copyStylePath, { cwd: invocationCwd })
     : undefined;
@@ -212,7 +240,16 @@ async function prepareAuditConfiguration(
     copyStyle,
     fontFamilyPolicy,
     colorPolicy,
-    spacingPolicy
+    spacingPolicy,
+    ...(visualMetricsPolicies.typographyVariants
+      ? { typographyVariantsPolicy: visualMetricsPolicies.typographyVariants }
+      : {}),
+    ...(visualMetricsPolicies.paletteDiscipline
+      ? { paletteDisciplinePolicy: visualMetricsPolicies.paletteDiscipline }
+      : {}),
+    ...(visualMetricsPolicies.densityComplexity
+      ? { densityComplexityPolicy: visualMetricsPolicies.densityComplexity }
+      : {})
   };
 }
 

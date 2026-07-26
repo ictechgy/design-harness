@@ -1,19 +1,46 @@
 import { describe, expect, it } from "vitest";
 import {
+  DensityClusterError,
+  HUE_FAMILY_SPAN_MICRODEGREES,
+  HUE_MICRODEGREE_SCALE,
+  HUE_TURN_MICRODEGREES,
+  MAX_DOM_ELEMENTS,
+  MAX_EDGE_TESTS,
+  MAX_EVIDENCE_SAMPLES,
+  MAX_INLINE_GAP_HEIGHTS,
+  MAX_LEFT_EDGE_DELTA_HEIGHTS,
+  MAX_NEXT_LINE_GAP_HEIGHTS,
+  MAX_TEXT_FRAGMENTS,
+  MAX_TEXT_NODES,
+  MIN_NEXT_LINE_X_OVERLAP,
+  MIN_VERTICAL_OVERLAP,
+  OKLAB_ACHROMATIC_CUTOFF,
+  TypographyTupleNormalizationError,
   centreDistance,
   compositeOver,
+  countDensityTextClusters,
   computeContrastRisks,
   computeTapTargetRisks,
   contrastRatio,
+  densityFragmentsAreAdjacent,
+  hueFamilyCoverFromRgba8,
   isUndersizedTarget,
+  isChromaticOklabChroma,
+  minimumCircularHueCover,
+  normalizeTypographyTuple,
+  oklabChromaHueFromRgba8,
   parseCssColor,
   pointToRectDistance,
   relativeLuminance,
   requiredContrastRatio,
+  rgba8FromParsedColor,
+  rgba8Identity,
   tapTargetSpacingExempt,
   type ContrastCandidate,
+  type DensityTextFragment,
   type TapTargetCandidate,
-  type TargetRect
+  type TargetRect,
+  type TypographyTupleInput
 } from "./measurement-primitives.js";
 
 function candidate(overrides: Partial<ContrastCandidate> = {}): ContrastCandidate {
@@ -30,6 +57,26 @@ function candidate(overrides: Partial<ContrastCandidate> = {}): ContrastCandidat
   };
 }
 
+function typographyInput(overrides: Partial<TypographyTupleInput> = {}): TypographyTupleInput {
+  return {
+    fontFamily: "Inter, sans-serif",
+    fontSize: "16px",
+    fontWeight: "400",
+    fontStyle: "normal",
+    ...overrides
+  };
+}
+
+function fragment(
+  rootId: string,
+  left: number,
+  top: number,
+  width = 10,
+  height = 10
+): DensityTextFragment {
+  return { rootId, left, top, right: left + width, bottom: top + height };
+}
+
 /** Rounds a converted colour for comparison against Chromium's 8-bit rasteriser output. */
 function rounded(value: ReturnType<typeof parseCssColor>) {
   if (!value) {
@@ -37,6 +84,348 @@ function rounded(value: ReturnType<typeof parseCssColor>) {
   }
   return [Math.round(value.red), Math.round(value.green), Math.round(value.blue)];
 }
+
+describe("typography tuple normalization", () => {
+  it("decodes and ASCII-folds an ordered, duplicate-preserving family list into the exact identity", () => {
+    const escaped = normalizeTypographyTuple(typographyInput({
+      fontFamily: "I\\6e ter, SANS-SERIF, I\\6e ter",
+      fontSize: "16.0004px",
+      fontWeight: "normal",
+      fontStyle: "oblique"
+    }));
+    const equivalent = normalizeTypographyTuple(typographyInput({
+      fontFamily: "inter, sans-serif, INTER",
+      fontSize: "16.00049px",
+      fontWeight: "400",
+      fontStyle: "oblique 14deg"
+    }));
+
+    expect(escaped).toEqual({
+      tuple: {
+        families: ["named\u0000inter", "generic\u0000sans-serif", "named\u0000inter"],
+        sizeMilliPx: 16_000,
+        weightMilli: 400_000,
+        style: "oblique:14000000"
+      },
+      identity:
+        "{\"families\":[\"named\\u0000inter\",\"generic\\u0000sans-serif\",\"named\\u0000inter\"],"
+        + "\"sizeMilliPx\":16000,\"weightMilli\":400000,\"style\":\"oblique:14000000\"}"
+    });
+    expect(equivalent.identity).toBe(escaped.identity);
+  });
+
+  it("keeps order, named-versus-generic kind, duplicates, and Unicode normalization identity-bearing", () => {
+    const identity = (fontFamily: string) =>
+      normalizeTypographyTuple(typographyInput({ fontFamily })).identity;
+
+    expect(identity("Inter, serif")).not.toBe(identity("serif, Inter"));
+    expect(identity("\"serif\"")).not.toBe(identity("serif"));
+    expect(identity("Inter, Inter")).not.toBe(identity("Inter"));
+    expect(identity("Å")).not.toBe(identity("A\\30a "));
+    expect(identity("École")).not.toBe(identity("école"));
+    expect(identity("INTER")).toBe(identity("inter"));
+  });
+
+  it("quantizes size, numeric weight, and oblique angle independently at the frozen precision", () => {
+    const base = normalizeTypographyTuple(typographyInput({
+      fontSize: "12.3454px",
+      fontWeight: "400.0004",
+      fontStyle: "oblique 14.0000004deg"
+    }));
+    expect(base.tuple).toMatchObject({
+      sizeMilliPx: 12_345,
+      weightMilli: 400_000,
+      style: "oblique:14000000"
+    });
+    expect(normalizeTypographyTuple(typographyInput({
+      fontSize: "12.34549px",
+      fontWeight: "400.00049",
+      fontStyle: "oblique 14.00000049deg"
+    })).identity).toBe(base.identity);
+
+    expect(normalizeTypographyTuple(typographyInput({
+      fontSize: "12.3456px",
+      fontWeight: "400.0004",
+      fontStyle: "oblique 14.0000004deg"
+    })).identity).not.toBe(base.identity);
+    expect(normalizeTypographyTuple(typographyInput({
+      fontSize: "12.3454px",
+      fontWeight: "400.0006",
+      fontStyle: "oblique 14.0000004deg"
+    })).identity).not.toBe(base.identity);
+    expect(normalizeTypographyTuple(typographyInput({
+      fontSize: "12.3454px",
+      fontWeight: "400.0004",
+      fontStyle: "oblique 14.0000006deg"
+    })).identity).not.toBe(base.identity);
+  });
+
+  it("normalizes the two weight keywords and the bare oblique default", () => {
+    expect(normalizeTypographyTuple(typographyInput({ fontWeight: "normal" })).tuple.weightMilli)
+      .toBe(400_000);
+    expect(normalizeTypographyTuple(typographyInput({ fontWeight: "bold" })).tuple.weightMilli)
+      .toBe(700_000);
+    expect(normalizeTypographyTuple(typographyInput({ fontWeight: "700" })).tuple.weightMilli)
+      .toBe(700_000);
+    expect(normalizeTypographyTuple(typographyInput({ fontStyle: "oblique" })).tuple.style)
+      .toBe("oblique:14000000");
+    expect(normalizeTypographyTuple(typographyInput({ fontStyle: "oblique -0deg" })).tuple.style)
+      .toBe("oblique:0");
+  });
+
+  it("measures the family ceiling in Unicode scalars rather than UTF-16 code units", () => {
+    expect(() => normalizeTypographyTuple(typographyInput({
+      fontFamily: "😀".repeat(1_024)
+    }))).not.toThrow();
+
+    try {
+      normalizeTypographyTuple(typographyInput({ fontFamily: "😀".repeat(1_025) }));
+      throw new Error("expected font-family-too-long");
+    } catch (error) {
+      expect(error).toBeInstanceOf(TypographyTupleNormalizationError);
+      expect(error).toMatchObject({ code: "font-family-too-long" });
+    }
+  });
+
+  it.each([
+    [{ fontFamily: "" }, "invalid-font-family"],
+    [{ fontSize: "0px" }, "invalid-font-size"],
+    [{ fontSize: "16" }, "invalid-font-size"],
+    [{ fontSize: "1e309px" }, "invalid-font-size"],
+    [{ fontSize: "9007199254741px" }, "invalid-font-size"],
+    [{ fontWeight: "0" }, "invalid-font-weight"],
+    [{ fontWeight: "1000.0001" }, "invalid-font-weight"],
+    [{ fontWeight: "bolder" }, "invalid-font-weight"],
+    [{ fontStyle: "oblique 14rad" }, "invalid-font-style"],
+    [{ fontStyle: "oblique 1e309deg" }, "invalid-font-style"],
+    [{ fontStyle: "inherit" }, "invalid-font-style"]
+  ] as const)("turns an invalid raw component into typed skip evidence: %o", (overrides, code) => {
+    try {
+      normalizeTypographyTuple(typographyInput(overrides));
+      throw new Error(`expected ${code}`);
+    } catch (error) {
+      expect(error).toBeInstanceOf(TypographyTupleNormalizationError);
+      expect(error).toMatchObject({ code });
+    }
+  });
+});
+
+describe("palette RGBA8 and chromatic hue primitives", () => {
+  it("clamps then rounds every parsed component to the exact RGBA8 identity", () => {
+    const color = rgba8FromParsedColor({
+      red: -0.6,
+      green: 12.49,
+      blue: 254.5,
+      alpha: 0.5
+    });
+    expect(color).toEqual({ red: 0, green: 12, blue: 255, alpha: 128 });
+    expect(rgba8Identity(color!)).toBe("0,12,255,128");
+    expect(rgba8FromParsedColor({ red: Number.NaN, green: 0, blue: 0, alpha: 1 }))
+      .toBeNull();
+    expect(() => rgba8Identity({ red: 256, green: 0, blue: 0, alpha: 255 }))
+      .toThrow(RangeError);
+  });
+
+  it("keeps alpha variants distinct in RGBA identity while sharing one RGB hue input", () => {
+    const redOpaque = { red: 255, green: 0, blue: 0, alpha: 255 };
+    const redHalfAlpha = { red: 255, green: 0, blue: 0, alpha: 128 };
+    expect(new Set([rgba8Identity(redOpaque), rgba8Identity(redHalfAlpha)]).size).toBe(2);
+    expect(hueFamilyCoverFromRgba8([redOpaque, redHalfAlpha])).toEqual({
+      count: 1,
+      starts: [29_233_885]
+    });
+  });
+
+  it("pins the binary64 sRGB-to-OKLab chroma and hue quantization", () => {
+    expect(oklabChromaHueFromRgba8({ red: 255, green: 0, blue: 0, alpha: 255 }))
+      .toEqual({ chromaMicro: 257_683, hueMicrodegrees: 29_233_885 });
+    expect(oklabChromaHueFromRgba8({ red: 0, green: 255, blue: 0, alpha: 255 }))
+      .toEqual({ chromaMicro: 294_827, hueMicrodegrees: 142_495_339 });
+    expect(oklabChromaHueFromRgba8({ red: 0, green: 0, blue: 255, alpha: 255 }))
+      .toEqual({ chromaMicro: 313_214, hueMicrodegrees: 264_052_021 });
+    expect(oklabChromaHueFromRgba8({ red: 128, green: 128, blue: 128, alpha: 255 }))
+      .toEqual({ chromaMicro: 0, hueMicrodegrees: null });
+  });
+
+  it("makes 29_999 achromatic and 30_000 chromatic", () => {
+    expect(OKLAB_ACHROMATIC_CUTOFF).toBe(30_000);
+    expect(isChromaticOklabChroma(29_999)).toBe(false);
+    expect(isChromaticOklabChroma(30_000)).toBe(true);
+  });
+
+  it.each([
+    [[359_000_000, 1_000_000], { count: 1, starts: [359_000_000] }],
+    [[0, 30_000_000], { count: 1, starts: [0] }],
+    [[0, 30_000_001], { count: 2, starts: [0, 30_000_001] }],
+    [[0, 25_000_000, 50_000_000], { count: 2, starts: [0, 25_000_000] }]
+  ])("computes the frozen closed circular cover for %o", (hues, expected) => {
+    expect(minimumCircularHueCover(hues)).toEqual(expected);
+  });
+
+  it("uses the lexicographically smallest sorted starts to break equal-count ties", () => {
+    // Rotating the same three points yields [0,40] or [0,20]; both use two arcs.
+    expect(minimumCircularHueCover([0, 20_000_000, 40_000_000])).toEqual({
+      count: 2,
+      starts: [0, 20_000_000]
+    });
+  });
+
+  it("is invariant to permutation, duplicates, whole turns, and added achromatic colors", () => {
+    const canonical = minimumCircularHueCover([0, 25_000_000, 50_000_000]);
+    expect(minimumCircularHueCover([
+      410_000_000,
+      25_000_000,
+      0,
+      50_000_000,
+      -360_000_000,
+      25_000_000
+    ])).toEqual(canonical);
+
+    const red = { red: 255, green: 0, blue: 0, alpha: 255 };
+    const gray = { red: 128, green: 128, blue: 128, alpha: 255 };
+    const transparentBlue = { red: 0, green: 0, blue: 255, alpha: 0 };
+    expect(hueFamilyCoverFromRgba8([gray, transparentBlue, red, gray]))
+      .toEqual(hueFamilyCoverFromRgba8([red]));
+    expect(minimumCircularHueCover([])).toEqual({ count: 0, starts: [] });
+    expect(HUE_TURN_MICRODEGREES).toBe(360_000_000);
+    expect(HUE_MICRODEGREE_SCALE).toBe(1_000_000);
+    expect(HUE_FAMILY_SPAN_MICRODEGREES).toBe(30_000_000);
+  });
+});
+
+describe("density fragment connectivity", () => {
+  it("pins every frozen safety and topology constant", () => {
+    expect({
+      MAX_DOM_ELEMENTS,
+      MAX_TEXT_NODES,
+      MAX_TEXT_FRAGMENTS,
+      MAX_EDGE_TESTS,
+      MAX_EVIDENCE_SAMPLES,
+      MIN_VERTICAL_OVERLAP,
+      MAX_INLINE_GAP_HEIGHTS,
+      MIN_NEXT_LINE_X_OVERLAP,
+      MAX_NEXT_LINE_GAP_HEIGHTS,
+      MAX_LEFT_EDGE_DELTA_HEIGHTS
+    }).toEqual({
+      MAX_DOM_ELEMENTS: 10_000,
+      MAX_TEXT_NODES: 20_000,
+      MAX_TEXT_FRAGMENTS: 20_000,
+      MAX_EDGE_TESTS: 1_000_000,
+      MAX_EVIDENCE_SAMPLES: 10,
+      MIN_VERTICAL_OVERLAP: 0.5,
+      MAX_INLINE_GAP_HEIGHTS: 1,
+      MIN_NEXT_LINE_X_OVERLAP: 0.25,
+      MAX_NEXT_LINE_GAP_HEIGHTS: 1,
+      MAX_LEFT_EDGE_DELTA_HEIGHTS: 1
+    });
+  });
+
+  it("treats touching or overlapping rectangles as adjacent only inside one flow root", () => {
+    const upper = fragment("root", 0, 0);
+    const cornerTouching = fragment("root", 10, 10);
+    expect(densityFragmentsAreAdjacent(upper, cornerTouching)).toBe(true);
+    expect(densityFragmentsAreAdjacent(upper, { ...cornerTouching, rootId: "other" }))
+      .toBe(false);
+  });
+
+  it("makes the inline overlap and gap inequalities closed at their exact boundaries", () => {
+    const left = fragment("root", 0, 0);
+    expect(densityFragmentsAreAdjacent(left, fragment("root", 20, 5))).toBe(true);
+    expect(densityFragmentsAreAdjacent(left, fragment("root", 20.000_001, 5)))
+      .toBe(false);
+    expect(densityFragmentsAreAdjacent(left, fragment("root", 20, 5.000_001)))
+      .toBe(false);
+  });
+
+  it("makes next-line x-overlap and left-edge alternatives closed at their exact boundaries", () => {
+    const wide = fragment("root", 0, 0, 40, 10);
+    expect(densityFragmentsAreAdjacent(wide, fragment("root", 30, 20, 40, 10)))
+      .toBe(true);
+    expect(densityFragmentsAreAdjacent(wide, fragment("root", 30.000_001, 20, 40, 10)))
+      .toBe(false);
+
+    const narrow = fragment("root", 0, 0, 5, 10);
+    expect(densityFragmentsAreAdjacent(narrow, fragment("root", 10, 20, 5, 10)))
+      .toBe(true);
+    expect(densityFragmentsAreAdjacent(narrow, fragment("root", 10.000_001, 20, 5, 10)))
+      .toBe(false);
+  });
+
+  it("uses union-find transitivity, but never bridges different flow roots", () => {
+    const result = countDensityTextClusters([
+      fragment("paragraph", 0, 0),
+      fragment("paragraph", 40, 0),
+      fragment("paragraph", 20, 0),
+      fragment("paragraph", 100, 0),
+      fragment("other-paragraph", 0, 0)
+    ]);
+    expect(result).toEqual({
+      clusterCount: 3,
+      edgeTests: 6,
+      components: [[0, 1, 2], [3], [4]]
+    });
+    expect(densityFragmentsAreAdjacent(
+      fragment("paragraph", 0, 0),
+      fragment("paragraph", 40, 0)
+    )).toBe(false);
+  });
+
+  it("keeps count and edge accounting stable under input permutations", () => {
+    const inputs = [
+      fragment("a", 0, 0),
+      fragment("a", 20, 0),
+      fragment("a", 100, 0),
+      fragment("b", 0, 0),
+      fragment("b", 20, 0)
+    ];
+    const forward = countDensityTextClusters(inputs);
+    const reverse = countDensityTextClusters([...inputs].reverse());
+    expect(forward.clusterCount).toBe(3);
+    expect(reverse.clusterCount).toBe(3);
+    expect(forward.edgeTests).toBe(4);
+    expect(reverse.edgeTests).toBe(4);
+    expect(forward.components.every(
+      (component) => component.every((value, index) => index === 0 || component[index - 1] < value)
+    )).toBe(true);
+  });
+
+  it("rejects invalid geometry instead of silently manufacturing a component", () => {
+    try {
+      countDensityTextClusters([{ rootId: "x", left: 0, top: 0, right: 0, bottom: 10 }]);
+      throw new Error("expected invalid-fragment");
+    } catch (error) {
+      expect(error).toBeInstanceOf(DensityClusterError);
+      expect(error).toMatchObject({ code: "invalid-fragment", edgeTests: 0 });
+    }
+  });
+
+  it("allows exactly one million pair tests and aborts on pair 1,000,001", () => {
+    const repeated = (rootId: string, count: number) =>
+      Array.from({ length: count }, () => fragment(rootId, 0, 0));
+    const atCap = [
+      ...repeated("a", 1_414), // 998,991 pairs
+      ...repeated("b", 45),    // +990
+      ...repeated("c", 6),     // +15
+      ...repeated("d", 3),     // +3
+      ...repeated("e", 2)      // +1 = 1,000,000
+    ];
+    expect(countDensityTextClusters(atCap)).toMatchObject({
+      clusterCount: 5,
+      edgeTests: MAX_EDGE_TESTS
+    });
+
+    try {
+      countDensityTextClusters([...atCap, fragment("e", 0, 0)]);
+      throw new Error("expected edge-cap-exceeded");
+    } catch (error) {
+      expect(error).toBeInstanceOf(DensityClusterError);
+      expect(error).toMatchObject({
+        code: "edge-cap-exceeded",
+        edgeTests: MAX_EDGE_TESTS + 1
+      });
+    }
+  });
+});
 
 describe("parseCssColor", () => {
   it("reads legacy rgb() and rgba() including alpha", () => {

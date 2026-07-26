@@ -234,6 +234,28 @@ describe("runLoop", () => {
       ],
       ignoreSelectors: [".third-party-spacing-widget"]
     };
+    const typographyVariantsPolicy = {
+      policyId: "typography-variant-budget-v1" as const,
+      methodId: "rendered-typography-variants-v1" as const,
+      maxDistinctVariants: 8,
+      ignoreSelectors: [".third-party-type-widget"]
+    };
+    const paletteDisciplinePolicy = {
+      policyId: "palette-discipline-budget-v1" as const,
+      methodId: "rendered-rgba8-oklch-cover30-v1" as const,
+      maxDistinctColors: 24,
+      maxChromaticHueFamilies: 4,
+      ignoreSelectors: [".third-party-palette-widget"]
+    };
+    const densityComplexityPolicy = {
+      policyId: "density-complexity-budget-v1" as const,
+      methodId: "viewport-dom-density-v1" as const,
+      visibleElementMethodId: "visible-content-elements-v1" as const,
+      textClusterMethodId: "text-flow-connectivity-v1" as const,
+      maxVisibleElements: 120,
+      maxTextClusters: 48,
+      ignoreSelectors: [".third-party-density-widget"]
+    };
     const harness = fakeHarness([
       { status: "success", selectors: ["html"] },
       { status: "success", selectors: [] }
@@ -244,7 +266,10 @@ describe("runLoop", () => {
         copyStyle,
         fontFamilyPolicy,
         colorPolicy,
-        spacingPolicy
+        spacingPolicy,
+        typographyVariantsPolicy,
+        paletteDisciplinePolicy,
+        densityComplexityPolicy
       }),
       harness.dependencies
     );
@@ -256,7 +281,10 @@ describe("runLoop", () => {
         copyStyle,
         fontFamilyPolicy,
         colorPolicy,
-        spacingPolicy
+        spacingPolicy,
+        typographyVariantsPolicy,
+        paletteDisciplinePolicy,
+        densityComplexityPolicy
       }),
       expect.objectContaining({
         runId: "loop-test-001",
@@ -264,7 +292,10 @@ describe("runLoop", () => {
         copyStyle,
         fontFamilyPolicy,
         colorPolicy,
-        spacingPolicy
+        spacingPolicy,
+        typographyVariantsPolicy,
+        paletteDisciplinePolicy,
+        densityComplexityPolicy
       })
     ]);
   });

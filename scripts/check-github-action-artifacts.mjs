@@ -91,6 +91,7 @@ const EXPECTED_JOB_ACTIONS = Object.freeze({
     Object.freeze({ kind: "run", value: "pnpm build" }),
     Object.freeze({ kind: "run", value: "pnpm smoke:example" }),
     Object.freeze({ kind: "run", value: "pnpm smoke:copy" }),
+    Object.freeze({ kind: "run", value: "pnpm smoke:visual-metrics" }),
     Object.freeze({ kind: "run", value: "pnpm smoke:loop" }),
     Object.freeze({ kind: "run", value: "pnpm smoke:packed-loop" }),
     Object.freeze({ kind: "run", value: "pnpm calibrate:fixtures" }),
@@ -390,6 +391,7 @@ jobs:
       - run: pnpm build
       - run: pnpm smoke:example
       - run: pnpm smoke:copy
+      - run: pnpm smoke:visual-metrics
       - run: pnpm smoke:loop
       - run: pnpm smoke:packed-loop
       - run: pnpm calibrate:fixtures
@@ -488,12 +490,22 @@ assertExactJobActions(workflow, "GitHub Actions CI workflow");
 
 const rootManifest = JSON.parse(await readFile(resolve("package.json"), "utf8"));
 const packedLoopScript = rootManifest.scripts?.["smoke:packed-loop"];
+const visualMetricsSmokeScript = rootManifest.scripts?.["smoke:visual-metrics"];
 const releaseCheckScript = rootManifest.scripts?.["release:check"];
 if (packedLoopScript !== "node scripts/verify-packed-cli.mjs --positive-loop") {
   throw new Error("smoke:packed-loop must select the explicit positive verifier mode.");
 }
-if (typeof releaseCheckScript !== "string" || releaseCheckScript.includes("smoke:packed-loop")) {
-  throw new Error("release:check must remain browserless and exclude smoke:packed-loop.");
+if (visualMetricsSmokeScript !== "node scripts/run-visual-metrics-smoke.mjs") {
+  throw new Error("smoke:visual-metrics must select the visual-metrics Playwright runner.");
+}
+if (
+  typeof releaseCheckScript !== "string"
+  || releaseCheckScript.includes("smoke:packed-loop")
+  || releaseCheckScript.includes("smoke:visual-metrics")
+) {
+  throw new Error(
+    "release:check must remain browserless and exclude smoke:packed-loop and smoke:visual-metrics."
+  );
 }
 
 const requiredFragments = [
@@ -501,6 +513,7 @@ const requiredFragments = [
   "name: design-harness-example-smoke",
   "runs/example-smoke",
   "runs/copy-smoke",
+  "runs/visual-metrics",
   "runs/loop-smoke",
   "runs/packed-loop",
   "runs/calibration",

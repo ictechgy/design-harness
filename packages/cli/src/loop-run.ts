@@ -3,8 +3,11 @@ import {
   HARNESS_VERSION,
   type ColorAdherencePolicy,
   type CopyStyle,
+  type DensityComplexityBudgetPolicy,
   type FontFamilyAdherencePolicy,
-  type SpacingAdherencePolicy
+  type PaletteDisciplineBudgetPolicy,
+  type SpacingAdherencePolicy,
+  type TypographyVariantBudgetPolicy
 } from "@design-harness/core";
 import {
   auditUrl,
@@ -52,6 +55,9 @@ export interface LoopRunInput {
   fontFamilyPolicy?: FontFamilyAdherencePolicy;
   colorPolicy?: ColorAdherencePolicy;
   spacingPolicy?: SpacingAdherencePolicy;
+  typographyVariantsPolicy?: TypographyVariantBudgetPolicy;
+  paletteDisciplinePolicy?: PaletteDisciplineBudgetPolicy;
+  densityComplexityPolicy?: DensityComplexityBudgetPolicy;
   cwd: string;
 }
 
@@ -207,7 +213,16 @@ export async function runLoop(
       ...(input.copyStyle === undefined ? {} : { copyStyle: input.copyStyle }),
       ...(input.fontFamilyPolicy === undefined ? {} : { fontFamilyPolicy: input.fontFamilyPolicy }),
       ...(input.colorPolicy === undefined ? {} : { colorPolicy: input.colorPolicy }),
-      ...(input.spacingPolicy === undefined ? {} : { spacingPolicy: input.spacingPolicy })
+      ...(input.spacingPolicy === undefined ? {} : { spacingPolicy: input.spacingPolicy }),
+      ...(input.typographyVariantsPolicy === undefined
+        ? {}
+        : { typographyVariantsPolicy: input.typographyVariantsPolicy }),
+      ...(input.paletteDisciplinePolicy === undefined
+        ? {}
+        : { paletteDisciplinePolicy: input.paletteDisciplinePolicy }),
+      ...(input.densityComplexityPolicy === undefined
+        ? {}
+        : { densityComplexityPolicy: input.densityComplexityPolicy })
     };
     try {
       const result = await audit(options);

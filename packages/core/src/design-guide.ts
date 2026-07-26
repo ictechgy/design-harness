@@ -2,6 +2,7 @@ import { SLOP_FINGERPRINT_CATALOG } from "./generated/slop-fingerprints.js";
 import type {
   AllowedFontFamily,
   ColorAdherencePolicy,
+  DensityComplexityBudgetPolicy,
   DesignGuide,
   DtcgColorValue,
   DtcgColorSemanticGroup,
@@ -9,14 +10,26 @@ import type {
   DtcgFontFamilyGroup,
   FontFamilyAdherencePolicy,
   FontFamilyKind,
+  PaletteDisciplineBudgetPolicy,
   Rgba8Color,
-  SpacingAdherencePolicy
+  SpacingAdherencePolicy,
+  TypographyVariantBudgetPolicy,
+  VisualMetricsGenerationPolicies,
+  VisualMetricsRuntimePolicies
 } from "./types.js";
 
-export const DESIGN_GUIDE_PROFILE_ID = "design-guide-v0.5a-1" as const;
+export const DESIGN_GUIDE_PROFILE_ID = "design-guide-v0.5a-2" as const;
 export const FONT_FAMILY_ADHERENCE_POLICY_ID = "font-family-adherence-v1" as const;
 export const COLOR_ADHERENCE_POLICY_ID = "color-adherence-v1" as const;
 export const SPACING_ADHERENCE_POLICY_ID = "spacing-adherence-v1" as const;
+export const TYPOGRAPHY_VARIANT_BUDGET_POLICY_ID = "typography-variant-budget-v1" as const;
+export const TYPOGRAPHY_VARIANT_METHOD_ID = "rendered-typography-variants-v1" as const;
+export const PALETTE_DISCIPLINE_BUDGET_POLICY_ID = "palette-discipline-budget-v1" as const;
+export const PALETTE_DISCIPLINE_METHOD_ID = "rendered-rgba8-oklch-cover30-v1" as const;
+export const DENSITY_COMPLEXITY_BUDGET_POLICY_ID = "density-complexity-budget-v1" as const;
+export const DENSITY_COMPLEXITY_METHOD_ID = "viewport-dom-density-v1" as const;
+export const DENSITY_VISIBLE_ELEMENT_METHOD_ID = "visible-content-elements-v1" as const;
+export const DENSITY_TEXT_CLUSTER_METHOD_ID = "text-flow-connectivity-v1" as const;
 export const GUIDE_CATALOG_VERSION = SLOP_FINGERPRINT_CATALOG.catalogVersion;
 
 export const CSS_GENERIC_FONT_FAMILY_VALUES = [
@@ -188,6 +201,125 @@ export function projectSpacingAdherencePolicy(designGuide: DesignGuide): Spacing
   };
 }
 
+export function projectTypographyVariantBudgetPolicy(
+  designGuide: DesignGuide
+): TypographyVariantBudgetPolicy | undefined {
+  assertDesignGuideProfile(designGuide);
+  return projectTypographyVariantBudgetPolicyFromValidatedGuide(designGuide);
+}
+
+export function projectPaletteDisciplineBudgetPolicy(
+  designGuide: DesignGuide
+): PaletteDisciplineBudgetPolicy | undefined {
+  assertDesignGuideProfile(designGuide);
+  return projectPaletteDisciplineBudgetPolicyFromValidatedGuide(designGuide);
+}
+
+export function projectDensityComplexityBudgetPolicy(
+  designGuide: DesignGuide
+): DensityComplexityBudgetPolicy | undefined {
+  assertDesignGuideProfile(designGuide);
+  return projectDensityComplexityBudgetPolicyFromValidatedGuide(designGuide);
+}
+
+export function projectVisualMetricsRuntimePolicies(
+  designGuide: DesignGuide
+): VisualMetricsRuntimePolicies {
+  assertDesignGuideProfile(designGuide);
+  const typographyVariants = projectTypographyVariantBudgetPolicyFromValidatedGuide(designGuide);
+  const paletteDiscipline = projectPaletteDisciplineBudgetPolicyFromValidatedGuide(designGuide);
+  const densityComplexity = projectDensityComplexityBudgetPolicyFromValidatedGuide(designGuide);
+  return {
+    ...(typographyVariants ? { typographyVariants } : {}),
+    ...(paletteDiscipline ? { paletteDiscipline } : {}),
+    ...(densityComplexity ? { densityComplexity } : {})
+  };
+}
+
+export function projectVisualMetricsGenerationPolicies(
+  designGuide: DesignGuide
+): VisualMetricsGenerationPolicies {
+  const runtimePolicies = projectVisualMetricsRuntimePolicies(designGuide);
+  const typographyVariants = runtimePolicies.typographyVariants
+    ? withoutIgnoreSelectors(runtimePolicies.typographyVariants)
+    : undefined;
+  const paletteDiscipline = runtimePolicies.paletteDiscipline
+    ? withoutIgnoreSelectors(runtimePolicies.paletteDiscipline)
+    : undefined;
+  const densityComplexity = runtimePolicies.densityComplexity
+    ? withoutIgnoreSelectors(runtimePolicies.densityComplexity)
+    : undefined;
+  return {
+    ...(typographyVariants ? { typographyVariants } : {}),
+    ...(paletteDiscipline ? { paletteDiscipline } : {}),
+    ...(densityComplexity ? { densityComplexity } : {})
+  };
+}
+
+function projectTypographyVariantBudgetPolicyFromValidatedGuide(
+  designGuide: DesignGuide
+): TypographyVariantBudgetPolicy | undefined {
+  const configured = designGuide.audit?.typographyVariants;
+  if (!configured) {
+    return undefined;
+  }
+  return {
+    maxDistinctVariants: configured.maxDistinctVariants,
+    ignoreSelectors: [...(configured.ignoreSelectors ?? [])],
+    policyId: TYPOGRAPHY_VARIANT_BUDGET_POLICY_ID,
+    methodId: TYPOGRAPHY_VARIANT_METHOD_ID
+  };
+}
+
+function projectPaletteDisciplineBudgetPolicyFromValidatedGuide(
+  designGuide: DesignGuide
+): PaletteDisciplineBudgetPolicy | undefined {
+  const configured = designGuide.audit?.paletteDiscipline;
+  if (!configured) {
+    return undefined;
+  }
+  return {
+    ...(configured.maxDistinctColors === undefined
+      ? {}
+      : { maxDistinctColors: configured.maxDistinctColors }),
+    ...(configured.maxChromaticHueFamilies === undefined
+      ? {}
+      : { maxChromaticHueFamilies: configured.maxChromaticHueFamilies }),
+    ignoreSelectors: [...(configured.ignoreSelectors ?? [])],
+    policyId: PALETTE_DISCIPLINE_BUDGET_POLICY_ID,
+    methodId: PALETTE_DISCIPLINE_METHOD_ID
+  };
+}
+
+function projectDensityComplexityBudgetPolicyFromValidatedGuide(
+  designGuide: DesignGuide
+): DensityComplexityBudgetPolicy | undefined {
+  const configured = designGuide.audit?.densityComplexity;
+  if (!configured) {
+    return undefined;
+  }
+  return {
+    ...(configured.maxVisibleElements === undefined
+      ? {}
+      : { maxVisibleElements: configured.maxVisibleElements }),
+    ...(configured.maxTextClusters === undefined
+      ? {}
+      : { maxTextClusters: configured.maxTextClusters }),
+    ignoreSelectors: [...(configured.ignoreSelectors ?? [])],
+    policyId: DENSITY_COMPLEXITY_BUDGET_POLICY_ID,
+    methodId: DENSITY_COMPLEXITY_METHOD_ID,
+    visibleElementMethodId: DENSITY_VISIBLE_ELEMENT_METHOD_ID,
+    textClusterMethodId: DENSITY_TEXT_CLUSTER_METHOD_ID
+  };
+}
+
+function withoutIgnoreSelectors<T extends { ignoreSelectors: string[] }>(
+  policy: T
+): Omit<T, "ignoreSelectors"> {
+  const { ignoreSelectors: _ignored, ...generationPolicy } = policy;
+  return generationPolicy;
+}
+
 export function dtcgColorToRgba8(value: DtcgColorValue): Rgba8Color {
   return {
     red: normalizedColorComponentToByte(value.components[0]),
@@ -224,13 +356,37 @@ function validateAudit(value: unknown, path: string, issues: DesignGuideProfileI
   }
   checkExactKeys(
     value,
-    ["fontFamily", "color", "spacing"],
+    [
+      "fontFamily",
+      "color",
+      "spacing",
+      "typographyVariants",
+      "paletteDiscipline",
+      "densityComplexity"
+    ],
     path,
     issues,
-    ["fontFamily", "color", "spacing"]
+    [
+      "fontFamily",
+      "color",
+      "spacing",
+      "typographyVariants",
+      "paletteDiscipline",
+      "densityComplexity"
+    ]
   );
-  if (!hasOwn(value, "fontFamily") && !hasOwn(value, "color") && !hasOwn(value, "spacing")) {
-    issues.push(invalid(path, "must contain fontFamily, color, or spacing"));
+  if (
+    !hasOwn(value, "fontFamily")
+    && !hasOwn(value, "color")
+    && !hasOwn(value, "spacing")
+    && !hasOwn(value, "typographyVariants")
+    && !hasOwn(value, "paletteDiscipline")
+    && !hasOwn(value, "densityComplexity")
+  ) {
+    issues.push(invalid(
+      path,
+      "must contain fontFamily, color, spacing, typographyVariants, paletteDiscipline, or densityComplexity"
+    ));
   }
   if (hasOwn(value, "fontFamily")) {
     validateFontFamilyAudit(value.fontFamily, `${path}.fontFamily`, issues);
@@ -240,6 +396,15 @@ function validateAudit(value: unknown, path: string, issues: DesignGuideProfileI
   }
   if (hasOwn(value, "spacing")) {
     validateSelectorOnlyAudit(value.spacing, `${path}.spacing`, issues);
+  }
+  if (hasOwn(value, "typographyVariants")) {
+    validateTypographyVariantsAudit(value.typographyVariants, `${path}.typographyVariants`, issues);
+  }
+  if (hasOwn(value, "paletteDiscipline")) {
+    validatePaletteDisciplineAudit(value.paletteDiscipline, `${path}.paletteDiscipline`, issues);
+  }
+  if (hasOwn(value, "densityComplexity")) {
+    validateDensityComplexityAudit(value.densityComplexity, `${path}.densityComplexity`, issues);
   }
 }
 
@@ -289,6 +454,103 @@ function validateSelectorOnlyAudit(
     return;
   }
   validateIgnoreSelectors(audit.ignoreSelectors, `${auditPath}.ignoreSelectors`, issues);
+}
+
+function validateTypographyVariantsAudit(
+  value: unknown,
+  path: string,
+  issues: DesignGuideProfileIssue[]
+): void {
+  if (!isRecord(value)) {
+    issues.push(invalid(path, "must be an object"));
+    return;
+  }
+  checkExactKeys(value, ["maxDistinctVariants", "ignoreSelectors"], path, issues, ["ignoreSelectors"]);
+  validatePositiveIntegerBudget(
+    hasOwn(value, "maxDistinctVariants") ? value.maxDistinctVariants : undefined,
+    `${path}.maxDistinctVariants`,
+    2_000,
+    issues
+  );
+  if (hasOwn(value, "ignoreSelectors")) {
+    validateIgnoreSelectors(value.ignoreSelectors, `${path}.ignoreSelectors`, issues);
+  }
+}
+
+function validatePaletteDisciplineAudit(
+  value: unknown,
+  path: string,
+  issues: DesignGuideProfileIssue[]
+): void {
+  if (!isRecord(value)) {
+    issues.push(invalid(path, "must be an object"));
+    return;
+  }
+  checkExactKeys(
+    value,
+    ["maxDistinctColors", "maxChromaticHueFamilies", "ignoreSelectors"],
+    path,
+    issues,
+    ["maxDistinctColors", "maxChromaticHueFamilies", "ignoreSelectors"]
+  );
+  if (!hasOwn(value, "maxDistinctColors") && !hasOwn(value, "maxChromaticHueFamilies")) {
+    issues.push(invalid(path, "must contain maxDistinctColors or maxChromaticHueFamilies"));
+  }
+  if (hasOwn(value, "maxDistinctColors")) {
+    validatePositiveIntegerBudget(value.maxDistinctColors, `${path}.maxDistinctColors`, 5_000, issues);
+  }
+  if (hasOwn(value, "maxChromaticHueFamilies")) {
+    validatePositiveIntegerBudget(
+      value.maxChromaticHueFamilies,
+      `${path}.maxChromaticHueFamilies`,
+      12,
+      issues
+    );
+  }
+  if (hasOwn(value, "ignoreSelectors")) {
+    validateIgnoreSelectors(value.ignoreSelectors, `${path}.ignoreSelectors`, issues);
+  }
+}
+
+function validateDensityComplexityAudit(
+  value: unknown,
+  path: string,
+  issues: DesignGuideProfileIssue[]
+): void {
+  if (!isRecord(value)) {
+    issues.push(invalid(path, "must be an object"));
+    return;
+  }
+  checkExactKeys(
+    value,
+    ["maxVisibleElements", "maxTextClusters", "ignoreSelectors"],
+    path,
+    issues,
+    ["maxVisibleElements", "maxTextClusters", "ignoreSelectors"]
+  );
+  if (!hasOwn(value, "maxVisibleElements") && !hasOwn(value, "maxTextClusters")) {
+    issues.push(invalid(path, "must contain maxVisibleElements or maxTextClusters"));
+  }
+  if (hasOwn(value, "maxVisibleElements")) {
+    validatePositiveIntegerBudget(value.maxVisibleElements, `${path}.maxVisibleElements`, 10_000, issues);
+  }
+  if (hasOwn(value, "maxTextClusters")) {
+    validatePositiveIntegerBudget(value.maxTextClusters, `${path}.maxTextClusters`, 20_000, issues);
+  }
+  if (hasOwn(value, "ignoreSelectors")) {
+    validateIgnoreSelectors(value.ignoreSelectors, `${path}.ignoreSelectors`, issues);
+  }
+}
+
+function validatePositiveIntegerBudget(
+  value: unknown,
+  path: string,
+  maximum: number,
+  issues: DesignGuideProfileIssue[]
+): void {
+  if (typeof value !== "number" || !Number.isInteger(value) || value < 1 || value > maximum) {
+    issues.push(invalid(path, `must be an integer within 1..${maximum}`));
+  }
 }
 
 function validateAdditionalAllowedFamilies(

@@ -3,7 +3,8 @@ import copyStyleSchema from "../schemas/copy-style.schema.json" with { type: "js
 import {
   assertDesignGuideProfile,
   DESIGN_GUIDE_PROFILE_ID,
-  GUIDE_CATALOG_VERSION
+  GUIDE_CATALOG_VERSION,
+  projectVisualMetricsGenerationPolicies
 } from "./design-guide.js";
 import { SLOP_FINGERPRINT_CATALOG } from "./generated/slop-fingerprints.js";
 import type { JsonSchema } from "./schema-registry.js";
@@ -14,7 +15,8 @@ import type {
   CopySurface,
   CopyRegister,
   DesignGuide,
-  DesignGuideTokens
+  DesignGuideTokens,
+  VisualMetricsGenerationPolicies
 } from "./types.js";
 import { SchemaValidationError, validateAgainstSchema } from "./validation.js";
 
@@ -111,6 +113,7 @@ export function compileDesignGuide(designGuide: DesignGuide, copyStyle?: CopySty
     assertValidCopyStyle(copyStyle);
   }
   const normalizedGuide = normalizeDesignGuide(designGuide);
+  const visualMetrics = projectVisualMetricsGenerationPolicies(designGuide);
   const safeCopy = copyStyle === undefined ? undefined : projectCopyStyle(copyStyle);
   const fingerprints = normalizedGuide.prohibitions.map((id) => {
     const entry = CATALOG_BY_ID.get(id);
@@ -126,6 +129,7 @@ export function compileDesignGuide(designGuide: DesignGuide, copyStyle?: CopySty
     profile: DESIGN_GUIDE_PROFILE_ID,
     catalogVersion: GUIDE_CATALOG_VERSION,
     guide: normalizedGuide,
+    visualMetrics,
     copy: safeCopy ?? null,
     fingerprints
   });
@@ -133,6 +137,7 @@ export function compileDesignGuide(designGuide: DesignGuide, copyStyle?: CopySty
     ...buildTokenRules(normalizedGuide.tokens),
     buildSignatureRule(normalizedGuide.signatureElement),
     ...buildFingerprintRules(fingerprints),
+    ...buildVisualMetricsRules(visualMetrics),
     ...buildCopyRules(safeCopy)
   ];
   assertRuleIntegrity(rules);
@@ -309,6 +314,65 @@ function buildFingerprintRules(fingerprints: FingerprintEntry[]): GuideRule[] {
       badExample: entry.badExample,
       goodExample: entry.goodExample
     }));
+}
+
+function buildVisualMetricsRules(visualMetrics: VisualMetricsGenerationPolicies): GuideRule[] {
+  const rules: GuideRule[] = [];
+  const typography = visualMetrics.typographyVariants;
+  if (typography) {
+    rules.push({
+      id: "typography.variant-count.budget",
+      name: "Type",
+      effect: "require",
+      subject: `visual-metric:${compactJson({ typographyVariants: typography })}`,
+      description: "Configured",
+      badExample: "↑",
+      goodExample: `≤${typography.maxDistinctVariants};${typography.methodId}`
+    });
+  }
+
+  const palette = visualMetrics.paletteDiscipline;
+  if (palette) {
+    const limits = [
+      ...(palette.maxDistinctColors === undefined
+        ? []
+        : [`${palette.maxDistinctColors} RGBA8`]),
+      ...(palette.maxChromaticHueFamilies === undefined
+        ? []
+        : [`${palette.maxChromaticHueFamilies} chromatic hue-proximity groups`])
+    ];
+    rules.push({
+      id: "color.palette.count-discipline",
+      name: "Color",
+      effect: "require",
+      subject: `visual-metric:${compactJson({ paletteDiscipline: palette })}`,
+      description: "Configured",
+      badExample: "↑",
+      goodExample: `≤${limits.join("/≤")};${palette.methodId}`
+    });
+  }
+
+  const density = visualMetrics.densityComplexity;
+  if (density) {
+    const limits = [
+      ...(density.maxVisibleElements === undefined
+        ? []
+        : [`${density.maxVisibleElements} visible`]),
+      ...(density.maxTextClusters === undefined
+        ? []
+        : [`${density.maxTextClusters} text clusters`])
+    ];
+    rules.push({
+      id: "layout.density.complexity-budget",
+      name: "DOM",
+      effect: "require",
+      subject: `visual-metric:${compactJson({ densityComplexity: density })}`,
+      description: "Configured high-only",
+      badExample: "↑",
+      goodExample: `≤${limits.join("/≤")};${density.methodId}`
+    });
+  }
+  return rules;
 }
 
 function buildCopyRules(copy: SafeCopyProjection | undefined): GuideRule[] {

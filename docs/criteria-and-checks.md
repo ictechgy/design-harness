@@ -178,6 +178,30 @@ CSS Typed OM preserves the keyword boundary before margin/gap comparison: `auto`
 
 Spacing violations group by property plus the signed canonical unexpected CSS-pixel value. Like color, each viewport emits at most five groups and five selector/region samples per group while retaining exact candidate, evaluated, ignored, skipped, violating, distinct, emitted, truncated, and omitted-sample counts.
 
+### Evidence-Backed Visual Metric Budgets
+
+The same explicit `audit --guide` path can project three independent visual-metric policies, but only when their closed `audit` sections are present. There are no default budgets. Omitting a section performs no metric-specific browser traversal and produces no matching guide rule, summary, notice, failed-check entry, finding, or score effect. A configured maximum is a project-authored review boundary, not a `project-contract` source-strength criterion or a recommended universal threshold; equality is silent, and low counts never create a reward or positive quality claim.
+
+The frozen candidate, normalization, geometry, accounting, and migration semantics are in [Evidence-backed visual metrics contract](visual-metrics-contract.md).
+
+| Audit section | Criterion / check | Frozen policy and method |
+|---|---|---|
+| `typographyVariants` | `typography.variant-count.budget` / `typography-variant-count-budget` | `typography-variant-budget-v1` / `rendered-typography-variants-v1` |
+| `paletteDiscipline` | `color.palette.count-discipline` / `palette-count-discipline` | `palette-discipline-budget-v1` / `rendered-rgba8-oklch-cover30-v1` |
+| `densityComplexity` | `layout.density.complexity-budget` / `density-complexity-budget` | `density-complexity-budget-v1` / `viewport-dom-density-v1` |
+
+Typography counts distinct normalized computed `font-family` stack, size, weight, and style tuples on visible direct-text candidates. It does not resolve the face that painted each glyph, infer heading/body roles, evaluate font pairing or modular scale, or judge typography quality. The candidate ceiling is 2,000. Unsupported tuple evidence is skipped and makes the exact supported count a `lower-bound`.
+
+Palette discipline counts distinct nontransparent computed RGBA8 paint values and chromatic hue-proximity groups. The paint-slot scope is direct-text foreground, image-free background color, and painted border sides; it is not pixel enumeration or compositing and excludes gradients, images, pseudo-elements, SVG paint, shadows, replaced-element pixels, and occlusion. Hue families are the minimum closed 30-degree arc cover of distinct chromatic OKLab hues after the method's fixed 0.030 chroma cutoff. Those constants make `rendered-rgba8-oklch-cover30-v1` reproducible; neither is a research-validated taste boundary or hue-harmony model. The potential-slot ceiling is 5,000. Unsupported colors produce monotone lower-bound counts, never a fabricated match or pass.
+
+Density's `visible-content-elements-v1` counts visible atomic UI/media owners and qualifying direct-text owners once, collapsing descendants inside the outermost atomic owner. `text-flow-connectivity-v1` builds connected components from clipped `Range` fragments within separate flow roots. It measures DOM/computed-style structure at the current scroll position, not visual occlusion, pixel edge density, below-fold content, whitespace, alignment, symmetry, or balance. The ceilings are 10,000 DOM elements, 20,000 text nodes, 20,000 fragments, and 1,000,000 pairwise edge tests.
+
+Coverage is deliberately component-specific. Typography, palette, and visible-element counts are monotone under supported omissions, so their summary is `complete` or `lower-bound`; a lower bound may emit a risk only when it already exceeds the configured maximum. Text-cluster connected-component count is not monotone because an omitted fragment can bridge two components. Any skipped text candidate therefore makes that component `incomplete`, records a detector-scoped failed check and notice, and prevents a text-cluster comparison. A simultaneously sound visible-element overage may still emit the one density finding for that viewport.
+
+Selector exclusions are owned by their metric and apply to a matching subtree only. They affect runtime collection but are removed from the generation projection, so selector-only changes do not alter the generated rule or guide source hash. Invalid selector syntax, a safety-cap breach, an unexpected collector exception, or a failed accounting invariant discards only that metric summary and marks its check partial; it is never reinterpreted as zero, truncation, or a clean result.
+
+All three criteria are `research-emerging`, `heuristic`, low-severity, low-confidence `risk` despite deterministic computation. Each configured metric emits at most one finding per viewport; a two-budget palette or density overage stays one finding with both components. The existing criterion-bounded score counts each criterion once across viewports. The summaries live only in the existing per-viewport measurement evidence, carry every policy/method ID, exact pre-sample totals, coverage, skipped reasons, bounded samples, and omitted counts, and do not change `SCHEMA_VERSION`.
+
 #### Parser-Free Copy Audit
 
 Library callers can pass a validated `CopyStyle` through `auditUrl({ copyStyle })`. CLI callers can pass the same contract with `--copy <copy-style.yaml>`; the validated object enters that existing `auditUrl({ copyStyle })` path rather than a separate analyzer. The capture adapter resolves surfaces on live nodes, then `@design-harness/copy-audit` analyzes the serialized text inventory without importing Playwright.
@@ -194,7 +218,7 @@ Approved glossary entries do not emit findings. Lemma entries never fall back to
 
 ### Computation Determinism Never Upgrades Criterion Strength
 
-A check can be deterministically computable while its criterion is research-grade. Color counts, font-variant counts, and density budgets are exact measurements, but the claim "this hurts design quality" rests on research whose best validated metric sets explain only ~30-50% of variance in human aesthetic ratings (Reinecke et al. CHI 2013, adj R² = .48; Miniukovich & De Angeli CHI 2015, 49% web / 32% app). Such checks land as `research-emerging` or `industry-heuristic` source strength, `heuristic` determinism, and `risk` or `needs-review` result kind — and the advisory score must never be presented as an objective design-quality grade. Evidence table: [Visual Metrics Evidence](research/visual-metrics-evidence.md).
+A check can be deterministically computable while its criterion is research-grade. Color counts, font-variant counts, and density budgets are exact measurements, but the claim "this hurts design quality" rests on research whose best validated metric sets explain only ~30–50% of variance in human aesthetic ratings (Reinecke et al. CHI 2013, adjusted R² = .48; Miniukovich & De Angeli CHI 2015, 49% web / 32% app). The three visual-metric criteria therefore use `research-emerging`, `heuristic`, low-severity, low-confidence `risk`; exact project-budget overages do not become deterministic failures or objective design-quality grades. Evidence table: [Visual Metrics Evidence](research/visual-metrics-evidence.md).
 
 ### Finding cardinality and bounded samples
 
@@ -214,7 +238,9 @@ record exact detected composition, emitted groups, and truncation. `repeated-vis
 `checklist-state-visibility-risk` are excluded because their algorithms currently produce at most one, one,
 and two semantic aggregates. If any of those output shapes later makes its nominal three-item slice
 reachable, the detector must add coverage in the same change. Non-finding payload and layout-metric sample
-bounds are outside this cardinality contract.
+bounds are outside this cardinality contract. The three project-budget visual metrics are also excluded:
+each can emit only one aggregate finding per viewport, while its measurement summary carries the complete
+pre-sample count and omitted-sample accounting.
 
 ### Advisory Score Weights
 
@@ -252,9 +278,13 @@ A false positive costs more than a miss: repeated false flags cause reviewers to
 
 The parser-free Korean copy checks use `pnpm calibrate:fixtures` as a live drift gate. All six licensed manifest fixtures are served and audited, the five in-scope copy `checkName` values are summarized as TP/FP/FN in `runs/calibration/calibration-summary.json`, and any FP, FN, or incomplete audit fails the command. Findings from other check families are retained in the summary as out of scope rather than silently discarded or misclassified as copy false positives.
 
+Visual-metric calibration has a deliberate browserless/live split. `pnpm check:visual-metrics-calibration` validates the closed manifest, fixture hashes, frozen IDs, exact keys, pair coverage, merchant non-regression contract, and complete recursive unrelated-corpus inventory under `pnpm validate`; it never launches Chromium. `pnpm smoke:visual-metrics` requires complete exact evidence from the three synthetic good/bad pairs and merchant case in the browser-equipped `example-smoke` job. It then runs all 48 unrelated recursively discovered HTML fixtures three times, compares their pinned raw-fixture and portable outcome-projection hashes, and separately requires the full projection to remain byte-repeatable within each environment.
+
+That broader corpus is a drift gate, not a completeness claim. Its `visual-metrics-corpus-portable-v1` hash covers the three new measurement summaries, findings, and notices except for density `textFragmentCount` and `edgeTestCount`, which are non-budget diagnostics that vary with host-font line wrapping. Those exact diagnostics remain in every `audit.json`, in the exact atomic/merchant expectations, and in the full same-environment repeat hash; a deterministic cross-commit change limited to those two unrelated-corpus diagnostics is deliberately outside the portable committed hash. Unrelated pre-existing findings and notices remain allowed and outside the hash. Every corpus audit must nevertheless return successful status with an empty `failedChecks`. The manifest permits exactly one reviewed visual-metric lower-bound result: `color-adherence-incomplete.html` must retain zero visual-metric risks and one `palette-discipline-slots-skipped` notice whose skipped reason is exactly `unsupported-color: 1`. Any other visual-metric notice or risk, coverage/status or failed-check change, portable-hash mismatch, or full repeat-to-repeat drift fails. Atomic/merchant artifacts live at `runs/visual-metrics/<case-id>/`; corpus repeats live at `runs/visual-metrics/corpus/repeat-{1,2,3}/<entry-id>/`. CI uploads the root directory. Keeping the browser smoke out of `release:check` preserves the browserless release gate without weakening the live calibration.
+
 ### Do Not Build (Peer-Reviewed Evidence Against)
 
-- Hue-template color-harmony scoring: no predictive power for theme ratings; inter-rater agreement on color-theme quality is only 52% (O'Donovan et al. SIGGRAPH 2011). The evidence-backed palette signal is lightness-contrast structure with a restrained hue spread.
+- Hue-template color-harmony scoring: no predictive power for theme ratings; inter-rater agreement on color-theme quality is only 52% (O'Donovan et al. SIGGRAPH 2011). This does not license a replacement lightness score; the implemented palette metric only compares reproducible counts with explicit project maxima.
 - Mirror-symmetry or center-of-mass balance scoring for real UIs: validates strongly only on abstract stimuli and fails to generalize (Silvia & Barona 2009).
 - Scored Korean readability: no validated formula exists for short UI strings (KRIT reaches 0.746 on long-form textbook text; its authors state no public datasets or baselines exist).
 

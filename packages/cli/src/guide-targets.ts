@@ -24,6 +24,10 @@ export const GUIDE_MARKER_END = "<!-- design-harness:guide:end -->";
 export const MAX_GUIDE_TARGET_BYTES = 1024 * 1024;
 export const NEW_GUIDE_FILE_MODE = 0o644;
 
+const RECOGNIZED_PRIOR_GUIDE_PROFILE_ID = "design-guide-v0.5a-1";
+const RECOGNIZED_PRIOR_GUIDE_CATALOG_VERSION = "2026-07-18";
+const GUIDE_SOURCE_HASH_PATTERN = /^[a-f0-9]{64}$/u;
+
 export type GuideTargetName = "AGENTS.md" | "CLAUDE.md" | "DESIGN.md" | "design.tokens.json";
 
 export interface GuideFileStat {
@@ -250,7 +254,7 @@ export async function planGuideTargets(
   const markdown = input.markdown.replace(/\n+$/u, "");
   const guideBlock = markerBlock(markdown);
   const claudeBlock = markerBlock("@AGENTS.md");
-  assertOwnedTokenJson(input.designTokensJson, "generated design.tokens.json");
+  assertOwnedTokenJson(input.designTokensJson, "generated design.tokens.json", false);
 
   const plans: GuideTargetPlan[] = [];
   for (const name of ["AGENTS.md", "CLAUDE.md", "DESIGN.md", "design.tokens.json"] as const) {
@@ -265,7 +269,7 @@ export async function planGuideTargets(
       next = planClaudeFile(current, claudeBlock);
     } else {
       if (snapshot.exists) {
-        assertOwnedTokenJson(current, name);
+        assertOwnedTokenJson(current, name, true);
       }
       next = input.designTokensJson;
     }
@@ -717,7 +721,11 @@ function countStandaloneAgentsImports(source: string): number {
   return count;
 }
 
-function assertOwnedTokenJson(source: string, path: string): void {
+function assertOwnedTokenJson(
+  source: string,
+  path: string,
+  allowRecognizedPrior: boolean
+): void {
   let value: unknown;
   try {
     value = JSON.parse(source) as unknown;
@@ -729,10 +737,16 @@ function assertOwnedTokenJson(source: string, path: string): void {
   }
   const ownership = value.$extensions["dev.design-harness"];
   if (!isRecord(ownership)
-    || ownership.profile !== DESIGN_GUIDE_PROFILE_ID
-    || ownership.catalogVersion !== GUIDE_CATALOG_VERSION
     || typeof ownership.sourceHash !== "string"
-    || !/^[a-f0-9]{64}$/u.test(ownership.sourceHash)) {
+    || !GUIDE_SOURCE_HASH_PATTERN.test(ownership.sourceHash)) {
+    throw new GuideOperationError("ownership", path, "token JSON has malformed Design Harness ownership");
+  }
+  const isCurrent = ownership.profile === DESIGN_GUIDE_PROFILE_ID
+    && ownership.catalogVersion === GUIDE_CATALOG_VERSION;
+  const isRecognizedPrior = allowRecognizedPrior
+    && ownership.profile === RECOGNIZED_PRIOR_GUIDE_PROFILE_ID
+    && ownership.catalogVersion === RECOGNIZED_PRIOR_GUIDE_CATALOG_VERSION;
+  if (!isCurrent && !isRecognizedPrior) {
     throw new GuideOperationError("ownership", path, "token JSON has malformed Design Harness ownership");
   }
 }
