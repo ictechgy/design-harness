@@ -1,7 +1,9 @@
 # Evidence-backed visual metrics contract
 
-Status: frozen checkpoint; implementation is gated on ordered approval  
-Contract version: 2026-07-26  
+Status: frozen checkpoint; implementation is gated on ordered approval
+
+Contract version: 2026-07-26
+
 Applies to: typography variant count, palette count discipline, and viewport
 density complexity
 
@@ -477,7 +479,7 @@ Count the union of the following owner elements, once each:
      `embed`, `meter`, or `progress`.
 2. **Direct-text owner.** Outside an atomic owner, an element with a direct
    non-whitespace `Text` child that produces at least one eligible visible text
-   fragment under section 6.4.
+   fragment under the minimal fragment test below.
 
 An atomic owner's descendant atomic/media and direct-text owners collapse into
 the outer owner for `visibleElementCount`. Structural wrappers do not count
@@ -487,6 +489,23 @@ validation.
 
 This method must not reuse `meaningfulElementCount`, whose current scope and
 ancestor behavior differ.
+
+The visible-element collector always performs this minimal fragment test when
+`maxVisibleElements` is configured, whether or not `maxTextClusters` is
+configured:
+
+1. For each direct non-whitespace text node of a non-atomic candidate, create a
+   `Range` selecting that text node.
+2. Apply the visibility, viewport, overflow clipping, and unsupported
+   clip/mask rules from section 6.2 to its `Range.getClientRects()`.
+3. Qualify the owner as soon as one positive clipped fragment is found.
+4. If no fragment qualifies, classify the owner as ineligible. If every
+   potentially qualifying fragment is unsupported, classify it as skipped and
+   make the visible-element component a lower bound.
+
+This test does not build flow roots, retain cluster fragments, or run pairwise
+edges. The full text-cluster traversal remains conditional on
+`maxTextClusters`.
 
 ### 6.4 Text-flow clusters
 
