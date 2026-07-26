@@ -4,12 +4,47 @@ import {
   readVisualMetricsCalibrationInputs,
   validateVisualMetricsCalibration
 } from "./check-visual-metrics-calibration.mjs";
+import {
+  VISUAL_METRICS_CORPUS_PROJECTION_PROFILE,
+  toPortableVisualMetricsCorpusProjection
+} from "./visual-metrics-corpus-projection.mjs";
 
 const baseline = await readVisualMetricsCalibrationInputs();
 assert.deepEqual(
   validateVisualMetricsCalibration(baseline),
   [],
   "the committed visual-metrics calibration must satisfy its validator"
+);
+
+const fullCorpusProjection = {
+  measurement: structuredClone(baseline.manifest.cases[6].expected.measurement),
+  findings: [{ checkName: "preserved-finding" }],
+  notices: [{ code: "preserved-notice" }]
+};
+const portableCorpusProjection = toPortableVisualMetricsCorpusProjection(
+  VISUAL_METRICS_CORPUS_PROJECTION_PROFILE,
+  fullCorpusProjection
+);
+const fullTextClusters = fullCorpusProjection.measurement.density.textClusters;
+const portableTextClusters = portableCorpusProjection.measurement.density.textClusters;
+assert(Object.hasOwn(fullTextClusters, "textFragmentCount"));
+assert(Object.hasOwn(fullTextClusters, "edgeTestCount"));
+assert(!Object.hasOwn(portableTextClusters, "textFragmentCount"));
+assert(!Object.hasOwn(portableTextClusters, "edgeTestCount"));
+assert.equal(portableTextClusters.textClusterCount, fullTextClusters.textClusterCount);
+assert.equal(
+  portableCorpusProjection.measurement.density.visibleElements.visibleElementCount,
+  fullCorpusProjection.measurement.density.visibleElements.visibleElementCount
+);
+assert.equal(portableTextClusters.coverage, fullTextClusters.coverage);
+assert.deepEqual(portableCorpusProjection.findings, fullCorpusProjection.findings);
+assert.deepEqual(portableCorpusProjection.notices, fullCorpusProjection.notices);
+assert.throws(
+  () => toPortableVisualMetricsCorpusProjection(
+    "visual-metrics-corpus-portable-v2",
+    fullCorpusProjection
+  ),
+  /Unsupported visual-metrics corpus projection profile/u
 );
 
 rejects("unexpected top-level key", (input) => {
@@ -108,6 +143,15 @@ rejects("corpus repeat weakening", (input) => {
   input.manifest.corpus.repeatCount = 1;
 }, /repeatCount/u);
 
+rejects("corpus projection profile drift", (input) => {
+  input.manifest.corpus.projection.profile = "visual-metrics-corpus-portable-v2";
+}, /projection\.profile/u);
+
+rejects("corpus projection omission widening", (input) => {
+  input.manifest.corpus.projection.omittedFields[0] =
+    "measurement.density.textClusters.textClusterCount";
+}, /projection\.omittedFields/u);
+
 rejects("corpus projection hash drift", (input) => {
   input.manifest.corpus.entries[0].projectionSha256 = "not-a-sha";
 }, /projectionSha256/u);
@@ -126,7 +170,10 @@ rejects("reviewed notice widening", (input) => {
   });
 }, /exactly pin|reviewed notice count/u);
 
-console.log("Visual metrics calibration mutation regressions passed (21 fail-closed mutations).");
+console.log(
+  "Visual metrics calibration projection contract and mutation regressions passed "
+  + "(23 fail-closed mutations)."
+);
 
 function rejects(label, mutate, pattern) {
   const input = cloneInputs(baseline);

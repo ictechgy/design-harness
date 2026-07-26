@@ -731,9 +731,17 @@ browser-equipped CI `example-smoke` job. CI uploads `runs/visual-metrics`.
 
 The committed manifest records fixture hashes, policy/method IDs, expected
 counts and findings, the three closed pairs, and a merchant-dashboard
-non-regression case. The live runner must reproduce the manifest exactly. Any
-unexplained visual-metric risk on existing unrelated fixtures, or any need for
-target-specific exceptions, stops the entire bundle.
+non-regression case. The six atomic cases and merchant case retain their full
+exact measurement projections. The unrelated corpus uses the explicit
+`visual-metrics-corpus-portable-v1` committed-hash profile: it omits only
+`density.textClusters.textFragmentCount` and `density.textClusters.edgeTestCount`
+because font-environment line wrapping changes those non-budget diagnostics.
+Full audit evidence is still written, and the full projection including both
+diagnostics must remain byte-repeatable across all three runs within the same
+environment. Budget-bearing counts, coverage, findings, notices, status, and
+failed checks remain in the gate. Any unexplained visual-metric risk on
+existing unrelated fixtures, or any need for target-specific exceptions,
+stops the entire bundle.
 
 CI workflow artifact validation must know about the new smoke action and
 artifact, and must explicitly reject adding the browser smoke to

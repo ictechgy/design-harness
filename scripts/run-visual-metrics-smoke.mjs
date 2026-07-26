@@ -9,6 +9,9 @@ import {
   validateVisualMetricsCalibration
 } from "./check-visual-metrics-calibration.mjs";
 import { startLocalFixtureServer } from "./local-fixture-server.mjs";
+import {
+  toPortableVisualMetricsCorpusProjection
+} from "./visual-metrics-corpus-projection.mjs";
 
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(scriptDir, "..");
@@ -129,7 +132,8 @@ async function runCalibrationCase(calibrationCase, baseUrl) {
 }
 
 async function runCorpus(corpus, baseUrl) {
-  const firstRunHashes = new Map();
+  const firstRunFullProjectionHashes = new Map();
+  const committedProjectionMismatches = [];
   for (let repeat = 1; repeat <= corpus.repeatCount; repeat += 1) {
     for (const entry of corpus.entries) {
       const fixturePath = resolve(repoRoot, entry.path);
@@ -158,34 +162,49 @@ async function runCorpus(corpus, baseUrl) {
       assertCorpusAuditHealth(entry, result.auditResult);
 
       const measurement = measurementFor(result.auditResult, viewport.name);
-      const projection = {
+      const fullProjection = {
         measurement: projectMetricMeasurements("all", measurement),
         findings: projectMetricFindings(result.auditResult.findings),
         notices: projectMetricNotices(result.auditResult.notices ?? [])
       };
       assert.deepStrictEqual(
-        projection.notices,
+        fullProjection.notices,
         entry.expectedNotices,
         `${entry.id}: reviewed corpus metric notices drifted on repeat ${repeat}.`
       );
-      const actualHash = sha256(stableJson(projection));
-      assert.equal(
-        actualHash,
-        entry.projectionSha256,
-        `${entry.id}: corpus projection drifted from the committed oracle on repeat ${repeat}.`
+      const portableProjection = toPortableVisualMetricsCorpusProjection(
+        corpus.projection.profile,
+        fullProjection
       );
-      const firstRunHash = firstRunHashes.get(entry.id);
-      if (firstRunHash === undefined) {
-        firstRunHashes.set(entry.id, actualHash);
+      const portableHash = sha256(stableJson(portableProjection));
+      if (repeat === 1 && portableHash !== entry.projectionSha256) {
+        committedProjectionMismatches.push({
+          id: entry.id,
+          expected: entry.projectionSha256,
+          actual: portableHash
+        });
+      }
+      const fullProjectionHash = sha256(stableJson(fullProjection));
+      const firstRunFullProjectionHash = firstRunFullProjectionHashes.get(entry.id);
+      if (firstRunFullProjectionHash === undefined) {
+        firstRunFullProjectionHashes.set(entry.id, fullProjectionHash);
       } else {
         assert.equal(
-          actualHash,
-          firstRunHash,
-          `${entry.id}: corpus projection was not repeatable on repeat ${repeat}.`
+          fullProjectionHash,
+          firstRunFullProjectionHash,
+          `${entry.id}: full corpus projection was not repeatable on repeat ${repeat}.`
         );
       }
     }
   }
+  assert.equal(
+    committedProjectionMismatches.length,
+    0,
+    "Portable corpus projections drifted from the committed oracle:\n"
+      + committedProjectionMismatches
+        .map(({ id, expected, actual }) => `- ${id}: expected ${expected}; actual ${actual}`)
+        .join("\n")
+  );
 }
 
 async function writeAuditArtifacts(outDir, result) {

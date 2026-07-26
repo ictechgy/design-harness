@@ -2,6 +2,10 @@ import { createHash } from "node:crypto";
 import { readdir, readFile } from "node:fs/promises";
 import { dirname, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
+import {
+  VISUAL_METRICS_CORPUS_OMITTED_FIELDS,
+  VISUAL_METRICS_CORPUS_PROJECTION_PROFILE
+} from "./visual-metrics-corpus-projection.mjs";
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const manifestPath = resolve(
@@ -415,10 +419,16 @@ function validateCases(value, fixtureBytes, errors) {
 }
 
 function validateCorpus(value, discoveredPaths, fixtureBytes, errors) {
-  if (!checkExactKeys(value, ["entries", "policy", "repeatCount"], "$.corpus", errors)) {
+  if (!checkExactKeys(
+    value,
+    ["entries", "policy", "projection", "repeatCount"],
+    "$.corpus",
+    errors
+  )) {
     return;
   }
   equal(value.repeatCount, 3, "$.corpus.repeatCount", errors);
+  validateCorpusProjection(value.projection, errors);
   rejectSelectorKeys(value.policy, "$.corpus.policy", errors);
   if (checkExactKeys(value.policy, ["density", "palette", "typography"], "$.corpus.policy", errors)) {
     for (const metric of ["typography", "palette", "density"]) {
@@ -490,6 +500,27 @@ function validateCorpus(value, discoveredPaths, fixtureBytes, errors) {
       : 0;
   }
   equal(reviewedNoticeCount, 1, "$.corpus exact reviewed notice count", errors);
+}
+
+function validateCorpusProjection(value, errors) {
+  if (!checkExactKeys(value, ["omittedFields", "profile"], "$.corpus.projection", errors)) {
+    return;
+  }
+  equal(
+    value.profile,
+    VISUAL_METRICS_CORPUS_PROJECTION_PROFILE,
+    "$.corpus.projection.profile",
+    errors
+  );
+  if (
+    JSON.stringify(value.omittedFields)
+    !== JSON.stringify(VISUAL_METRICS_CORPUS_OMITTED_FIELDS)
+  ) {
+    errors.push(
+      "$.corpus.projection.omittedFields must exactly name the two "
+      + "font-layout-sensitive diagnostic fields"
+    );
+  }
 }
 
 function validateFixture(record, bytes, path, errors) {
