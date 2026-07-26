@@ -41,6 +41,7 @@ jobs:
       - run: pnpm build
       - run: pnpm smoke:example
       - run: pnpm smoke:copy
+      - run: pnpm smoke:visual-metrics
       - run: pnpm smoke:loop
       - run: pnpm smoke:packed-loop
       - run: pnpm calibrate:fixtures
@@ -52,6 +53,7 @@ jobs:
           path: |
             runs/example-smoke
             runs/copy-smoke
+            runs/visual-metrics
             runs/loop-smoke
             runs/packed-loop
             runs/calibration

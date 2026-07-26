@@ -1,32 +1,38 @@
 # Visual Metrics — Evidence Table
 
-Evidence base for the computational-aesthetics check candidates (ROADMAP v0.5 slice and backlog), and the negative evidence behind the do-not-build entries on the cut list. Compiled 2026-07-07 from a multi-source research pass; every claim below is sourced to measured, peer-reviewed work unless marked otherwise.
+Evidence basis and epistemic boundary for the three visual-metric policies completed on 2026-07-26 but not released. The studies motivate bounded project-specific review; they do not establish universal budgets, Design Harness's engineering constants, or an objective visual-quality score.
 
-## The variance ceiling (registry policy)
+## Variance ceiling and registry policy
 
-The best validated metric sets explain only **~30–50% of variance** in human aesthetic ratings:
+The strongest broad metric sets cited here explain only part of the variance in human ratings:
 
-- Reinecke et al., CHI 2013 (450 websites, 548 raters): computed complexity + colorfulness models explain adj R² = .48 of first-impression appeal; complexity dominates; high complexity is the largest appeal penalty. <https://kgajos.seas.harvard.edu/papers/reinecke13aesthetics.pdf>
-- Miniukovich & De Angeli, CHI 2015: eight automatic GUI metrics explain up to 49% (webpages) / 32% (mobile apps) of aesthetics variance; 42% on an independent dataset. <https://dl.acm.org/doi/10.1145/2702123.2702575>
+- Reinecke et al., CHI 2013 (450 websites, 548 raters): the reported complexity and colorfulness models explain adjusted R² = .48 of first-impression appeal. <https://kgajos.seas.harvard.edu/papers/reinecke13aesthetics.pdf>
+- Miniukovich & De Angeli, CHI 2015: eight automatic GUI metrics explain up to 49% of variance for webpages and 32% for mobile apps, with 42% reported on an independent dataset. <https://dl.acm.org/doi/10.1145/2702123.2702575>
 
-**Policy consequences** (also stated in `docs/criteria-and-checks.md`): computation determinism never upgrades criterion strength — these checks are deterministically computable but their criteria are research-grade, so they land as sourceStrength `research-emerging`/`industry-heuristic`, determinism `heuristic`, resultKind `risk`/`needs-review`; and the advisory score must never imply objective design quality.
+Consequently, exact computation never upgrades the underlying claim. All three implemented criteria are `research-emerging`, `heuristic`, low-severity, low-confidence `risk`. They compare a measurement only with a maximum explicitly authored by the project. There are no defaults, rewards for low values, pass claims, or general design-quality claims.
 
-## Positive evidence per candidate check
+## Implemented directional signals
 
-| Candidate | Evidence | Status |
+| Criterion and frozen method | Evidence boundary | Implementation status |
 |---|---|---|
-| `color.palette.count-discipline` — distinct colors + chromatic hue-family count (flag > ~3–4 families) | Ivory, Sinha & Hearst, CHI 2001 (1,898 Webby pages): color count among 6 metrics significantly separating good/bad pages (65% accuracy; 80% within category). O'Donovan et al., SIGGRAPH 2011: people prefer ~2–3 distinct hues; lightness structure most predictive. <https://flamenco.berkeley.edu/papers/chi2001.pdf> · <https://www.dgp.toronto.edu/~donovan/color/colorcomp.pdf> | v0.5 slice |
-| `typography.variant-count.budget` — distinct face+size+weight+style combinations | Ivory/Sinha/Hearst CHI 2001 operationalized font count exactly this way; significant good/bad separator. Modular-scale ratio enforcement has NO academic validation — at most a needs-review prompt for near-duplicate sizes. | v0.5 slice |
-| `layout.density.complexity-budget` — visible-element + text-cluster counts (DOM tier); edge density/quadtree (pixel tier, future) | Reinecke 2013: complexity dominates first impressions. Miniukovich & Marchese, CHI 2020: relationship is inverse-linear once broken/archaic pages are controlled — penalize HIGH complexity only, never low. <https://dl.acm.org/doi/10.1145/3313831.3376602> | v0.5 slice |
-| `layout.whitespace.ratio-band` — fraction of viewport not covered by content boxes, ~25–50% band | Coursaris & Kripintris 2012 (e-commerce experiment): usability degrades past 50% whitespace — a measured threshold, but single-study/single-context. Miniukovich 2015 whitespace metric correlated with ratings. | Backlog (single-study threshold) |
-| `layout.alignment.grid-quality` — distinct left/right edge x-coordinates of sibling blocks; near-miss lines (1–8px) as risk | Miniukovich 2015: grid quality correlated with aesthetics. Threshold values are designer-derived, not validated. | Backlog |
-| `readability.line-length` calibration — 50–75 cpl band, 55 optimum (Latin); ~40–45 (CJK, fixture-calibrated) | Dyson & Haselgrove 2001: ~55 cpl best comprehension; ~95 cpl faster but at comprehension cost. <https://www.sciencedirect.com/science/article/abs/pii/S1071581901904586> | v0.3.2 (lands with CJK fix) |
+| `typography.variant-count.budget` — `rendered-typography-variants-v1` counts normalized computed family-stack + size + weight + style tuples | Ivory, Sinha & Hearst, CHI 2001 operationalized font count using these computed dimensions and found it among the metrics that separated its study sets. That result does not validate a universal variant count, modular scale, font pairing rule, or glyph-resolved face inference. <https://flamenco.berkeley.edu/papers/chi2001.pdf> | Complete, opt-in, not released |
+| `color.palette.count-discipline` — `rendered-rgba8-oklch-cover30-v1` counts distinct nontransparent RGBA8 paint values and a minimum closed 30-degree cover over chromatic OKLab hues | Ivory et al. included color count; O'Donovan et al., SIGGRAPH 2011 measured preferences over its color-theme stimuli. Neither paper validates a universal interface-palette maximum, the 0.030 chroma cutoff, the 30-degree cover, hue harmony, or lightness scoring. <https://flamenco.berkeley.edu/papers/chi2001.pdf> · <https://www.dgp.toronto.edu/~donovan/color/colorcomp.pdf> | Complete, opt-in, not released |
+| `layout.density.complexity-budget` — `viewport-dom-density-v1`, with `visible-content-elements-v1` and `text-flow-connectivity-v1`, counts visible owners and text-flow components at the current viewport position | Reinecke et al. found complexity strongly related to first impressions in its dataset. Miniukovich & Marchese, CHI 2020 reported a high-side inverse-linear relationship after controlling broken/archaic pages. This supports review of project-configured high-side overages only, not a universal DOM threshold, low-density penalty/reward, below-fold sweep, or pixel-density claim. <https://doi.org/10.1145/3313831.3376602> | Complete, opt-in, not released |
+
+The versioned chroma cutoff, hue span, candidate caps, clipping topology, and text-fragment adjacency coefficients are reproducibility and safety constants. The six atomic fixtures and merchant case require complete evidence, while a three-repeat, exact-hash gate covers 48 unrelated recursive HTML fixtures and pins one reviewed lower-bound color-space notice. This calibration proves implementation stability; it neither claims complete evidence for every corpus page nor validates the constants as taste boundaries.
+
+## Research notes that remain non-goals
+
+- Whitespace-ratio bands come from limited contexts and do not establish a project-independent UI threshold.
+- Alignment/grid metrics correlate with ratings in some studies, but proposed near-miss thresholds are designer-derived. No alignment or grid-quality check or guide rule is implemented or scheduled by this slice.
+- Lightness measurements appear in color-preference literature, but no lightness score, threshold, or generated instruction is implemented.
+- Pixel segmentation, edge density, color enumeration, and below-fold sweep are distinct capture methods and are not implied by the DOM/computed-style methods above.
 
 ## Negative evidence — do not build
 
-- **Hue-template color-harmony scoring**: O'Donovan 2011 found classic hue templates have no predictive power for theme ratings (template-matching themes scored slightly *lower*); inter-rater agreement on theme quality is only 52% — color harmony is substantially idiosyncratic. The evidence-backed alternative signal is **lightness-contrast structure** (convergent: O'Donovan 2011; Ou & Luo 2006; Schloss & Palmer 2011).
-- **Mirror-symmetry / center-of-mass balance scoring for real UIs**: strong only on abstract stimuli (deviation-of-center-of-mass r = −0.82 to −0.92, Hübner & Fillinger 2016); Silvia & Barona 2009 found no substantial correlation on other stimuli. Fails to generalize to real interfaces.
-- **Scored Korean readability**: KRIT (KAIST) reaches 0.746 accuracy on long-form textbook grade classification and its authors state no public datasets or baselines exist; nothing is validated for short UI strings. Raw informational metrics at most, unscored.
+- **Hue-template color-harmony scoring**: O'Donovan 2011 found classic hue templates did not predict theme ratings; reported inter-rater agreement was only 52%. This argues against hue-harmony scoring and does not license a replacement lightness score.
+- **Mirror-symmetry / center-of-mass balance scoring for real UIs**: results reported for abstract stimuli do not establish generalization to real interfaces.
+- **Scored Korean readability**: KRIT reports 0.746 accuracy on long-form textbook grade classification and states that public datasets or baselines were unavailable; nothing cited here validates scoring short UI strings.
 
 ## 2026 LLM-UI evaluation additions (prior-art registry)
 

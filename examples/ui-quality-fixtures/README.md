@@ -28,6 +28,12 @@ Small pages used to calibrate source-backed criteria and report wording.
 - `spacing-adherence-ignored.html`: off-scale vendor spacing under the spacing-only selector exception plus an evaluated control.
 - `spacing-adherence-incomplete.html`: one element with unavailable or throwing Typed OM keyword evidence; margin/gap slots are skipped while its padding remains evaluated.
 - `spacing-adherence-errors.html`: query-selected 25,000-slot, root-font, and selector-evaluation boundaries for the live smoke.
+- `visual-metrics-typography-good.html`: two direct-text owners share one computed typography tuple and stay within the fixture's explicit one-variant budget.
+- `visual-metrics-typography-bad.html`: the same page changes only the heading size, producing a second tuple and one `typography-variant-count-budget` heuristic risk.
+- `visual-metrics-palette-good.html`: text and background paint stay within the fixture's explicit distinct-color and chromatic-hue-family budgets.
+- `visual-metrics-palette-bad.html`: the same page changes only one text color, exceeding the fixture's palette budgets and producing one `palette-count-discipline` heuristic risk.
+- `visual-metrics-density-good.html`: two visible direct-text owners and their separate flow roots stay within the fixture's explicit high-side density budgets.
+- `visual-metrics-density-bad.html`: the same page adds one paragraph, exceeding both fixture density components in one `density-complexity-budget` heuristic risk.
 - `midjourney-derived/scanability-good.html`: hand-authored dense-dashboard scanability fixture.
 - `midjourney-derived/scanability-bad.html`: hand-authored dense-dashboard scanability stress fixture.
 - `midjourney-derived/state-and-color-good.html`: hand-authored checklist and color hierarchy fixture that should preserve clear state meaning.
@@ -47,6 +53,10 @@ Small pages used to calibrate source-backed criteria and report wording.
   non-exempt tap targets in both viewports; calibrates complete pre-cap counts against five emitted samples.
 
 These fixtures intentionally stay framework-free so checks can isolate DOM, style, viewport, and report behavior.
+
+The six `visual-metrics-*` pages are closed synthetic calibration pairs, not examples of universally correct counts. `visual-metrics-calibration.json` binds their hashes, frozen policy/method IDs, project-authored policies, exact complete measurements, and findings; it also includes the existing merchant dashboard as a configured complete all-metric non-regression case. `pnpm check:visual-metrics-calibration` validates that oracle and the exact recursively discovered unrelated-corpus inventory without a browser under `pnpm validate`.
+
+After a workspace build and Chromium install, `pnpm smoke:visual-metrics` reproduces those seven complete cases and writes their `audit.json`, `metadata.json`, and `report.md` under `runs/visual-metrics/<case-id>/`. It also audits all 48 unrelated recursive HTML fixtures three times under `runs/visual-metrics/corpus/repeat-{1,2,3}/<entry-id>/` and pins both raw-fixture and metric-projection hashes. The projection includes only the three new visual-metric summaries, findings, and notices; unrelated pre-existing findings/notices are allowed, while every audit must still return successful status and no failed checks. This broader corpus does not claim complete metric evidence for every page: `color-adherence-incomplete.html` intentionally retains the one reviewed lower-bound outcome—zero visual-metric risks and exactly one `palette-discipline-slots-skipped` notice with `unsupported-color: 1`. Any other visual-metric or repeated-hash drift fails.
 
 ## Clean corpus scope rule
 

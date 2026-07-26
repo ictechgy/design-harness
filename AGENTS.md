@@ -41,11 +41,13 @@ pnpm check:tracked-hygiene          # local-only files untracked; AGENTS.md line
 pnpm check:report-copy-guardrails   # HARD RULE 9: no unqualified overclaims in tracked reports/README
 pnpm check:obedience-benchmark      # exact 12-cell snapshot, provenance, preservation + claim gate
 pnpm check:guide-data               # guide fingerprint source/generated mirror parity
+pnpm check:visual-metrics-calibration # browserless fixture hashes + exact manifest contract
 pnpm calibrate:fixtures             # six Korean fixtures → parser-free copy TP/FP/FN drift gate
 pnpm example:serve                  # merchant-dashboard fixture on :4173
 pnpm smoke:copy                     # live parser-free copy/materializer golden path
 pnpm smoke:guide                    # temporary-project guide compile/check + compatibility gate
 pnpm smoke:loop                     # live bounded-loop repair/no-progress/process-boundary gate
+pnpm smoke:visual-metrics           # live atomic + merchant + repeated unrelated-corpus gate
 pnpm design-harness -- audit --url http://localhost:4173 --out runs/demo
 ```
 
@@ -57,7 +59,7 @@ Criterion in `packages/core/src/criteria.ts` (with `CRITERION_SOURCES` entry) �
 
 ## Roadmap
 
-**Latest release: v0.6.1 — RELEASED 2026-07-24.** It ships the post-v0.6.0 maintenance train: documentation truth, contrast fail-closed handling for ancestor paint effects, criterion-bounded scoring with capped-finding cardinality, and the bounded deterministic-failure loop. `SCHEMA_VERSION` remains `0.2`; historical artifacts keep their producer versions. **Most recently completed serial train — COMPLETE 2026-07-25, NOT RELEASED:** rendered color membership → rendered spacing membership → remove unused browser-boundary color metadata; no release action belonged to this train. See `docs/ROADMAP.md`.
+**Latest release: v0.6.1 — RELEASED 2026-07-24.** It ships the post-v0.6.0 maintenance train: documentation truth, contrast fail-closed handling for ancestor paint effects, criterion-bounded scoring with capped-finding cardinality, and the bounded deterministic-failure loop. `SCHEMA_VERSION` remains `0.2`; historical artifacts keep their producer versions. **Most recently completed serial train — COMPLETE 2026-07-26, NOT RELEASED:** three opt-in, project-configured visual-metric budgets plus their generated guide rules and closed calibration; there are no default budgets, and no release action belonged to this train. See `docs/ROADMAP.md`.
 
 **Cut list (do NOT build now)**: MCP server (file contract `audit.json`/`report.md` is canonical; capture is commoditized) · best-of-N picker · community fixture pipeline · interaction-simulation / below-fold sweep / pixel contrast · more than two agent surfaces (Claude Code + Codex) · `guide from-references` CLI before the manual workflow proves value · Open Design integration · **evidence-against, do not build**: hue-template color harmony, symmetry/balance scoring for real UIs, scored Korean readability, MQM translation LQA, Figma-plugin surface, generic English style-guide enforcement (details: `docs/ROADMAP.md` cut list).
 

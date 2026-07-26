@@ -1,6 +1,6 @@
 # Evidence-backed visual metrics contract
 
-Status: frozen checkpoint; implementation is gated on ordered approval
+Status: approved frozen contract; implementation completed 2026-07-26, not released
 
 Contract version: 2026-07-26
 

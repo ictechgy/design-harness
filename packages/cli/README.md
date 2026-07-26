@@ -30,7 +30,9 @@ design-harness audit \
   --guide ./design-guide.yaml
 ```
 
-`--guide` performs no discovery and may be combined with `--copy`. It evaluates three independent project-contract policies: computed `font-family` lists on visible text candidates; supported computed sRGB paint against exact RGBA8 values projected from `tokens.color.semantic`; and rendered computed CSS-pixel membership for four margin sides, four padding sides, and row/column gaps on visible viewport-intersecting elements against `tokens.spacing`. Undeclared computed family members emit the low-severity deterministic project-contract risk `unapproved-font-family`; rendered values outside the semantic color set emit `off-palette-color`; and rendered spacing outside the declared scale emits `off-scale-spacing` at the same tier. Font order/roles, source-token provenance, palette-distance scoring, spacing rhythm/quality, spacing aesthetics, authored-expression inference, layout quality, aesthetic quality, and accessibility are not inferred. Optional selectors exclude deliberate third-party subtrees from the matching check only.
+`--guide` performs no discovery and may be combined with `--copy`. Every valid guide projects three independent project-contract policies: computed `font-family` lists on visible text candidates; supported computed sRGB paint against exact RGBA8 values projected from `tokens.color.semantic`; and rendered computed CSS-pixel membership for four margin sides, four padding sides, and row/column gaps on visible viewport-intersecting elements against `tokens.spacing`. Undeclared computed family members emit the low-severity deterministic project-contract risk `unapproved-font-family`; rendered values outside the semantic color set emit `off-palette-color`; and rendered spacing outside the declared scale emits `off-scale-spacing` at the same tier.
+
+Three additional visual-metric policies are strictly opt-in through their own `audit` sections. They compare rendered typography-variant, palette-count, or viewport-density measurements only with project-authored maxima. There are no defaults or universal recommendations. Configured overages emit low-severity, low-confidence heuristic risks; low values do not produce rewards or positive quality claims. Font order/roles, source-token provenance, palette-distance scoring or harmony, spacing rhythm/quality, authored-expression inference, lightness or alignment scoring, and overall layout, aesthetic, or accessibility quality are not inferred.
 
 The closed audit overlay is:
 
@@ -49,6 +51,21 @@ audit:
   spacing:
     ignoreSelectors:
       - ".third-party-spacing-widget"
+  # Illustrative project values, not recommendations:
+  typographyVariants:
+    maxDistinctVariants: 8
+    ignoreSelectors:
+      - ".third-party-type-widget"
+  paletteDiscipline:
+    maxDistinctColors: 24
+    maxChromaticHueFamilies: 4
+    ignoreSelectors:
+      - ".embedded-chart"
+  densityComplexity:
+    maxVisibleElements: 120
+    maxTextClusters: 48
+    ignoreSelectors:
+      - ".vendor-panel"
 ```
 
 `fontFamily` must contain at least one property. Each array, when present, has 1–32 entries. Additional values are decoded individual family names of 1–128 trim-stable safe Unicode scalars, not CSS lists or quoted CSS source; commas inside a named value are data. `kind` is `named` or `generic`, and generic entries must use a supported CSS generic. A generic-looking spelling can deliberately be named: `{ value: system-ui, kind: named }` permits computed `"system-ui"`, while `kind: generic` permits unquoted `system-ui`. Heading, body, then additional entries are deduplicated by kind plus ASCII-folded value while preserving the first spelling.
@@ -59,7 +76,25 @@ Rendered-color membership covers direct-text foregrounds, visible backgrounds wi
 
 Rendered-spacing membership uses the declared `px`/`rem` scale after per-viewport root-font conversion, implicit zero, negative-margin magnitude matching, and an inclusive fixed `0.001 CSS px` tolerance. For margins and gaps, CSS Typed OM preserves keyword evidence: `auto` margins and `normal` gaps are explicit skips. If Typed OM is unavailable, throws, or returns unsupported typed evidence, the affected margin/gap slot is skipped instead of accepting a resolved `getComputedStyle()` pixel fallback. Padding slots use computed CSS-pixel evidence directly; non-finite values and negative padding/gap are skipped as invalid evidence. `audit.spacing.ignoreSelectors` applies to this detector only.
 
-Font-family evidence describes the computed list, not the font face that rendered each glyph. Selector-engine or computed-value processing errors mark only the affected check partial and retain unrelated measurements. Without audit `--guide`, the CLI performs no font/color/spacing policy loading or adherence-specific capture, findings, notices, or failed checks.
+Font-family evidence describes the computed list, not the font face that rendered each glyph. Selector-engine or computed-value processing errors mark only the affected check partial and retain unrelated measurements. Without audit `--guide`, the CLI performs no guide-policy loading or guide-specific capture, findings, notices, or failed checks.
+
+### Visual metric budgets
+
+Each configured metric adds a selector-free project-budget rule to generated AGENTS/DESIGN guidance and runs the matching viewport measurement during audit and bounded-loop audits. `ignoreSelectors` changes only runtime collection; it is excluded from generated guidance and the guide source hash. Omitting a metric section adds no rule, metric traversal, summary, notice, failed-check entry, finding, or score effect.
+
+| Audit section | Budget bounds | Frozen IDs |
+|---|---|---|
+| `typographyVariants` | required `maxDistinctVariants`, integer `1..2000` | `typography-variant-budget-v1`; `rendered-typography-variants-v1` |
+| `paletteDiscipline` | at least one of `maxDistinctColors` (`1..5000`) or `maxChromaticHueFamilies` (`1..12`) | `palette-discipline-budget-v1`; `rendered-rgba8-oklch-cover30-v1` |
+| `densityComplexity` | at least one of `maxVisibleElements` (`1..10000`) or `maxTextClusters` (`1..20000`) | `density-complexity-budget-v1`; `viewport-dom-density-v1`; components `visible-content-elements-v1` and `text-flow-connectivity-v1` |
+
+Each section is closed. Optional `ignoreSelectors` uses the same 1–32 item and 256-safe-scalar bounds as the other audit selectors. A section containing selectors but no required budget is invalid. Browser-invalid selector syntax or evaluation, a safety-cap breach, an unexpected collector exception, or invalid accounting discards only that metric's summary and marks its check partial.
+
+Typography counts normalized computed family-stack + size + weight + style tuples on visible direct-text candidates. It does not identify the glyph-resolved face or assess pairing, roles, modular scale, or typography quality. Palette discipline counts distinct nontransparent computed RGBA8 paint values and a minimum closed 30-degree cover over chromatic OKLab hues. Its fixed chroma cutoff and span are reproducibility constants, not taste thresholds; the method does not enumerate pixels, composite paint, score hue harmony or lightness, or replace contrast checks. Density counts visible UI/media and direct-text owners plus connected text-flow fragments at the current viewport position. It does not resolve occlusion or measure below-fold, pixel, whitespace, alignment, symmetry, or balance.
+
+The optional summaries are stored under each viewport's existing `measurement-<viewport>.data` evidence as `typographyVariants`, `paletteDiscipline`, and `densityComplexity`. Typography, palette, and visible-element summaries report `complete` or monotone `lower-bound` coverage; a lower bound can flag only when it already exceeds the configured maximum and is never described as a pass when it does not. Text-cluster connectivity reports `complete` or `incomplete`; incomplete cluster evidence is not compared with its budget and creates a density-component partial notice. A simultaneously sound visible-element overage can still emit the single density finding.
+
+At most one finding per configured metric is emitted per viewport; a two-budget overage remains one finding with both components. All three criteria are `research-emerging`, `heuristic`, low-severity, low-confidence `risk`, and the criterion-bounded score counts each criterion once across viewports. Their exact computed counts do not establish universal or objective visual quality.
 
 ## Bounded loop
 
@@ -128,9 +163,9 @@ This is an all-or-restored protocol for handled filesystem errors and concurrent
 
 Check performs zero writes. It returns success only when the inputs are valid, every owned artifact is current, and the generated pack is within the requested estimate ceiling. `--max-tokens` accepts `1..2000`, defaults to 2000, and may only lower compile's hard ceiling.
 
-### Supported Design Guide Profile `v0.5a-1`
+### Supported Design Guide Profile `design-guide-v0.5a-2`
 
-The [example guide](https://github.com/ictechgy/design-harness/blob/main/examples/configs/design-guide.example.yaml) shows the complete YAML shape. Its generation projection is exactly `schemaVersion: "0.2"`, `tokens`, `prohibitions`, and `signatureElement`; audit-time checking adds the optional closed audit-only `audit.fontFamily`, `audit.color`, and `audit.spacing` subtrees.
+The [example guide](https://github.com/ictechgy/design-harness/blob/main/examples/configs/design-guide.example.yaml) shows the required base shape and the three adherence selector overlays. The illustrative YAML above shows the additional optional visual-metric sections; none of its numbers is a default. The base generation projection is exactly `schemaVersion: "0.2"`, `tokens`, `prohibitions`, and `signatureElement`. Audit-time checking adds six optional closed `audit` subtrees: the selector overlays `fontFamily`, `color`, and `spacing`, plus the project-budget `typographyVariants`, `paletteDiscipline`, and `densityComplexity` sections. Configured visual-metric budgets and frozen IDs also enter the generated guide rule and source hash; their selectors do not.
 
 - `tokens.color.semantic`: 4–6 lower-kebab leaves under `$type: color`; each `$value` is a literal `srgb` color with three finite components in `[0,1]` and optional alpha in `[0,1]`.
 - `tokens.font.family`: exactly `heading` and `body` under `$type: fontFamily`; each value is one family or an array of 1–4 families.
@@ -142,9 +177,13 @@ The [example guide](https://github.com/ictechgy/design-harness/blob/main/example
 - If `audit.fontFamily` is present, at least one of those two properties is required; either may be used without the other.
 - `audit.color.ignoreSelectors`: required when `audit.color` is present; 1–32 unique, trim-stable selectors of at most 256 safe Unicode scalar values; syntax is validated by the captured browser at audit time.
 - `audit.spacing.ignoreSelectors`: required when `audit.spacing` is present; 1–32 unique, trim-stable selectors of at most 256 safe Unicode scalar values; syntax is validated by the captured browser at audit time.
-- If `audit` is present, it must contain at least one of the independent `fontFamily`, `color`, or `spacing` overlays.
+- `audit.typographyVariants.maxDistinctVariants`: required integer `1..2000`; optional `ignoreSelectors`.
+- `audit.paletteDiscipline`: at least one of integer `maxDistinctColors: 1..5000` or `maxChromaticHueFamilies: 1..12`; optional `ignoreSelectors`.
+- `audit.densityComplexity`: at least one of integer `maxVisibleElements: 1..10000` or `maxTextClusters: 1..20000`; optional `ignoreSelectors`.
+- Each visual-metric selector list follows the same 1–32 unique, trim-stable, 256-safe-scalar rule and is validated by the captured browser.
+- If `audit` is present, it must contain at least one of the six independent sections above.
 
-This is a documented supported profile of DTCG 2025.10, not an arbitrary DTCG-file resolver or a full-conformance claim. v0.5a rejects aliases/references, `$extends`, `$root`, composites, gradients, token-file imports, themes, token-level metadata, and arbitrary input `$extensions`. It produces token JSON, not CSS or another platform format. The repository tests this profile with exact Style Dictionary 5.5.0 in a bounded CSS smoke; Style Dictionary is a root development dependency only, not a published runtime dependency.
+This is a documented supported profile of DTCG 2025.10, not an arbitrary DTCG-file resolver or a full-conformance claim. v0.5a rejects aliases/references, `$extends`, `$root`, composites, gradients, token-file imports, themes, token-level metadata, and arbitrary input `$extensions`. It produces token JSON, not CSS or another platform format. The repository tests this profile with exact Style Dictionary 5.5.0 in a bounded CSS smoke; Style Dictionary is a root development dependency only, not a published runtime dependency. Compile recognizes the exact immediately prior owned `design-guide-v0.5a-1` / catalog `2026-07-18` tuple for transactional migration; check reports it stale and performs no write. Unknown ownership tuples still fail closed.
 
 The optional copy projection includes configured locale, register declarations, literal glossary tiers/preferred terms, and banned phrases. It does not emit `surfaceMapping`, adapter names, or selectors into agent instructions.
 
@@ -158,6 +197,6 @@ max(Unicode scalar count, ceil(UTF-8 byte length / 2))
 
 It is an estimate, not an exact tokenizer count. Diagnostics identify the method, value, and ceiling.
 
-Audit `--guide` adds only computed-list font-family adherence, exact rendered-color adherence for semantic sRGB colors within the documented direct-text/background/painted-border scope, rendered computed CSS-pixel spacing membership within the documented margin/padding/gap scope, and detector-specific selector exceptions. It does not infer spacing rhythm/quality, spacing aesthetics, source-token provenance, authored-expression inference, layout quality, or accessibility. Palette-distance scoring, actual glyph-face detection, framework inference, auto-discovery, automatic agent selection, a Claude skill, reference-file ingestion, anti-slop scoring, and obedience/quality claims remain out of scope. Partial audits still write artifacts and exit `2` unless `--allow-partial` is set; invalid audit config and invalid or stale guide operations exit `1`.
+Audit `--guide` adds computed-list font-family adherence, exact rendered-color adherence for semantic sRGB colors within the documented direct-text/background/painted-border scope, rendered computed CSS-pixel spacing membership within the documented margin/padding/gap scope, and only the visual-metric policies explicitly configured by the project. It does not infer spacing rhythm or aesthetics, source-token provenance, authored-expression intent, palette distance/harmony, lightness or alignment quality, actual glyph faces, universal typography/palette/density thresholds, low-density quality, overall layout/aesthetic quality, or accessibility. Framework inference, auto-discovery, automatic agent selection, a Claude skill, reference-file ingestion, anti-slop scoring, and obedience/quality claims remain out of scope. Partial audits still write artifacts and exit `2` unless `--allow-partial` is set; invalid audit config and invalid or stale guide operations exit `1`.
 
 Repository: https://github.com/ictechgy/design-harness
