@@ -9,8 +9,11 @@ import {
   type AuditNotice,
   type ColorAdherencePolicy,
   type CopyStyle,
+  type DensityComplexityBudgetPolicy,
   type FontFamilyAdherencePolicy,
+  type PaletteDisciplineBudgetPolicy,
   type SpacingAdherencePolicy,
+  type TypographyVariantBudgetPolicy,
   type ViewportPreset
 } from "@design-harness/core";
 import { auditUrl, BrowserUnavailableError, type BrowserHandle, type PageHandle } from "./index.js";
@@ -1271,6 +1274,465 @@ describe("auditUrl rendered spacing adherence", () => {
   });
 });
 
+describe("auditUrl visual metric budgets", () => {
+  it("omits visual metric collection config, evidence, findings, and partial state when no policies are supplied", async () => {
+    const measurement = measurementFor("desktop");
+    const options: FakeBrowserOptions = {
+      measurement,
+      measurementArgs: [],
+      collectionResults: [{
+        ...completeVisualMetricCollection(measurement),
+        measurements: measurement
+      }]
+    };
+
+    const result = await auditUrl({
+      url: "http://localhost:3000",
+      outDir: await tempDir(),
+      viewportPresets: [viewport],
+      launchBrowser: async () => fakeBrowser(options)
+    });
+
+    const measurementEvidence = result.auditResult.evidenceAssets.find(
+      (asset) => asset.id === "measurement-desktop"
+    );
+    expect(options.measurementArgs).toEqual([undefined]);
+    expect(measurementEvidence?.data).not.toHaveProperty("typographyVariants");
+    expect(measurementEvidence?.data).not.toHaveProperty("paletteDiscipline");
+    expect(measurementEvidence?.data).not.toHaveProperty("densityComplexity");
+    expect(result.auditResult.findings).toEqual([]);
+    expect(result.auditResult.failedChecks).toEqual([]);
+    expect(result.auditResult.status).toBe("success");
+    expect(result.auditResult).not.toHaveProperty("notices");
+  });
+
+  it("forwards exact collector config and records complete summaries with one risk per configured criterion", async () => {
+    const measurement = measurementFor("desktop");
+    const options: FakeBrowserOptions = {
+      measurement,
+      measurementArgs: [],
+      collectionResults: [completeVisualMetricCollection(measurement)]
+    };
+
+    const result = await auditUrl({
+      url: "http://localhost:3000",
+      outDir: await tempDir(),
+      viewportPresets: [viewport],
+      typographyVariantsPolicy: typographyVariantBudgetPolicy(),
+      paletteDisciplinePolicy: paletteDisciplineBudgetPolicy(),
+      densityComplexityPolicy: densityComplexityBudgetPolicy(),
+      launchBrowser: async () => fakeBrowser(options)
+    });
+
+    expect(options.measurementArgs).toEqual([{
+      typographyVariants: {
+        ignoreSelectors: [".third-party-type"]
+      },
+      paletteDiscipline: {
+        ignoreSelectors: [".third-party-palette"]
+      },
+      densityComplexity: {
+        ignoreSelectors: [".third-party-density"],
+        collectVisibleElements: true,
+        collectTextClusters: true
+      }
+    }]);
+    const measurementEvidence = result.auditResult.evidenceAssets.find(
+      (asset) => asset.id === "measurement-desktop"
+    );
+    expect(measurementEvidence?.data?.typographyVariants).toMatchObject({
+      policyId: "typography-variant-budget-v1",
+      methodId: "rendered-typography-variants-v1",
+      maxDistinctVariants: 1,
+      coverage: "complete",
+      candidateElementCount: 2,
+      evaluatedElementCount: 2,
+      skippedElementCount: 0,
+      distinctVariantCount: 2
+    });
+    expect(measurementEvidence?.data?.paletteDiscipline).toMatchObject({
+      policyId: "palette-discipline-budget-v1",
+      methodId: "rendered-rgba8-oklch-cover30-v1",
+      maxDistinctColors: 1,
+      maxChromaticHueFamilies: 1,
+      coverage: "complete",
+      candidateSlotCount: 2,
+      evaluatedSlotCount: 2,
+      skippedSlotCount: 0,
+      distinctColorCount: 2,
+      hueFamilyCount: 2
+    });
+    expect(measurementEvidence?.data?.densityComplexity).toMatchObject({
+      policyId: "density-complexity-budget-v1",
+      methodId: "viewport-dom-density-v1",
+      maxVisibleElements: 1,
+      maxTextClusters: 1,
+      visibleElements: {
+        methodId: "visible-content-elements-v1",
+        coverage: "complete",
+        visibleElementCount: 2
+      },
+      textClusters: {
+        methodId: "text-flow-connectivity-v1",
+        coverage: "complete",
+        textClusterCount: 2
+      }
+    });
+    expect(result.auditResult.findings.map((finding) => finding.checkName)).toEqual([
+      "typography-variant-count-budget",
+      "palette-count-discipline",
+      "density-complexity-budget"
+    ]);
+    expect(result.auditResult.findings).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        criterionId: "typography.variant-count.budget",
+        determinism: "heuristic",
+        resultKind: "risk",
+        confidence: "low"
+      }),
+      expect.objectContaining({
+        criterionId: "color.palette.count-discipline",
+        determinism: "heuristic",
+        resultKind: "risk",
+        confidence: "low"
+      }),
+      expect.objectContaining({
+        criterionId: "layout.density.complexity-budget",
+        determinism: "heuristic",
+        resultKind: "risk",
+        confidence: "low"
+      })
+    ]));
+    expect(result.auditResult.findings.every((finding) => (
+      finding.evidenceRefs.includes("measurement-desktop")
+    ))).toBe(true);
+    expect(result.auditResult.failedChecks).toEqual([]);
+    expect(result.auditResult.status).toBe("success");
+    expect(result.auditResult).not.toHaveProperty("notices");
+    expect(() => assertAuditResultIntegrity(result.auditResult)).not.toThrow();
+  });
+
+  it("preserves lower-bound summaries and emits explicit notices instead of silently reporting a clean measurement", async () => {
+    const measurement = measurementFor("desktop");
+    const result = await auditUrl({
+      url: "http://localhost:3000",
+      outDir: await tempDir(),
+      viewportPresets: [viewport],
+      typographyVariantsPolicy: typographyVariantBudgetPolicy({ maxDistinctVariants: 2 }),
+      paletteDisciplinePolicy: paletteDisciplineBudgetPolicy({
+        maxDistinctColors: 2,
+        maxChromaticHueFamilies: 2
+      }),
+      densityComplexityPolicy: densityVisibleOnlyBudgetPolicy(2),
+      launchBrowser: async () => fakeBrowser({
+        measurement,
+        collectionResults: [{
+          measurements: measurement,
+          notices: [],
+          typographyVariantCandidates: [{
+            selector: "h1",
+            region: { x: 24, y: 24, width: 320, height: 40 },
+            fontFamily: "Inter, sans-serif",
+            fontSize: "24px",
+            fontWeight: "700",
+            fontStyle: "normal"
+          }],
+          typographyVariantCollection: {
+            candidateElementCount: 2,
+            collectedElementCount: 1,
+            ignoredElementCount: 0,
+            skippedElementCount: 1,
+            skippedByReason: { "font-family-too-long": 1 }
+          },
+          paletteDisciplineCandidates: [{
+            selector: ".alert",
+            region: { x: 24, y: 80, width: 160, height: 24 },
+            property: "color",
+            value: "rgb(255, 0, 0)"
+          }],
+          paletteDisciplineCollection: {
+            candidateSlotCount: 2,
+            collectedSlotCount: 1,
+            ignoredSlotCount: 0,
+            skippedSlotCount: 1,
+            skippedByReason: { "computed-color-too-long": 1 }
+          },
+          densityComplexityCollection: {
+            visibleElements: {
+              elementUniverseCount: 2,
+              visibleElementCount: 1,
+              ignoredElementCount: 0,
+              ineligibleElementCount: 0,
+              skippedElementCount: 1,
+              skippedByReason: { "unsupported-clip-or-mask": 1 },
+              samples: [{
+                selector: "button",
+                region: { x: 24, y: 120, width: 120, height: 40 }
+              }],
+              omittedSampleCount: 0
+            }
+          }
+        }]
+      })
+    });
+
+    const measurementEvidence = result.auditResult.evidenceAssets.find(
+      (asset) => asset.id === "measurement-desktop"
+    );
+    expect(measurementEvidence?.data?.typographyVariants).toMatchObject({
+      coverage: "lower-bound",
+      distinctVariantCount: 1,
+      skippedElementCount: 1
+    });
+    expect(measurementEvidence?.data?.paletteDiscipline).toMatchObject({
+      coverage: "lower-bound",
+      distinctColorCount: 1,
+      skippedSlotCount: 1
+    });
+    expect(measurementEvidence?.data?.densityComplexity).toMatchObject({
+      visibleElements: {
+        coverage: "lower-bound",
+        visibleElementCount: 1,
+        skippedElementCount: 1
+      }
+    });
+    expect(result.auditResult.findings).toEqual([]);
+    expect(result.auditResult.notices?.map(({ code }) => code)).toEqual([
+      "typography-variant-elements-skipped",
+      "palette-discipline-slots-skipped",
+      "density-visible-elements-skipped"
+    ]);
+    expect(result.auditResult.notices?.every(({ message }) => (
+      message.includes("lower bound")
+    ))).toBe(true);
+    expect(result.auditResult.failedChecks).toEqual([]);
+    expect(result.auditResult.status).toBe("success");
+    expect(() => assertAuditResultIntegrity(result.auditResult)).not.toThrow();
+  });
+
+  it.each([
+    {
+      label: "typography collector failure",
+      option: {
+        typographyVariantsPolicy: typographyVariantBudgetPolicy()
+      },
+      collection: {
+        typographyVariantError: {
+          code: "invalid-selector" as const,
+          selectorIndex: 0
+        }
+      },
+      summaryKey: "typographyVariants",
+      checkName: "typography-variant-count-budget",
+      noticeCode: "typography-variant-measurement-failed",
+      reasonCode: "invalid-selector"
+    },
+    {
+      label: "palette materializer failure",
+      option: {
+        paletteDisciplinePolicy: paletteDisciplineBudgetPolicy()
+      },
+      collection: {
+        paletteDisciplineCandidates: [{
+          selector: ".alert",
+          region: { x: 24, y: 24, width: 160, height: 24 },
+          property: "color" as const,
+          value: "rgb(255, 0, 0)"
+        }],
+        paletteDisciplineCollection: {
+          candidateSlotCount: 2,
+          collectedSlotCount: 1,
+          ignoredSlotCount: 0,
+          skippedSlotCount: 0,
+          skippedByReason: {}
+        }
+      },
+      summaryKey: "paletteDiscipline",
+      checkName: "palette-count-discipline",
+      noticeCode: "palette-discipline-measurement-failed",
+      reasonCode: "evidence-count-mismatch"
+    },
+    {
+      label: "density collector failure",
+      option: {
+        densityComplexityPolicy: densityComplexityBudgetPolicy()
+      },
+      collection: {
+        densityComplexityError: {
+          code: "dom-limit" as const,
+          candidateCount: 10_001,
+          limit: 10_000
+        }
+      },
+      summaryKey: "densityComplexity",
+      checkName: "density-complexity-budget",
+      noticeCode: "density-complexity-measurement-failed",
+      reasonCode: "dom-limit"
+    }
+  ])("keeps unrelated checks but marks only the affected detector partial on $label", async (scenario) => {
+    const measurement = {
+      ...measurementFor("desktop"),
+      documentScrollWidth: 1500
+    };
+    const result = await auditUrl({
+      url: "http://localhost:3000",
+      outDir: await tempDir(),
+      viewportPresets: [viewport],
+      ...scenario.option,
+      launchBrowser: async () => fakeBrowser({
+        measurement,
+        collectionResults: [{
+          measurements: measurement,
+          notices: [],
+          ...scenario.collection
+        }]
+      })
+    });
+
+    const measurementEvidence = result.auditResult.evidenceAssets.find(
+      (asset) => asset.id === "measurement-desktop"
+    );
+    const failureEvidence = result.auditResult.evidenceAssets.find((asset) => (
+      asset.type === "measurement"
+      && asset.viewport === "desktop"
+      && asset.data?.checkName === scenario.checkName
+    ));
+    expect(result.auditResult.status).toBe("partial");
+    expect(result.auditResult.failedChecks).toEqual([`desktop:${scenario.checkName}`]);
+    expect(result.auditResult.findings.map((finding) => finding.checkName)).toEqual([
+      "horizontal-overflow"
+    ]);
+    expect(measurementEvidence?.data).not.toHaveProperty(scenario.summaryKey);
+    expect(failureEvidence).toMatchObject({
+      data: {
+        checkName: scenario.checkName,
+        reasonCode: scenario.reasonCode,
+        viewport: "desktop"
+      }
+    });
+    expect(result.auditResult.notices).toEqual([
+      expect.objectContaining({
+        code: scenario.noticeCode,
+        details: expect.objectContaining({
+          viewport: "desktop",
+          reasonCode: scenario.reasonCode
+        })
+      })
+    ]);
+    expect(() => assertAuditResultIntegrity(result.auditResult)).not.toThrow();
+  });
+
+  it("marks incomplete text clusters partial while preserving a sound visible-element overage", async () => {
+    const measurement = measurementFor("desktop");
+    const result = await auditUrl({
+      url: "http://localhost:3000",
+      outDir: await tempDir(),
+      viewportPresets: [viewport],
+      densityComplexityPolicy: densityComplexityBudgetPolicy(),
+      launchBrowser: async () => fakeBrowser({
+        measurement,
+        collectionResults: [{
+          measurements: measurement,
+          notices: [],
+          densityComplexityCollection: {
+            visibleElements: {
+              elementUniverseCount: 3,
+              visibleElementCount: 2,
+              ignoredElementCount: 0,
+              ineligibleElementCount: 0,
+              skippedElementCount: 1,
+              skippedByReason: { "unsupported-clip-or-mask": 1 },
+              samples: [{
+                selector: "button",
+                region: { x: 24, y: 24, width: 120, height: 40 }
+              }, {
+                selector: "p",
+                region: { x: 24, y: 80, width: 320, height: 48 }
+              }],
+              omittedSampleCount: 0
+            },
+            textClusters: {
+              textNodeUniverseCount: 2,
+              ignoredTextNodeCount: 0,
+              ineligibleTextNodeCount: 0,
+              skippedTextNodeCount: 1,
+              evaluatedTextNodeCount: 1,
+              skippedByReason: { "unsupported-clip-or-mask": 1 },
+              textFragmentCount: 1,
+              fragments: [{
+                rootId: "root-1",
+                selector: "p",
+                left: 24,
+                top: 80,
+                right: 344,
+                bottom: 128
+              }]
+            }
+          }
+        }]
+      })
+    });
+
+    const measurementEvidence = result.auditResult.evidenceAssets.find(
+      (asset) => asset.id === "measurement-desktop"
+    );
+    const densityFailureEvidence = result.auditResult.evidenceAssets.find((asset) => (
+      asset.type === "measurement"
+      && asset.data?.checkName === "density-complexity-budget-text-clusters"
+    ));
+    expect(result.auditResult.status).toBe("partial");
+    expect(result.auditResult.failedChecks).toEqual([
+      "desktop:density-complexity-budget:text-clusters"
+    ]);
+    expect(measurementEvidence?.data?.densityComplexity).toMatchObject({
+      visibleElements: {
+        coverage: "lower-bound",
+        visibleElementCount: 2,
+        maxVisibleElements: 1
+      },
+      textClusters: {
+        coverage: "incomplete",
+        textClusterCount: null,
+        maxTextClusters: 1,
+        skippedTextNodeCount: 1
+      }
+    });
+    expect(result.auditResult.findings).toEqual([
+      expect.objectContaining({
+        checkName: "density-complexity-budget",
+        criterionId: "layout.density.complexity-budget",
+        determinism: "heuristic",
+        resultKind: "risk",
+        observed: expect.objectContaining({
+          overages: [{
+            component: "visibleElementCount",
+            observedCount: 2,
+            configuredMaximum: 1,
+            excess: 1,
+            coverage: "lower-bound"
+          }]
+        })
+      })
+    ]);
+    expect(densityFailureEvidence).toMatchObject({
+      data: {
+        checkName: "density-complexity-budget-text-clusters",
+        methodId: "text-flow-connectivity-v1",
+        skippedTextNodeCount: 1,
+        viewport: "desktop"
+      }
+    });
+    expect(result.auditResult.findings[0]?.evidenceRefs).toContain(
+      densityFailureEvidence?.id
+    );
+    expect(result.auditResult.notices?.map(({ code }) => code)).toEqual([
+      "density-visible-elements-skipped",
+      "density-text-clusters-incomplete"
+    ]);
+    expect(() => assertAuditResultIntegrity(result.auditResult)).not.toThrow();
+  });
+});
+
 describe("auditUrl copy analysis", () => {
   it("analyzes pre-materialized text inventory against its exact evidence asset", async () => {
     const result = await auditUrl({
@@ -1929,6 +2391,147 @@ function spacingAdherencePolicy(): SpacingAdherencePolicy {
       { value: 24, unit: "px" }
     ],
     ignoreSelectors: [".third-party-spacing-widget"]
+  };
+}
+
+function typographyVariantBudgetPolicy(
+  overrides: Partial<TypographyVariantBudgetPolicy> = {}
+): TypographyVariantBudgetPolicy {
+  return {
+    maxDistinctVariants: 1,
+    ignoreSelectors: [".third-party-type"],
+    policyId: "typography-variant-budget-v1",
+    methodId: "rendered-typography-variants-v1",
+    ...overrides
+  };
+}
+
+function paletteDisciplineBudgetPolicy(
+  overrides: Partial<PaletteDisciplineBudgetPolicy> = {}
+): PaletteDisciplineBudgetPolicy {
+  return {
+    maxDistinctColors: 1,
+    maxChromaticHueFamilies: 1,
+    ignoreSelectors: [".third-party-palette"],
+    policyId: "palette-discipline-budget-v1",
+    methodId: "rendered-rgba8-oklch-cover30-v1",
+    ...overrides
+  };
+}
+
+function densityComplexityBudgetPolicy(
+  overrides: Partial<DensityComplexityBudgetPolicy> = {}
+): DensityComplexityBudgetPolicy {
+  return {
+    maxVisibleElements: 1,
+    maxTextClusters: 1,
+    ignoreSelectors: [".third-party-density"],
+    policyId: "density-complexity-budget-v1",
+    methodId: "viewport-dom-density-v1",
+    visibleElementMethodId: "visible-content-elements-v1",
+    textClusterMethodId: "text-flow-connectivity-v1",
+    ...overrides
+  };
+}
+
+function densityVisibleOnlyBudgetPolicy(
+  maxVisibleElements: number
+): DensityComplexityBudgetPolicy {
+  const {
+    maxTextClusters: _maxTextClusters,
+    ...policy
+  } = densityComplexityBudgetPolicy({ maxVisibleElements });
+  return policy;
+}
+
+function completeVisualMetricCollection(
+  measurement: ViewportMeasurements
+): ViewportCollectionResult {
+  return {
+    measurements: measurement,
+    notices: [],
+    typographyVariantCandidates: [{
+      selector: "h1",
+      region: { x: 24, y: 24, width: 320, height: 40 },
+      fontFamily: "Inter, sans-serif",
+      fontSize: "24px",
+      fontWeight: "700",
+      fontStyle: "normal"
+    }, {
+      selector: "p",
+      region: { x: 24, y: 80, width: 480, height: 24 },
+      fontFamily: "Inter, sans-serif",
+      fontSize: "16px",
+      fontWeight: "400",
+      fontStyle: "normal"
+    }],
+    typographyVariantCollection: {
+      candidateElementCount: 2,
+      collectedElementCount: 2,
+      ignoredElementCount: 0,
+      skippedElementCount: 0,
+      skippedByReason: {}
+    },
+    paletteDisciplineCandidates: [{
+      selector: ".alert",
+      region: { x: 24, y: 120, width: 160, height: 24 },
+      property: "color",
+      value: "rgb(255, 0, 0)"
+    }, {
+      selector: ".link",
+      region: { x: 24, y: 160, width: 160, height: 24 },
+      property: "color",
+      value: "rgb(0, 0, 255)"
+    }],
+    paletteDisciplineCollection: {
+      candidateSlotCount: 2,
+      collectedSlotCount: 2,
+      ignoredSlotCount: 0,
+      skippedSlotCount: 0,
+      skippedByReason: {}
+    },
+    densityComplexityCollection: {
+      visibleElements: {
+        elementUniverseCount: 2,
+        visibleElementCount: 2,
+        ignoredElementCount: 0,
+        ineligibleElementCount: 0,
+        skippedElementCount: 0,
+        skippedByReason: {},
+        samples: [{
+          selector: "h1",
+          region: { x: 24, y: 24, width: 320, height: 40 }
+        }, {
+          selector: "p",
+          region: { x: 24, y: 80, width: 480, height: 24 }
+        }],
+        omittedSampleCount: 0
+      },
+      textClusters: {
+        textNodeUniverseCount: 2,
+        ignoredTextNodeCount: 0,
+        ineligibleTextNodeCount: 0,
+        skippedTextNodeCount: 0,
+        evaluatedTextNodeCount: 2,
+        skippedByReason: {},
+        textFragmentCount: 2,
+        fragments: [{
+          rootId: "heading-root",
+          selector: "h1",
+          left: 24,
+          top: 24,
+          right: 344,
+          bottom: 64
+        }, {
+          rootId: "body-root",
+          selector: "p",
+          left: 24,
+          top: 80,
+          right: 504,
+          bottom: 104
+        }]
+      }
+    }
   };
 }
 

@@ -14,6 +14,11 @@ import {
 } from "./finding-coverage.js";
 import type { ColorAdherenceSummary } from "./color-adherence.js";
 import type { SpacingAdherenceSummary } from "./spacing-adherence.js";
+import type {
+  DensityComplexitySummary,
+  PaletteDisciplineSummary,
+  TypographyVariantSummary
+} from "./visual-metrics.js";
 
 export type { FindingCoverage, FindingCoverageEntry } from "./finding-coverage.js";
 
@@ -160,6 +165,9 @@ export interface ViewportMeasurements {
   fontFamilyAdherence?: FontFamilyAdherenceSummary;
   colorAdherence?: ColorAdherenceSummary;
   spacingAdherence?: SpacingAdherenceSummary;
+  typographyVariants?: TypographyVariantSummary;
+  paletteDiscipline?: PaletteDisciplineSummary;
+  densityComplexity?: DensityComplexitySummary;
   findingCoverage?: FindingCoverage;
 }
 
@@ -279,6 +287,166 @@ export function findingsFromMeasurements(
           allowedValuesPx: spacingAdherence.allowedValuesPx,
           tolerancePx: 0.001,
           comparison: "The rendered computed CSS-pixel value matches a spacing value declared by the explicit project guide."
+        }
+      }));
+    }
+  }
+
+  const typographyVariants = measurements.typographyVariants;
+  if (
+    typographyVariants
+    && typographyVariants.distinctVariantCount > typographyVariants.maxDistinctVariants
+  ) {
+    findings.push(createFinding({
+      id: `finding-${measurements.viewport}-typography-variant-count-budget`,
+      category: "visual-polish",
+      severity: "low",
+      viewport: measurements.viewport,
+      evidenceRefs,
+      problem: `The rendered typography summary reports ${typographyVariants.distinctVariantCount} distinct computed variants, exceeding the explicit project-configured maximum of ${typographyVariants.maxDistinctVariants}. This is a heuristic budget signal for review.`,
+      recommendation: "Consolidate rendered typography variants or revise the explicit project budget when the additional variants are intentional.",
+      checkName: "typography-variant-count-budget",
+      observed: {
+        ...typographyVariants,
+        overages: [{
+          component: "distinctVariantCount",
+          observedCount: typographyVariants.distinctVariantCount,
+          configuredMaximum: typographyVariants.maxDistinctVariants,
+          excess: typographyVariants.distinctVariantCount - typographyVariants.maxDistinctVariants,
+          coverage: typographyVariants.coverage
+        }]
+      },
+      expected: {
+        policyId: typographyVariants.policyId,
+        methodId: typographyVariants.methodId,
+        configuredBudgets: {
+          maxDistinctVariants: typographyVariants.maxDistinctVariants
+        },
+        comparison: "The observed distinct-variant count is less than or equal to the explicit project-configured maximum."
+      }
+    }));
+  }
+
+  const paletteDiscipline = measurements.paletteDiscipline;
+  if (paletteDiscipline) {
+    const paletteOverages: Array<Record<string, unknown>> = [];
+    if (
+      paletteDiscipline.maxDistinctColors !== undefined
+      && paletteDiscipline.distinctColorCount > paletteDiscipline.maxDistinctColors
+    ) {
+      paletteOverages.push({
+        component: "distinctColorCount",
+        observedCount: paletteDiscipline.distinctColorCount,
+        configuredMaximum: paletteDiscipline.maxDistinctColors,
+        excess: paletteDiscipline.distinctColorCount - paletteDiscipline.maxDistinctColors,
+        coverage: paletteDiscipline.coverage
+      });
+    }
+    if (
+      paletteDiscipline.maxChromaticHueFamilies !== undefined
+      && paletteDiscipline.hueFamilyCount > paletteDiscipline.maxChromaticHueFamilies
+    ) {
+      paletteOverages.push({
+        component: "hueFamilyCount",
+        observedCount: paletteDiscipline.hueFamilyCount,
+        configuredMaximum: paletteDiscipline.maxChromaticHueFamilies,
+        excess: paletteDiscipline.hueFamilyCount - paletteDiscipline.maxChromaticHueFamilies,
+        coverage: paletteDiscipline.coverage
+      });
+    }
+
+    if (paletteOverages.length > 0) {
+      findings.push(createFinding({
+        id: `finding-${measurements.viewport}-palette-count-discipline`,
+        category: "visual-polish",
+        severity: "low",
+        viewport: measurements.viewport,
+        evidenceRefs,
+        problem: `The rendered palette summary exceeds ${paletteOverages.length === 1 ? "an explicit project-configured count budget" : "both explicit project-configured count budgets"}. This is a heuristic budget signal for review.`,
+        recommendation: "Consolidate rendered paint colors or revise the explicit project budgets when the additional colors are intentional.",
+        checkName: "palette-count-discipline",
+        observed: {
+          ...paletteDiscipline,
+          overages: paletteOverages
+        },
+        expected: {
+          policyId: paletteDiscipline.policyId,
+          methodId: paletteDiscipline.methodId,
+          configuredBudgets: {
+            ...(paletteDiscipline.maxDistinctColors !== undefined
+              ? { maxDistinctColors: paletteDiscipline.maxDistinctColors }
+              : {}),
+            ...(paletteDiscipline.maxChromaticHueFamilies !== undefined
+              ? { maxChromaticHueFamilies: paletteDiscipline.maxChromaticHueFamilies }
+              : {})
+          },
+          comparison: "Each observed palette count is less than or equal to its explicit project-configured maximum."
+        }
+      }));
+    }
+  }
+
+  const densityComplexity = measurements.densityComplexity;
+  if (densityComplexity) {
+    const densityOverages: Array<Record<string, unknown>> = [];
+    const visibleElements = densityComplexity.visibleElements;
+    if (
+      densityComplexity.maxVisibleElements !== undefined
+      && visibleElements
+      && visibleElements.visibleElementCount > densityComplexity.maxVisibleElements
+    ) {
+      densityOverages.push({
+        component: "visibleElementCount",
+        observedCount: visibleElements.visibleElementCount,
+        configuredMaximum: densityComplexity.maxVisibleElements,
+        excess: visibleElements.visibleElementCount - densityComplexity.maxVisibleElements,
+        coverage: visibleElements.coverage
+      });
+    }
+
+    const textClusters = densityComplexity.textClusters;
+    if (
+      densityComplexity.maxTextClusters !== undefined
+      && textClusters?.coverage === "complete"
+      && textClusters.textClusterCount > densityComplexity.maxTextClusters
+    ) {
+      densityOverages.push({
+        component: "textClusterCount",
+        observedCount: textClusters.textClusterCount,
+        configuredMaximum: densityComplexity.maxTextClusters,
+        excess: textClusters.textClusterCount - densityComplexity.maxTextClusters,
+        coverage: textClusters.coverage
+      });
+    }
+
+    if (densityOverages.length > 0) {
+      findings.push(createFinding({
+        id: `finding-${measurements.viewport}-density-complexity-budget`,
+        category: "layout",
+        severity: "low",
+        viewport: measurements.viewport,
+        evidenceRefs,
+        problem: `The viewport density summary exceeds ${densityOverages.length === 1 ? "an explicit project-configured high-side budget" : "both explicit project-configured high-side budgets"}. This is a heuristic budget signal for review.`,
+        recommendation: "Reduce simultaneous viewport complexity or revise the explicit project budgets when the additional content is intentional.",
+        checkName: "density-complexity-budget",
+        observed: {
+          ...densityComplexity,
+          overages: densityOverages
+        },
+        expected: {
+          policyId: densityComplexity.policyId,
+          methodId: densityComplexity.methodId,
+          visibleElementMethodId: densityComplexity.visibleElementMethodId,
+          textClusterMethodId: densityComplexity.textClusterMethodId,
+          configuredBudgets: {
+            ...(densityComplexity.maxVisibleElements !== undefined
+              ? { maxVisibleElements: densityComplexity.maxVisibleElements }
+              : {}),
+            ...(densityComplexity.maxTextClusters !== undefined
+              ? { maxTextClusters: densityComplexity.maxTextClusters }
+              : {})
+          },
+          comparison: "Each sound observed density count is less than or equal to its explicit project-configured maximum."
         }
       }));
     }

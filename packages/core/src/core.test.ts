@@ -938,6 +938,40 @@ describe("scoring", () => {
     }
   });
 
+  it("caps the three visual-budget risks once per criterion across viewports", () => {
+    const checkNames = [
+      "typography-variant-count-budget",
+      "palette-count-discipline",
+      "density-complexity-budget"
+    ];
+    const findings = checkNames.flatMap((checkName) => [
+      createRegisteredPromptFinding(`${checkName}-desktop`, checkName, {
+        viewport: "desktop",
+        severity: "low"
+      }),
+      createRegisteredPromptFinding(`${checkName}-mobile`, checkName, {
+        viewport: "mobile",
+        severity: "low"
+      })
+    ]);
+
+    const score = scoreFindings(findings);
+
+    expect(score).toMatchObject({
+      value: 98.5,
+      totalDeduction: 1.5,
+      saturated: false
+    });
+    expect(score.deductions).toHaveLength(3);
+    for (const deduction of score.deductions) {
+      expect(deduction).toMatchObject({
+        points: 0.5,
+        viewports: ["desktop", "mobile"]
+      });
+      expect(deduction.findingIds).toHaveLength(2);
+    }
+  });
+
   it("selects the strongest occurrence and the lowest UTF-16 finding id on equal points", () => {
     const equalSupplementary = {
       ...createExampleFinding(),

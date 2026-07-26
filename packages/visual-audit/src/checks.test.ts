@@ -6,6 +6,12 @@ import {
   type ViewportMeasurements
 } from "./checks.js";
 import { FINDING_COVERAGE_CHECK_NAMES } from "./finding-coverage.js";
+import type {
+  CompleteDensityTextClusterSummary,
+  DensityComplexitySummary,
+  PaletteDisciplineSummary,
+  TypographyVariantSummary
+} from "./visual-metrics.js";
 
 const baseMeasurements: ViewportMeasurements = {
   viewport: "desktop",
@@ -212,10 +218,232 @@ describe("findingsFromMeasurements", () => {
     expect(findings[0]?.recommendation).toContain("audit.spacing.ignoreSelectors");
   });
 
+  it("emits one low-confidence heuristic risk for a sound typography lower-bound overage", () => {
+    const summary = typographyVariantSummary();
+    const findings = findingsFromMeasurements({
+      ...baseMeasurements,
+      typographyVariants: summary,
+      findingCoverage: coverageFor("desktop")
+    }, ["measurement-desktop"]);
+
+    expect(findings).toHaveLength(1);
+    expect(findings[0]).toMatchObject({
+      id: "finding-desktop-typography-variant-count-budget",
+      checkName: "typography-variant-count-budget",
+      criterionId: "typography.variant-count.budget",
+      category: "visual-polish",
+      severity: "low",
+      confidence: "low",
+      determinism: "heuristic",
+      resultKind: "risk",
+      humanReviewRecommended: true,
+      evidenceRefs: ["measurement-desktop"]
+    });
+    expect(findings[0]?.problem).toContain("explicit project-configured maximum");
+    expect(findings[0]?.problem).toContain("heuristic budget signal");
+    expect(findings[0]?.problem).not.toMatch(/bad design|failure|universally correct/iu);
+    expect(findings[0]?.observed).toMatchObject({
+      policyId: "typography-variant-budget-v1",
+      methodId: "rendered-typography-variants-v1",
+      maxDistinctVariants: 1,
+      coverage: "lower-bound",
+      distinctVariantCount: 2,
+      skippedByReason: { "font-family-too-long": 1 },
+      emittedVariantCount: 2,
+      omittedVariantCount: 0,
+      variants: summary.variants,
+      overages: [{
+        component: "distinctVariantCount",
+        observedCount: 2,
+        configuredMaximum: 1,
+        excess: 1,
+        coverage: "lower-bound"
+      }]
+    });
+  });
+
+  it("combines both palette component overages into one advisory finding", () => {
+    const summary = paletteDisciplineSummary();
+    const findings = findingsFromMeasurements({
+      ...baseMeasurements,
+      paletteDiscipline: summary
+    }, ["measurement-desktop"]);
+
+    expect(findings).toHaveLength(1);
+    expect(findings[0]).toMatchObject({
+      id: "finding-desktop-palette-count-discipline",
+      checkName: "palette-count-discipline",
+      criterionId: "color.palette.count-discipline",
+      category: "visual-polish",
+      severity: "low",
+      confidence: "low",
+      determinism: "heuristic",
+      resultKind: "risk",
+      humanReviewRecommended: true
+    });
+    expect(findings[0]?.observed).toMatchObject({
+      policyId: "palette-discipline-budget-v1",
+      methodId: "rendered-rgba8-oklch-cover30-v1",
+      maxDistinctColors: 1,
+      maxChromaticHueFamilies: 1,
+      coverage: "complete",
+      distinctColorCount: 2,
+      hueFamilyCount: 2,
+      colors: summary.colors,
+      hueFamilyStarts: summary.hueFamilyStarts,
+      overages: [{
+        component: "distinctColorCount",
+        observedCount: 2,
+        configuredMaximum: 1,
+        excess: 1,
+        coverage: "complete"
+      }, {
+        component: "hueFamilyCount",
+        observedCount: 2,
+        configuredMaximum: 1,
+        excess: 1,
+        coverage: "complete"
+      }]
+    });
+  });
+
+  it("keeps an incomplete text-cluster component out of a combined density overage", () => {
+    const summary = densityComplexitySummary();
+    const findings = findingsFromMeasurements({
+      ...baseMeasurements,
+      densityComplexity: summary
+    }, ["measurement-desktop"]);
+
+    expect(findings).toHaveLength(1);
+    expect(findings[0]).toMatchObject({
+      id: "finding-desktop-density-complexity-budget",
+      checkName: "density-complexity-budget",
+      criterionId: "layout.density.complexity-budget",
+      category: "layout",
+      severity: "low",
+      confidence: "low",
+      determinism: "heuristic",
+      resultKind: "risk",
+      humanReviewRecommended: true
+    });
+    expect(findings[0]?.observed).toMatchObject({
+      policyId: "density-complexity-budget-v1",
+      methodId: "viewport-dom-density-v1",
+      visibleElementMethodId: "visible-content-elements-v1",
+      textClusterMethodId: "text-flow-connectivity-v1",
+      maxVisibleElements: 1,
+      maxTextClusters: 1,
+      visibleElements: {
+        coverage: "lower-bound",
+        visibleElementCount: 2,
+        skippedByReason: { "unsupported-clip-or-mask": 1 },
+        samples: summary.visibleElements?.samples,
+        omittedSampleCount: 0
+      },
+      textClusters: {
+        coverage: "incomplete",
+        textClusterCount: null,
+        skippedByReason: { "unsupported-clip-or-mask": 1 },
+        samples: [],
+        omittedSampleCount: null
+      },
+      overages: [{
+        component: "visibleElementCount",
+        observedCount: 2,
+        configuredMaximum: 1,
+        excess: 1,
+        coverage: "lower-bound"
+      }]
+    });
+  });
+
+  it("combines sound visible-element and complete text-cluster overages into one density finding", () => {
+    const summary = densityComplexitySummary({
+      textClusters: completeDensityTextClusterSummary()
+    });
+    const findings = findingsFromMeasurements({
+      ...baseMeasurements,
+      densityComplexity: summary
+    }, ["measurement-desktop"]);
+
+    expect(findings).toHaveLength(1);
+    expect(findings[0]?.checkName).toBe("density-complexity-budget");
+    expect(findings[0]?.observed).toMatchObject({
+      textClusters: {
+        coverage: "complete",
+        textClusterCount: 2,
+        edgeTestCount: 1,
+        samples: summary.textClusters?.samples,
+        omittedSampleCount: 0
+      },
+      overages: [{
+        component: "visibleElementCount",
+        observedCount: 2,
+        configuredMaximum: 1,
+        excess: 1,
+        coverage: "lower-bound"
+      }, {
+        component: "textClusterCount",
+        observedCount: 2,
+        configuredMaximum: 1,
+        excess: 1,
+        coverage: "complete"
+      }]
+    });
+  });
+
+  it("emits no budget finding for equality, a non-exceeding lower bound, or absent summaries", () => {
+    const equalityFindings = findingsFromMeasurements({
+      ...baseMeasurements,
+      typographyVariants: typographyVariantSummary({ maxDistinctVariants: 2 }),
+      paletteDiscipline: paletteDisciplineSummary({
+        maxDistinctColors: 2,
+        maxChromaticHueFamilies: 2
+      }),
+      densityComplexity: densityComplexitySummary({
+        maxVisibleElements: 2,
+        maxTextClusters: 2,
+        visibleElements: {
+          ...densityComplexitySummary().visibleElements!,
+          maxVisibleElements: 2
+        },
+        textClusters: completeDensityTextClusterSummary({ maxTextClusters: 2 })
+      })
+    }, ["measurement-desktop"]);
+    const nonExceedingLowerBound = findingsFromMeasurements({
+      ...baseMeasurements,
+      typographyVariants: typographyVariantSummary({ maxDistinctVariants: 3 })
+    }, ["measurement-desktop"]);
+    const absentSummaries = findingsFromMeasurements(baseMeasurements, ["measurement-desktop"]);
+
+    expect(equalityFindings).toEqual([]);
+    expect(nonExceedingLowerBound).toEqual([]);
+    expect(absentSummaries).toEqual([]);
+  });
+
+  it("never treats an incomplete text-cluster diagnostic as a budget overage", () => {
+    const summary = densityComplexitySummary();
+    const findings = findingsFromMeasurements({
+      ...baseMeasurements,
+      densityComplexity: {
+        ...summary,
+        maxVisibleElements: undefined,
+        visibleElements: undefined
+      }
+    }, ["measurement-desktop"]);
+
+    expect(findings).toEqual([]);
+  });
 
   it("detects likely blank renders", () => {
     const findings = findingsFromMeasurements(
-      { ...baseMeasurements, textLength: 0, meaningfulElementCount: 0, missingMainLandmark: true },
+      {
+        ...baseMeasurements,
+        textLength: 0,
+        meaningfulElementCount: 0,
+        missingMainLandmark: true,
+        paletteDiscipline: paletteDisciplineSummary()
+      },
       ["screenshot-desktop", "measurement-desktop"]
     );
     expect(findings.some((finding) => finding.checkName === "blank-render")).toBe(true);
@@ -517,4 +745,189 @@ function countFindings(findings: Array<{ checkName: string }>): Record<string, n
     [...new Set(findings.map(({ checkName }) => checkName))]
       .map((checkName) => [checkName, findings.filter((finding) => finding.checkName === checkName).length])
   );
+}
+
+function typographyVariantSummary(
+  overrides: Partial<TypographyVariantSummary> = {}
+): TypographyVariantSummary {
+  const firstTuple = {
+    families: ["named\u0000inter", "generic\u0000sans-serif"],
+    sizeMilliPx: 16_000,
+    weightMilli: 400_000,
+    style: "normal" as const
+  };
+  const secondTuple = {
+    families: ["named\u0000inter", "generic\u0000sans-serif"],
+    sizeMilliPx: 24_000,
+    weightMilli: 700_000,
+    style: "normal" as const
+  };
+
+  return {
+    policyId: "typography-variant-budget-v1",
+    methodId: "rendered-typography-variants-v1",
+    maxDistinctVariants: 1,
+    coverage: "lower-bound",
+    candidateElementCount: 3,
+    collectedElementCount: 2,
+    evaluatedElementCount: 2,
+    ignoredElementCount: 0,
+    skippedElementCount: 1,
+    skippedByReason: { "font-family-too-long": 1 },
+    distinctVariantCount: 2,
+    emittedVariantCount: 2,
+    omittedVariantCount: 0,
+    variants: [{
+      identity: JSON.stringify(firstTuple),
+      tuple: firstTuple,
+      affectedElementCount: 1,
+      emittedLocationCount: 1,
+      omittedLocationCount: 0,
+      locations: [{
+        selector: "h1",
+        region: { x: 24, y: 24, width: 320, height: 40 }
+      }]
+    }, {
+      identity: JSON.stringify(secondTuple),
+      tuple: secondTuple,
+      affectedElementCount: 1,
+      emittedLocationCount: 1,
+      omittedLocationCount: 0,
+      locations: [{
+        selector: "p",
+        region: { x: 24, y: 80, width: 480, height: 24 }
+      }]
+    }],
+    ...overrides
+  };
+}
+
+function paletteDisciplineSummary(
+  overrides: Partial<PaletteDisciplineSummary> = {}
+): PaletteDisciplineSummary {
+  return {
+    policyId: "palette-discipline-budget-v1",
+    methodId: "rendered-rgba8-oklch-cover30-v1",
+    maxDistinctColors: 1,
+    maxChromaticHueFamilies: 1,
+    coverage: "complete",
+    candidateSlotCount: 2,
+    collectedSlotCount: 2,
+    evaluatedSlotCount: 2,
+    ignoredSlotCount: 0,
+    ignoredByReason: {},
+    skippedSlotCount: 0,
+    skippedByReason: {},
+    distinctColorCount: 2,
+    emittedColorCount: 2,
+    omittedColorCount: 0,
+    colors: [{
+      identity: "255,0,0,255",
+      color: { red: 255, green: 0, blue: 0, alpha: 255 },
+      occurrenceCount: 1,
+      emittedLocationCount: 1,
+      omittedLocationCount: 0,
+      locations: [{
+        selector: ".alert",
+        property: "color",
+        region: { x: 24, y: 24, width: 160, height: 24 }
+      }]
+    }, {
+      identity: "0,0,255,255",
+      color: { red: 0, green: 0, blue: 255, alpha: 255 },
+      occurrenceCount: 1,
+      emittedLocationCount: 1,
+      omittedLocationCount: 0,
+      locations: [{
+        selector: ".link",
+        property: "color",
+        region: { x: 24, y: 64, width: 160, height: 24 }
+      }]
+    }],
+    hueFamilyCount: 2,
+    hueFamilyStarts: [0, 180_000_000],
+    ...overrides
+  };
+}
+
+function densityComplexitySummary(
+  overrides: Partial<DensityComplexitySummary> = {}
+): DensityComplexitySummary {
+  return {
+    policyId: "density-complexity-budget-v1",
+    methodId: "viewport-dom-density-v1",
+    visibleElementMethodId: "visible-content-elements-v1",
+    textClusterMethodId: "text-flow-connectivity-v1",
+    maxVisibleElements: 1,
+    maxTextClusters: 1,
+    visibleElements: {
+      methodId: "visible-content-elements-v1",
+      maxVisibleElements: 1,
+      coverage: "lower-bound",
+      elementUniverseCount: 3,
+      visibleElementCount: 2,
+      ignoredElementCount: 0,
+      ineligibleElementCount: 0,
+      skippedElementCount: 1,
+      skippedByReason: { "unsupported-clip-or-mask": 1 },
+      emittedSampleCount: 2,
+      omittedSampleCount: 0,
+      samples: [{
+        selector: "button",
+        region: { x: 24, y: 24, width: 120, height: 40 }
+      }, {
+        selector: "p",
+        region: { x: 24, y: 80, width: 320, height: 48 }
+      }]
+    },
+    textClusters: {
+      methodId: "text-flow-connectivity-v1",
+      maxTextClusters: 1,
+      coverage: "incomplete",
+      textNodeUniverseCount: 2,
+      ignoredTextNodeCount: 0,
+      ineligibleTextNodeCount: 0,
+      skippedTextNodeCount: 1,
+      evaluatedTextNodeCount: 1,
+      skippedByReason: { "unsupported-clip-or-mask": 1 },
+      textFragmentCount: 1,
+      textClusterCount: null,
+      edgeTestCount: null,
+      emittedSampleCount: 0,
+      omittedSampleCount: null,
+      samples: []
+    },
+    ...overrides
+  };
+}
+
+function completeDensityTextClusterSummary(
+  overrides: Partial<CompleteDensityTextClusterSummary> = {}
+): CompleteDensityTextClusterSummary {
+  return {
+    methodId: "text-flow-connectivity-v1",
+    maxTextClusters: 1,
+    coverage: "complete",
+    textNodeUniverseCount: 2,
+    ignoredTextNodeCount: 0,
+    ineligibleTextNodeCount: 0,
+    skippedTextNodeCount: 0,
+    evaluatedTextNodeCount: 2,
+    skippedByReason: {},
+    textFragmentCount: 2,
+    textClusterCount: 2,
+    edgeTestCount: 1,
+    emittedSampleCount: 2,
+    omittedSampleCount: 0,
+    samples: [{
+      selector: "h1",
+      region: { x: 24, y: 24, width: 320, height: 40 },
+      fragmentCount: 1
+    }, {
+      selector: "p",
+      region: { x: 24, y: 80, width: 480, height: 48 },
+      fragmentCount: 1
+    }],
+    ...overrides
+  };
 }

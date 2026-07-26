@@ -9,12 +9,15 @@ import {
   type AuditResult,
   type CopyStyle,
   type ColorAdherencePolicy,
+  type DensityComplexityBudgetPolicy,
   type EvidenceAsset,
   type Finding,
   type FontFamilyAdherencePolicy,
+  type PaletteDisciplineBudgetPolicy,
   type RunMetadata,
   type RunStatus,
   type SpacingAdherencePolicy,
+  type TypographyVariantBudgetPolicy,
   type ViewportPreset,
   type LayoutMetrics
 } from "@design-harness/core";
@@ -23,8 +26,11 @@ import { chromium, errors } from "playwright";
 import {
   collectViewportMeasurements,
   type ColorAdherenceMeasurementError,
+  type DensityComplexityMeasurementError,
   type FontFamilyMeasurementError,
+  type PaletteDisciplineMeasurementError,
   type SpacingAdherenceMeasurementError,
+  type TypographyVariantMeasurementError,
   type ViewportCollectionResult,
   type ViewportMeasurementConfig
 } from "./browser-measurements.js";
@@ -45,6 +51,17 @@ import {
   analyzeFontFamilyAdherence,
   type FontFamilyAdherenceAnalysisError
 } from "./font-family-adherence.js";
+import {
+  analyzeDensityComplexity,
+  analyzePaletteDiscipline,
+  analyzeTypographyVariants,
+  type DensityComplexityAnalysisError,
+  type DensityComplexitySummary,
+  type PaletteDisciplineAnalysisError,
+  type PaletteDisciplineSummary,
+  type TypographyVariantAnalysisError,
+  type TypographyVariantSummary
+} from "./visual-metrics.js";
 
 const MAX_ARIA_SNAPSHOT_LENGTH = 20_000;
 const MAX_TEXT_INVENTORY_FIELD_LENGTH = 2_000;
@@ -62,6 +79,9 @@ export interface AuditUrlOptions {
   fontFamilyPolicy?: FontFamilyAdherencePolicy;
   colorPolicy?: ColorAdherencePolicy;
   spacingPolicy?: SpacingAdherencePolicy;
+  typographyVariantsPolicy?: TypographyVariantBudgetPolicy;
+  paletteDisciplinePolicy?: PaletteDisciplineBudgetPolicy;
+  densityComplexityPolicy?: DensityComplexityBudgetPolicy;
   launchBrowser?: () => Promise<BrowserHandle>;
 }
 
@@ -119,7 +139,10 @@ export async function auditUrl(options: AuditUrlOptions): Promise<AuditUrlResult
     options.copyStyle,
     options.fontFamilyPolicy,
     options.colorPolicy,
-    options.spacingPolicy
+    options.spacingPolicy,
+    options.typographyVariantsPolicy,
+    options.paletteDisciplinePolicy,
+    options.densityComplexityPolicy
   );
   const screenshotsDir = join(options.outDir, "screenshots");
   const evidenceAssets: EvidenceAsset[] = [];
@@ -323,6 +346,114 @@ export async function auditUrl(options: AuditUrlOptions): Promise<AuditUrlResult
               ));
             }
           }
+          if (options.typographyVariantsPolicy) {
+            const typographyFailure = applyTypographyVariants(
+              collection,
+              options.typographyVariantsPolicy
+            );
+            if (typographyFailure) {
+              stripTypographyVariantEvidence(measurement);
+              failedChecks.push(`${viewport.name}:typography-variant-count-budget`);
+              const details = visualMetricFailureDetails(viewport.name, typographyFailure);
+              noticeCandidates.push({
+                code: "typography-variant-measurement-failed",
+                message: "Typography variant count could not be evaluated for this viewport.",
+                viewport: viewport.name,
+                details
+              });
+              viewportEvidenceRefs.push(addFailureEvidence(
+                evidenceAssets,
+                viewport.name,
+                "typography-variant-count-budget",
+                details
+              ));
+            } else if (measurement.typographyVariants?.skippedElementCount) {
+              noticeCandidates.push(typographyVariantSkippedNotice(
+                viewport.name,
+                measurement.typographyVariants
+              ));
+            }
+          }
+          if (options.paletteDisciplinePolicy) {
+            const paletteFailure = applyPaletteDiscipline(
+              collection,
+              options.paletteDisciplinePolicy
+            );
+            if (paletteFailure) {
+              stripPaletteDisciplineEvidence(measurement);
+              failedChecks.push(`${viewport.name}:palette-count-discipline`);
+              const details = visualMetricFailureDetails(viewport.name, paletteFailure);
+              noticeCandidates.push({
+                code: "palette-discipline-measurement-failed",
+                message: "Palette count discipline could not be evaluated for this viewport.",
+                viewport: viewport.name,
+                details
+              });
+              viewportEvidenceRefs.push(addFailureEvidence(
+                evidenceAssets,
+                viewport.name,
+                "palette-count-discipline",
+                details
+              ));
+            } else if (measurement.paletteDiscipline?.skippedSlotCount) {
+              noticeCandidates.push(paletteDisciplineSkippedNotice(
+                viewport.name,
+                measurement.paletteDiscipline
+              ));
+            }
+          }
+          if (options.densityComplexityPolicy) {
+            const densityFailure = applyDensityComplexity(
+              collection,
+              options.densityComplexityPolicy
+            );
+            if (densityFailure) {
+              stripDensityComplexityEvidence(measurement);
+              failedChecks.push(`${viewport.name}:density-complexity-budget`);
+              const details = visualMetricFailureDetails(viewport.name, densityFailure);
+              noticeCandidates.push({
+                code: "density-complexity-measurement-failed",
+                message: "Viewport density complexity could not be evaluated for this viewport.",
+                viewport: viewport.name,
+                details
+              });
+              viewportEvidenceRefs.push(addFailureEvidence(
+                evidenceAssets,
+                viewport.name,
+                "density-complexity-budget",
+                details
+              ));
+            } else {
+              const densitySummary = measurement.densityComplexity;
+              if (densitySummary?.visibleElements?.skippedElementCount) {
+                noticeCandidates.push(densityVisibleElementsSkippedNotice(
+                  viewport.name,
+                  densitySummary
+                ));
+              }
+              if (densitySummary?.textClusters?.coverage === "incomplete") {
+                failedChecks.push(`${viewport.name}:density-complexity-budget:text-clusters`);
+                const details = {
+                  viewport: viewport.name,
+                  skippedTextNodeCount: densitySummary.textClusters.skippedTextNodeCount,
+                  skippedByReason: densitySummary.textClusters.skippedByReason,
+                  methodId: densitySummary.textClusters.methodId
+                };
+                noticeCandidates.push({
+                  code: "density-text-clusters-incomplete",
+                  message: "Text-cluster density could not be evaluated completely for this viewport.",
+                  viewport: viewport.name,
+                  details
+                });
+                viewportEvidenceRefs.push(addFailureEvidence(
+                  evidenceAssets,
+                  viewport.name,
+                  "density-complexity-budget-text-clusters",
+                  details
+                ));
+              }
+            }
+          }
           const measurementEvidenceId = `measurement-${viewport.name}`;
           evidenceAssets.push({
             id: measurementEvidenceId,
@@ -462,6 +593,21 @@ type SpacingAdherenceScopedFailure =
   | SpacingAdherenceAnalysisError
   | { code: "missing-collection-result" };
 
+type TypographyVariantScopedFailure =
+  | TypographyVariantMeasurementError
+  | TypographyVariantAnalysisError
+  | { code: "missing-collection-result" };
+
+type PaletteDisciplineScopedFailure =
+  | PaletteDisciplineMeasurementError
+  | PaletteDisciplineAnalysisError
+  | { code: "missing-collection-result" };
+
+type DensityComplexityScopedFailure =
+  | DensityComplexityMeasurementError
+  | DensityComplexityAnalysisError
+  | { code: "missing-collection-result" };
+
 function applyFontFamilyAdherence(
   collection: ViewportCollectionResult,
   policy: FontFamilyAdherencePolicy
@@ -551,6 +697,86 @@ function stripSpacingAdherenceEvidence(measurement: ViewportMeasurements): void 
   delete measurement.spacingAdherence;
 }
 
+function applyTypographyVariants(
+  collection: ViewportCollectionResult,
+  policy: TypographyVariantBudgetPolicy
+): TypographyVariantScopedFailure | undefined {
+  if (collection.typographyVariantError) {
+    return collection.typographyVariantError;
+  }
+  if (
+    collection.typographyVariantCandidates === undefined
+    || !collection.typographyVariantCollection
+  ) {
+    return { code: "missing-collection-result" };
+  }
+  const result = analyzeTypographyVariants(
+    collection.typographyVariantCandidates,
+    policy,
+    collection.typographyVariantCollection
+  );
+  if (!result.ok) {
+    return result.error;
+  }
+  collection.measurements.typographyVariants = result.summary;
+  return undefined;
+}
+
+function stripTypographyVariantEvidence(measurement: ViewportMeasurements): void {
+  delete measurement.typographyVariants;
+}
+
+function applyPaletteDiscipline(
+  collection: ViewportCollectionResult,
+  policy: PaletteDisciplineBudgetPolicy
+): PaletteDisciplineScopedFailure | undefined {
+  if (collection.paletteDisciplineError) {
+    return collection.paletteDisciplineError;
+  }
+  if (
+    collection.paletteDisciplineCandidates === undefined
+    || !collection.paletteDisciplineCollection
+  ) {
+    return { code: "missing-collection-result" };
+  }
+  const result = analyzePaletteDiscipline(
+    collection.paletteDisciplineCandidates,
+    policy,
+    collection.paletteDisciplineCollection
+  );
+  if (!result.ok) {
+    return result.error;
+  }
+  collection.measurements.paletteDiscipline = result.summary;
+  return undefined;
+}
+
+function stripPaletteDisciplineEvidence(measurement: ViewportMeasurements): void {
+  delete measurement.paletteDiscipline;
+}
+
+function applyDensityComplexity(
+  collection: ViewportCollectionResult,
+  policy: DensityComplexityBudgetPolicy
+): DensityComplexityScopedFailure | undefined {
+  if (collection.densityComplexityError) {
+    return collection.densityComplexityError;
+  }
+  if (!collection.densityComplexityCollection) {
+    return { code: "missing-collection-result" };
+  }
+  const result = analyzeDensityComplexity(collection.densityComplexityCollection, policy);
+  if (!result.ok) {
+    return result.error;
+  }
+  collection.measurements.densityComplexity = result.summary;
+  return undefined;
+}
+
+function stripDensityComplexityEvidence(measurement: ViewportMeasurements): void {
+  delete measurement.densityComplexity;
+}
+
 function colorAdherenceSkippedNotice(
   viewport: string,
   summary: ColorAdherenceSummary
@@ -580,6 +806,92 @@ function spacingAdherenceSkippedNotice(
       skippedSlotCount: summary.skippedSlotCount,
       skippedByReason: summary.skippedByReason
     }
+  };
+}
+
+function typographyVariantSkippedNotice(
+  viewport: string,
+  summary: TypographyVariantSummary
+): AuditNotice {
+  return {
+    code: "typography-variant-elements-skipped",
+    message: `Skipped ${summary.skippedElementCount} typography candidate(s) whose computed tuple could not be normalized; the observed distinct-variant count is a lower bound.`,
+    viewport,
+    details: {
+      viewport,
+      skippedElementCount: summary.skippedElementCount,
+      skippedByReason: summary.skippedByReason,
+      methodId: summary.methodId
+    }
+  };
+}
+
+function paletteDisciplineSkippedNotice(
+  viewport: string,
+  summary: PaletteDisciplineSummary
+): AuditNotice {
+  return {
+    code: "palette-discipline-slots-skipped",
+    message: `Skipped ${summary.skippedSlotCount} palette slot(s) whose computed color could not be normalized; the observed palette counts are lower bounds.`,
+    viewport,
+    details: {
+      viewport,
+      skippedSlotCount: summary.skippedSlotCount,
+      skippedByReason: summary.skippedByReason,
+      methodId: summary.methodId
+    }
+  };
+}
+
+function densityVisibleElementsSkippedNotice(
+  viewport: string,
+  summary: DensityComplexitySummary
+): AuditNotice {
+  const visibleElements = summary.visibleElements;
+  return {
+    code: "density-visible-elements-skipped",
+    message: `Skipped ${visibleElements?.skippedElementCount ?? 0} visible-element candidate(s) with unsupported clipping or masking; the observed visible-element count is a lower bound.`,
+    viewport,
+    details: {
+      viewport,
+      skippedElementCount: visibleElements?.skippedElementCount ?? 0,
+      skippedByReason: visibleElements?.skippedByReason ?? {},
+      methodId: visibleElements?.methodId
+    }
+  };
+}
+
+function visualMetricFailureDetails(
+  viewport: string,
+  failure:
+    | TypographyVariantScopedFailure
+    | PaletteDisciplineScopedFailure
+    | DensityComplexityScopedFailure
+): Record<string, unknown> {
+  return {
+    viewport,
+    reasonCode: failure.code,
+    ...("component" in failure && failure.component !== undefined
+      ? { component: failure.component }
+      : {}),
+    ...("selectorIndex" in failure && failure.selectorIndex !== undefined
+      ? { selectorIndex: failure.selectorIndex }
+      : {}),
+    ...("elementIndex" in failure && failure.elementIndex !== undefined
+      ? { elementIndex: failure.elementIndex }
+      : {}),
+    ...("textNodeIndex" in failure && failure.textNodeIndex !== undefined
+      ? { textNodeIndex: failure.textNodeIndex }
+      : {}),
+    ...("candidateCount" in failure && failure.candidateCount !== undefined
+      ? { candidateCount: failure.candidateCount }
+      : {}),
+    ...("limit" in failure && failure.limit !== undefined
+      ? { limit: failure.limit }
+      : {}),
+    ...("edgeTests" in failure && failure.edgeTests !== undefined
+      ? { edgeTests: failure.edgeTests }
+      : {})
   };
 }
 
@@ -657,10 +969,21 @@ function viewportMeasurementConfig(
   copyStyle: CopyStyle | undefined,
   fontFamilyPolicy: FontFamilyAdherencePolicy | undefined,
   colorPolicy: ColorAdherencePolicy | undefined,
-  spacingPolicy: SpacingAdherencePolicy | undefined
+  spacingPolicy: SpacingAdherencePolicy | undefined,
+  typographyVariantsPolicy: TypographyVariantBudgetPolicy | undefined,
+  paletteDisciplinePolicy: PaletteDisciplineBudgetPolicy | undefined,
+  densityComplexityPolicy: DensityComplexityBudgetPolicy | undefined
 ): ViewportMeasurementConfig | undefined {
   const surfaceMapping = copyStyle?.surfaceMapping;
-  if (!surfaceMapping && !fontFamilyPolicy && !colorPolicy && !spacingPolicy) {
+  if (
+    !surfaceMapping
+    && !fontFamilyPolicy
+    && !colorPolicy
+    && !spacingPolicy
+    && !typographyVariantsPolicy
+    && !paletteDisciplinePolicy
+    && !densityComplexityPolicy
+  ) {
     return undefined;
   }
   return {
@@ -676,6 +999,23 @@ function viewportMeasurementConfig(
     ...(spacingPolicy ? {
       spacing: {
         ignoreSelectors: [...spacingPolicy.ignoreSelectors]
+      }
+    } : {}),
+    ...(typographyVariantsPolicy ? {
+      typographyVariants: {
+        ignoreSelectors: [...typographyVariantsPolicy.ignoreSelectors]
+      }
+    } : {}),
+    ...(paletteDisciplinePolicy ? {
+      paletteDiscipline: {
+        ignoreSelectors: [...paletteDisciplinePolicy.ignoreSelectors]
+      }
+    } : {}),
+    ...(densityComplexityPolicy ? {
+      densityComplexity: {
+        ignoreSelectors: [...densityComplexityPolicy.ignoreSelectors],
+        collectVisibleElements: densityComplexityPolicy.maxVisibleElements !== undefined,
+        collectTextClusters: densityComplexityPolicy.maxTextClusters !== undefined
       }
     } : {})
   };
