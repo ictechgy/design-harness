@@ -2,6 +2,10 @@
 
 Use this checklist before committing any reference-derived manifest, fixture, or dataset record.
 
+For project-guide decisions, also use
+[`art-direction.md`](./art-direction.md) and the art-direction checks below.
+That branch does not create a calibration manifest or expected finding.
+
 ## Prompt Safety
 
 - Prompt does not name real brands, trademarks, products, private companies, or proprietary design systems.
@@ -31,6 +35,35 @@ Use this checklist before committing any reference-derived manifest, fixture, or
 - Fixture isolates a calibration target that the harness can evaluate or that humans can review.
 - Good fixtures include "should not flag" notes.
 - Bad fixtures include expected findings.
+
+## Art-direction decisions
+
+- The local decision brief records the reference source, rights basis,
+  confidentiality decision, target surface, constraints, and forbidden
+  imitation targets before provider use.
+- Public-by-default behavior is considered, and Stealth is not treated as an
+  absolute confidentiality guarantee.
+- Observed cues, candidate project choices, owner decisions, and rationale are
+  separate fields; no raster cue is described as objective token extraction.
+- Color roles, font stacks, spacing, radius, prohibitions, and the signature
+  element fit the existing closed `design-guide.yaml` profile.
+- Font family and license are selected separately rather than identified from
+  a raster.
+- Spacing and radius values are project-authored rather than recovered from
+  pixels.
+- Audit budgets come only from explicit project requirements or measured
+  implementation evidence, never from a reference image.
+- Only existing guide fields and prohibition IDs are used; the signature
+  element is generalized rather than copied from a composition or brand.
+- The guide and generated pack contain accepted decisions only. Prompts,
+  model/version, provider settings, hashes, resource identifiers, asset paths,
+  and rejected cues remain local.
+- The generic dry-run is labeled non-authoritative: it proves guide
+  compile/check compatibility, not real-project usefulness, accessibility, or
+  design quality.
+- `guide from-references`, OCR, VLM analysis, and provider automation remain
+  blocked until the real-project evidence gate, owner usefulness verdict,
+  fresh RALPLAN, and explicit owner reopening.
 
 ## Expected Findings
 

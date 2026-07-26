@@ -23,7 +23,16 @@ Private local companion artifacts:
 
 The committed repository must remain complete without private local assets.
 
-## Manual Flow
+## Choose a branch
+
+- **Calibration:** continue with the calibration flow below when the output is
+  a hand-authored fixture with manifest and expected-finding evidence.
+- **Art direction:** use [`art-direction.md`](./art-direction.md) when the
+  output is a project-owned `design-guide.yaml`. It reuses the manual
+  generation and local-asset boundaries but does not require a calibration
+  manifest, fixture, or expected finding.
+
+## Calibration Flow
 
 1. Pick a calibration target, such as dense dashboard scanability, mobile checkout clarity, empty-state hierarchy, or ambiguous interaction affordance.
 2. Draft a safe prompt from `prompt-catalog.md`.
