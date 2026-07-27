@@ -98,6 +98,7 @@ describe("collectViewportMeasurements spacing collection", () => {
       expect(serializedClosure).toContain(property);
     }
     for (const skipReason of [
+      "visually-hidden-box",
       "auto-margin",
       "normal-gap",
       "typed-om-unavailable",

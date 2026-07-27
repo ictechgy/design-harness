@@ -29,6 +29,7 @@ export interface SpacingAdherenceCandidate {
 }
 
 export type SpacingAdherenceSkipReason =
+  | "visually-hidden-box"
   | "auto-margin"
   | "normal-gap"
   | "typed-om-unavailable"
