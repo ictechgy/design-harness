@@ -1095,10 +1095,13 @@ function assertRealStackBadFontFamilyRun(auditResult) {
         { value: "Rogue Fallback", kind: "named" }
       ])
       || finding.observed?.affectedElementCount !== 1
-      || finding.selector !== "main > p"
+      // The fixture holds exactly one <p>, so the shortest selector proven to resolve
+      // to that single element is "p". This was "main > p" before selectors were
+      // required to be provably unique, when the walk always emitted four levels.
+      || finding.selector !== "p"
       || !Array.isArray(finding.observed?.selectors)
       || finding.observed.selectors.length !== 1
-      || finding.observed.selectors[0] !== "main > p"
+      || finding.observed.selectors[0] !== "p"
       || !Array.isArray(finding.observed?.regions)
       || finding.observed.regions.length !== 1
       || finding.observed.regions[0]?.width <= 0
