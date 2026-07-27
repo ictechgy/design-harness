@@ -1980,7 +1980,7 @@ describe("auditUrl finding coverage", () => {
     });
     expect(result.auditResult.findings).toHaveLength(10);
     const measurementEvidence = result.auditResult.evidenceAssets.find(({ id }) => id === "measurement-desktop");
-    expect((measurementEvidence?.data?.findingCoverage as FindingCoverage | undefined)?.entries).toHaveLength(20);
+    expect((measurementEvidence?.data?.findingCoverage as FindingCoverage | undefined)?.entries).toHaveLength(FINDING_COVERAGE_CHECK_NAMES.length);
   });
 
   it("keeps two viewports separate inside one viewport-sorted notice", async () => {
@@ -2257,6 +2257,7 @@ function measurementFor(name: string): ViewportMeasurements {
     fixedWidthRisks: [],
     stickyObstructionRisks: [],
     excessiveLineLength: [],
+    koreanLineBreakRisks: [],
     tapTargetRisks: [],
     formErrorAssociationRisks: [],
     colorOnlyStateRisks: [],

@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Added `korean-line-break-risk`: blocks of majority-Hangul text that compute
+  `word-break: break-all` are reported at deterministic risk against `content.korean-line-break.word-break`,
+  because Korean is written without spaces inside a word and character-level breaking splits words
+  mid-word. Only `break-all` is reported; merely omitting `keep-all` is the browser default on nearly
+  every Korean page and would be noise. Chinese and Japanese are deliberately excluded — they break
+  between characters by convention — so detection matches Hangul Jamo and Syllables only.
+
 ## 0.6.2 - 2026-07-27
 
 - Added `off-palette-color`: rendered computed text, background, and painted border colors compared with the guide's semantic sRGB tokens after exact RGBA8 normalization, with a selector-only `audit.color.ignoreSelectors` overlay and explicit candidate/evaluated/ignored/skipped/violation counts.

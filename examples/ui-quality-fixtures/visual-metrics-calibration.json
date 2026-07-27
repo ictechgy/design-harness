@@ -246,6 +246,20 @@
         "expectedNotices": []
       },
       {
+        "id": "korean-line-break-bad",
+        "path": "examples/ui-quality-fixtures/korean-line-break-bad.html",
+        "fixtureSha256": "32b7c7e0e637c924dfd619cea7bb8521179651abd855332c1c79fe245c6ab6b0",
+        "projectionSha256": "5e6874baf38e8012c9034876e5d5caee2c83db8af0f53a34b635e7f2b18690e4",
+        "expectedNotices": []
+      },
+      {
+        "id": "korean-line-break-good",
+        "path": "examples/ui-quality-fixtures/korean-line-break-good.html",
+        "fixtureSha256": "3325ebdea52eeda3ea56c4960d87bc233d166d4799f23493215ef6a561cf5595",
+        "projectionSha256": "5e6874baf38e8012c9034876e5d5caee2c83db8af0f53a34b635e7f2b18690e4",
+        "expectedNotices": []
+      },
+      {
         "id": "korean-line-length-bad",
         "path": "examples/ui-quality-fixtures/korean-line-length-bad.html",
         "fixtureSha256": "936e416686f597ee92d989b2a68f49940a13e2b7e22e1e8c61546cdeca921b56",

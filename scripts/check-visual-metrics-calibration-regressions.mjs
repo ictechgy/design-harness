@@ -114,7 +114,7 @@ rejects("frozen source identifier drift", (input) => {
 
 rejects("missing unrelated corpus fixture", (input) => {
   input.manifest.corpus.entries.pop();
-}, /exactly close over 48/u);
+}, /exactly close over \d+ pre-existing unrelated HTML fixtures/u);
 
 rejects("lossy corpus id collision", (input) => {
   const sourcePath = "examples/ui-quality-fixtures/korean/copy-good.html";
