@@ -25,6 +25,7 @@ datasets/midjourney-reference-lab/local-assets/
 
 # Local agent planning/state
 .omx/
+.omc/
 .codex/
 .agents/
 
