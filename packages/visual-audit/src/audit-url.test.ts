@@ -1622,7 +1622,7 @@ describe("auditUrl visual metric budgets", () => {
     expect(() => assertAuditResultIntegrity(result.auditResult)).not.toThrow();
   });
 
-  it("marks incomplete text clusters partial while preserving a sound visible-element overage", async () => {
+  it("discloses incomplete text clusters without failing the audit, while preserving a sound visible-element overage", async () => {
     const measurement = measurementFor("desktop");
     const result = await auditUrl({
       url: "http://localhost:3000",
@@ -1680,10 +1680,11 @@ describe("auditUrl visual metric budgets", () => {
       asset.type === "measurement"
       && asset.data?.checkName === "density-complexity-budget-text-clusters"
     ));
-    expect(result.auditResult.status).toBe("partial");
-    expect(result.auditResult.failedChecks).toEqual([
-      "desktop:density-complexity-budget:text-clusters"
-    ]);
+    // Incomplete text-cluster coverage is a disclosure, not a failure: escalating it
+    // would flip the audit to partial/exit 2 and stop `design-harness loop` before it
+    // evaluates its condition. One masked element is enough to reach this state.
+    expect(result.auditResult.status).toBe("success");
+    expect(result.auditResult.failedChecks).toEqual([]);
     expect(measurementEvidence?.data?.densityComplexity).toMatchObject({
       visibleElements: {
         coverage: "lower-bound",
