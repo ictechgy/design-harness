@@ -431,8 +431,13 @@ export async function auditUrl(options: AuditUrlOptions): Promise<AuditUrlResult
                   densitySummary.visibleElements
                 ));
               }
+              // Incomplete text-cluster coverage is disclosed, not escalated. The
+              // comparison in findingsFromMeasurements already requires complete
+              // coverage, so no verdict can be invented from partial evidence, and a
+              // failed check here would flip the whole audit to partial/exit 2 — which
+              // stops `design-harness loop` before it evaluates its condition. A single
+              // masked or clipped element is enough to trigger this state on a real page.
               if (densitySummary?.textClusters?.coverage === "incomplete") {
-                failedChecks.push(`${viewport.name}:density-complexity-budget:text-clusters`);
                 const details = {
                   viewport: viewport.name,
                   skippedTextNodeCount: densitySummary.textClusters.skippedTextNodeCount,

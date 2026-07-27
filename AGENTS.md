@@ -48,6 +48,7 @@ pnpm smoke:copy                     # live parser-free copy/materializer golden 
 pnpm smoke:guide                    # temporary-project guide compile/check + compatibility gate
 pnpm smoke:loop                     # live bounded-loop repair/no-progress/process-boundary gate
 pnpm smoke:visual-metrics           # live atomic + merchant + repeated unrelated-corpus gate
+pnpm smoke:selector-uniqueness      # live deep-DOM gate: no selector may stand in for several elements
 pnpm design-harness -- audit --url http://localhost:4173 --out runs/demo
 ```
 
@@ -59,7 +60,7 @@ Criterion in `packages/core/src/criteria.ts` (with `CRITERION_SOURCES` entry) �
 
 ## Roadmap
 
-**Latest release: v0.6.1 — RELEASED 2026-07-24.** It ships the post-v0.6.0 maintenance train: documentation truth, contrast fail-closed handling for ancestor paint effects, criterion-bounded scoring with capped-finding cardinality, and the bounded deterministic-failure loop. `SCHEMA_VERSION` remains `0.2`; historical artifacts keep their producer versions. **Most recently completed serial train — COMPLETE 2026-07-26, NOT RELEASED:** three opt-in, project-configured visual-metric budgets plus their generated guide rules and closed calibration; there are no default budgets, and no release action belonged to this train. See `docs/ROADMAP.md`.
+**Latest release: v0.6.2 — RELEASED 2026-07-27.** It ships the guide-driven rendered-adherence work: `off-palette-color`, `off-scale-spacing`, and three opt-in project-configured visual-metric budgets (typography variants, palette count, layout density) with their generated guide rules, plus guide profile `design-guide-v0.5a-2` and the manual Midjourney art-direction workflow. Every one of these runs only under an explicit `--guide`; there are no default budgets or universal thresholds. `SCHEMA_VERSION` remains `0.2`; historical artifacts keep their producer versions. **Real-page evidence (2026-07-27):** measurement precision was verified against two pinned real pages — 119/119 reported values matched an independent re-query, with zero declared-value false alarms and exact repeatability. That covers the measurement layer of these five checks only; it is not a benchmark and not a general precision claim. The same audit found and this release repairs two evidence/status defects: non-unique selectors, and incomplete text-cluster coverage turning an audit partial. See `docs/ROADMAP.md`.
 
 **Cut list (do NOT build now)**: MCP server (file contract `audit.json`/`report.md` is canonical; capture is commoditized) · best-of-N picker · community fixture pipeline · interaction-simulation / below-fold sweep / pixel contrast · more than two agent surfaces (Claude Code + Codex) · `guide from-references` CLI before the manual workflow proves value · Open Design integration · **evidence-against, do not build**: hue-template color harmony, symmetry/balance scoring for real UIs, scored Korean readability, MQM translation LQA, Figma-plugin surface, generic English style-guide enforcement (details: `docs/ROADMAP.md` cut list).
 

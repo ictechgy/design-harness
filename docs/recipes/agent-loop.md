@@ -4,7 +4,7 @@ Design Harness is model-agnostic. The useful unit is an evidence packet that any
 
 ## Bounded CLI Loop
 
-The v0.6.1 CLI can run that evidence exchange with one bounded command:
+The published CLI can run that evidence exchange with one bounded command, available since v0.6.1:
 
 ```bash
 design-harness loop \

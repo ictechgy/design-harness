@@ -82,16 +82,16 @@ The config is validated before Chromium starts. Without `--copy`, Design Harness
 
 Use `pnpm playwright:install` if Chromium is missing.
 
-### Guide compile/check (v0.6.1)
+### Guide compile/check (v0.6.2)
 
 From inside the project that owns an explicit `design-guide.yaml`:
 
 ```bash
-npx @design-harness/cli@0.6.1 guide compile \
+npx @design-harness/cli@0.6.2 guide compile \
   --guide ./design-guide.yaml \
   --target .
 
-npx @design-harness/cli@0.6.1 guide check \
+npx @design-harness/cli@0.6.2 guide check \
   --guide ./design-guide.yaml \
   --target . \
   --max-tokens 2000
@@ -99,12 +99,23 @@ npx @design-harness/cli@0.6.1 guide check \
 
 Compile derives marker-owned `AGENTS.md`/`DESIGN.md` guidance, a non-duplicating `CLAUDE.md` import, and an owned `design.tokens.json`. Check compares the same outputs without writing. Both commands require explicit local guide and target paths; neither discovers config or uses network input. Add `--copy ./copy-style.yaml` when the target also owns a compatible copy contract.
 
-## Agent Loop
-
-The v0.6.1 package adds a bounded command for the exact deterministic-failure gate:
+The same guide can parameterize an audit, which is what enables the project-contract checks and any budgets you declared:
 
 ```bash
-npx @design-harness/cli@0.6.1 loop \
+npx @design-harness/cli@0.6.2 audit \
+  --url http://localhost:3000 \
+  --out runs/demo \
+  --guide ./design-guide.yaml
+```
+
+Without `--guide`, none of that policy is loaded, captured, or reported.
+
+## Agent Loop
+
+A bounded command for the exact deterministic-failure gate is published starting with v0.6.1:
+
+```bash
+npx @design-harness/cli@0.6.2 loop \
   --url http://localhost:3000 \
   --out runs/repair-loop \
   --until deterministic-failures==0 \
@@ -146,6 +157,11 @@ Checks are conservative and source-backed:
 - **Responsive readability**: wide content, sticky obstruction, excessive line length, target size.
 - **Interaction state**: error association, color-only states, disabled controls, live status, dialogs, custom controls, moving content.
 - **Reference-derived hierarchy heuristics**: repeated visual weight, saturated color noise, checklist state visibility.
+
+Two families run only when you pass an explicit `--guide`, and they report conformance to your own declared contract rather than universal quality:
+
+- **Rendered token adherence**: computed font families, text/background/border colors, and margin/padding/gap values compared with the tokens your guide declares.
+- **Opt-in visual-metric budgets**: typography variant count, palette count with hue spread, and layout density compared with maxima your guide sets explicitly. There are no default budgets, and omitting a section runs none of that work.
 
 Every finding includes severity, confidence, viewport, category, evidence references, a recommendation, and a `checkName`. Registry-backed findings also carry `criterionId`, `sourceRefs`, `determinism`, `resultKind`, and runtime metadata; selector, region, observed, and expected evidence are present when the producing check supplies them.
 
@@ -230,6 +246,7 @@ Implemented:
 - source-backed criteria registry,
 - parser-free rendered-copy analysis through the programmatic API and explicit `--copy` CLI path,
 - explicit guide compile/check plus audit-time computed font-family, rendered-color, and rendered-spacing project-contract checking,
+- opt-in, project-configured typography-variant, palette-count, and layout-density budgets,
 - contrast measurement that fails closed on unsupported ancestor paint effects,
 - criterion-bounded advisory scoring and explicit capped-finding cardinality,
 - a bounded `design-harness loop` gated only by deterministic failures,
@@ -246,7 +263,7 @@ Not on the current roadmap: a package-installed MCP server/surface or Open Desig
 
 ## Midjourney Reference Lab
 
-The repository also includes a manual, local-only calibration workflow: curated good/bad UI reference observations are distilled into hand-authored fixtures, manifest records, and expected findings. Design Harness does not call or automate Midjourney, does not require a Midjourney account, and never depends on generated assets at runtime. See [Midjourney Reference Lab Workflow](docs/midjourney-reference-lab/workflow.md).
+The repository also includes a manual, local-only calibration workflow: curated good/bad UI reference observations are distilled into hand-authored fixtures, manifest records, and expected findings. Design Harness does not call or automate Midjourney, does not require a Midjourney account, and never depends on generated assets at runtime. A separate manual [art-direction workflow](docs/midjourney-reference-lab/art-direction.md) turns rights-cleared references into hand-authored `design-guide.yaml` decisions; it is a decision aid, not image-to-token extraction. See [Midjourney Reference Lab Workflow](docs/midjourney-reference-lab/workflow.md).
 
 ## Contributing
 

@@ -74,6 +74,34 @@ A present section must contain at least one budget. `ignoreSelectors` alone is
 invalid. The integer maxima are collection and memory-safety ceilings, not
 aesthetic recommendations.
 
+### Choosing a budget value
+
+Derive every budget from a measured run, never from intuition. Each metric
+counts something narrower than its name suggests, so an estimate is typically
+wrong by close to an order of magnitude:
+
+- `maxVisibleElements` counts `visible-content-elements-v1` visible **owners**,
+  not every visible DOM node. Measured 2026-07-27 on one real page: 47 owners
+  where a plain DOM visibility sweep counted 420 elements.
+- `maxDistinctVariants` counts normalized family-stack + size + weight + style
+  tuples on direct-text candidates, not the number of styles a designer would
+  name. The same page measured 14.
+- `maxDistinctColors` counts distinct nontransparent computed RGBA8 paint
+  values across evaluated slots, not palette entries. The same page measured 13.
+
+The supported procedure is:
+
+1. configure the section once with a deliberately generous maximum;
+2. run the audit and read the reported counts for each viewport;
+3. set the budget from those counts plus whatever headroom the project wants.
+
+Because the budgets are per-viewport comparisons, check the mobile counts too —
+they are frequently lower than desktop, so a single desktop-derived number can
+silently never apply on mobile.
+
+This procedure produces a project decision. It does not make the resulting
+number correct, transferable to another project, or evidence of quality.
+
 When present, `ignoreSelectors` contains 1–32 exact-unique, trim-stable strings
 of 1–256 safe Unicode scalar values. The Core validator rejects unpaired
 surrogates, control characters, and bidi controls using the existing selector

@@ -331,6 +331,17 @@ export async function collectViewportMeasurements(page: {
     const notices: AuditNotice[] = [];
     const unusableMatcherKeys = new Set<string>();
     const noticeKeys = new Set<string>();
+    // Frozen bounds for selector uniqueness probing. Declared here, not next to
+    // selectorFor, because function declarations hoist but `let`/`const` do not.
+    // Measured 2026-07-27: ~2.3 probes per element, so this budget is not reached
+    // even at the 10,000-element DOM cap. A 7,204-element page used 16,806 probes and
+    // proved every selector. A 4,000 budget was rejected because exhaustion made 5,488
+    // provably-unique selectors report as unproven.
+    const SELECTOR_MAX_ANCESTOR_DEPTH = 12;
+    const SELECTOR_UNIQUENESS_PROBE_BUDGET = 40_000;
+    let selectorUniquenessProbeCount = 0;
+    let nonUniqueSelectorCount = 0;
+    let selectorProbeBudgetExhausted = false;
     const concreteAriaRoles = new Set([
       "alert",
       "alertdialog",
@@ -707,6 +718,20 @@ export async function collectViewportMeasurements(page: {
     };
 
     const layoutMetrics = collectLayoutMetrics();
+
+    if (nonUniqueSelectorCount > 0) {
+      notices.push({
+        code: "selector-uniqueness-unproven",
+        message: "Some reported selectors could not be proven to resolve to a single element; treat them as approximate locations.",
+        viewport: viewportName,
+        details: {
+          nonUniqueSelectorCount,
+          maxAncestorDepth: SELECTOR_MAX_ANCESTOR_DEPTH,
+          probeBudget: SELECTOR_UNIQUENESS_PROBE_BUDGET,
+          probeBudgetExhausted: selectorProbeBudgetExhausted
+        }
+      });
+    }
 
     return {
       measurements,
@@ -2624,31 +2649,86 @@ export async function collectViewportMeasurements(page: {
       return "";
     }
 
+    function selectorResolvesToOnly(candidate: string, element: Element): boolean {
+      if (selectorUniquenessProbeCount >= SELECTOR_UNIQUENESS_PROBE_BUDGET) {
+        selectorProbeBudgetExhausted = true;
+        return false;
+      }
+      selectorUniquenessProbeCount += 1;
+      try {
+        const matches = document.querySelectorAll(candidate);
+        return matches.length === 1 && matches[0] === element;
+      } catch {
+        return false;
+      }
+    }
+
+    // Returns a selector proven to resolve to exactly this element, or the best
+    // effort available within the frozen bounds. An unproven selector is counted
+    // and disclosed by a notice; it is never presented as if it were exact.
+    //
+    // The previous implementation capped the ancestor walk at four levels and never
+    // anchored the path, so on a deep real-world DOM it emitted a floating fragment
+    // like `div > a > div > span:nth-of-type(2)` that matched 11 elements. Shallow
+    // fixtures hid this because four levels already reached `body`.
     function selectorFor(element: Element): string {
       if (element.id) {
-        return `#${CSS.escape(element.id)}`;
+        const idSelector = `#${CSS.escape(element.id)}`;
+        if (selectorResolvesToOnly(idSelector, element)) {
+          return idSelector;
+        }
       }
 
       const dataTestId = element.getAttribute("data-testid");
       if (dataTestId) {
-        return `[data-testid="${CSS.escape(dataTestId)}"]`;
+        // Repeated data-testid values are normal in lists, so this needs proving too.
+        const testIdSelector = `[data-testid="${CSS.escape(dataTestId)}"]`;
+        if (selectorResolvesToOnly(testIdSelector, element)) {
+          return testIdSelector;
+        }
       }
 
       const parts: string[] = [];
       let current: Element | null = element;
-      while (current && current !== document.body && parts.length < 4) {
+      let depth = 0;
+      while (current && depth < SELECTOR_MAX_ANCESTOR_DEPTH) {
         const tag = current.tagName.toLowerCase();
         const parent: Element | null = current.parentElement;
         if (!parent) {
           parts.unshift(tag);
           break;
         }
-        const sameTagSiblings = Array.from(parent.children).filter((sibling: Element) => sibling.tagName === current?.tagName);
-        const suffix = sameTagSiblings.length > 1 ? `:nth-of-type(${sameTagSiblings.indexOf(current) + 1})` : "";
+        const currentElement: Element = current;
+        const sameTagSiblings = Array.from(parent.children).filter(
+          (sibling: Element) => sibling.tagName === currentElement.tagName
+        );
+        const suffix = sameTagSiblings.length > 1
+          ? `:nth-of-type(${sameTagSiblings.indexOf(currentElement) + 1})`
+          : "";
         parts.unshift(`${tag}${suffix}`);
+
+        const candidate = parts.join(" > ");
+        if (selectorResolvesToOnly(candidate, element)) {
+          return candidate;
+        }
+        if (parent === document.body) {
+          // Anchoring at body turns a floating descendant path into an absolute one.
+          const anchored = `body > ${candidate}`;
+          if (selectorResolvesToOnly(anchored, element)) {
+            return anchored;
+          }
+          parts.unshift("body");
+          break;
+        }
         current = parent;
+        depth += 1;
       }
-      return parts.join(" > ") || element.tagName.toLowerCase();
+
+      const fallback = parts.join(" > ") || element.tagName.toLowerCase();
+      if (!selectorResolvesToOnly(fallback, element)) {
+        nonUniqueSelectorCount += 1;
+      }
+      return fallback;
     }
 
     function isElementVisible(element: Element): boolean {

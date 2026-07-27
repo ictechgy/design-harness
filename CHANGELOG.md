@@ -2,6 +2,33 @@
 
 ## Unreleased
 
+## 0.6.2 - 2026-07-27
+
+- Added `off-palette-color`: rendered computed text, background, and painted border colors compared with the guide's semantic sRGB tokens after exact RGBA8 normalization, with a selector-only `audit.color.ignoreSelectors` overlay and explicit candidate/evaluated/ignored/skipped/violation counts.
+- Added `off-scale-spacing`: four rendered margin sides, four padding sides, and row/column gaps compared with the declared `px`/`rem` scale after per-viewport root-font conversion, at a fixed inclusive `0.001` CSS-pixel tolerance, with its own selector-only overlay.
+- Added three opt-in, project-configured visual-metric budgets — typography variant count, palette count with minimum closed 30-degree OKLab hue cover, and layout density — each emitting a low-confidence heuristic risk only when an explicitly configured maximum is exceeded.
+- Added guide generation profile `design-guide-v0.5a-2`, whose source hash covers the selector-free configured budgets; the immediately prior `design-guide-v0.5a-1` ownership tuple is recognized for stale check and transactional compile migration.
+- Added the manual Midjourney art-direction workflow documentation and its review checks.
+- Changed reported selectors to be proven to resolve to a single element. The previous
+  walk stopped after four ancestors and was never anchored, so on a deep DOM it emitted a
+  fragment that matched anywhere in the document; on a real page 39% of emitted selectors
+  matched more than one element. When uniqueness cannot be proven within the frozen depth
+  and probe bounds, the selector is still returned but disclosed by a new
+  `selector-uniqueness-unproven` notice.
+- Fixed incomplete text-cluster coverage escalating to a failed check, which made the whole
+  audit partial and exit `2`. One masked or clipped element was enough to reach that state,
+  and partial-first exit `2` stops `design-harness loop` before it evaluates its condition.
+  The disclosure notice is retained in full; genuine measurement failures still fail closed.
+- Added `pnpm smoke:selector-uniqueness`, a live deep-DOM gate that fails when one selector
+  stands in for several element slots.
+
+Compatibility and safety notes:
+
+- `schemaVersion` remains `0.2`. The release adds five criteria and a generation-profile version, with no enum change and no audit schema change.
+- Every check in this release runs only under an explicit `--guide`. There are no default budgets and no universal thresholds; omitting a guide section performs no metric-specific traversal, finding, notice, guide rule, or score work.
+- These checks report conformance to project-declared values. They do not claim universal typography, palette, spacing, density, accessibility, or overall design quality, and they do not recover authored-token provenance or actual glyph faces.
+- Measurement precision for the five new checks was verified on 2026-07-27 against two pinned real pages: 119 of 119 reported values matched an independent re-query, with no declared value ever flagged and exact repeatability across three runs. That evidence covers the measurement layer of these checks on two pages; it is not a benchmark and not a general real-page precision claim.
+
 ## 0.6.1 - 2026-07-24
 
 - Reconciled release, install, roadmap, and integration documentation with the published v0.6.0 baseline before this maintenance release.
