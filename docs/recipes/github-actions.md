@@ -27,6 +27,11 @@ This repository's own CI workflow is the maintainable reference scaffold:
   artifacts remain for upload.
 - `pnpm check:github-actions` locks the event policy, browser/build ordering,
   required smoke commands, and artifact upload.
+- The reference workflow uses Node 24-backed JavaScript Action majors:
+  `actions/checkout@v6`, `pnpm/action-setup@v6`,
+  `actions/setup-node@v6`, and `actions/upload-artifact@v6`. A copied workflow
+  that targets a self-hosted runner must use Actions Runner `v2.327.1` or
+  newer; this repository uses GitHub-hosted `ubuntu-latest`.
 
 ## App Repository Example
 
@@ -47,11 +52,11 @@ jobs:
   ui-audit:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
+      - uses: actions/checkout@v6
+      - uses: pnpm/action-setup@v6
         with:
           version: 11.7.0
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version: 22
           cache: pnpm
@@ -76,7 +81,7 @@ jobs:
       - name: Audit UI
         run: pnpm exec design-harness audit --url http://127.0.0.1:4173 --out runs/design-harness
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         if: always()
         with:
           name: design-harness-report
@@ -95,7 +100,7 @@ Use the v0.3 comment renderer (`scripts/render-pr-comment.mjs`, exposed as `pnpm
             pnpm comment:pr -- --run-dir runs/design-harness --out runs/design-harness/pr-comment.md
           fi
 
-      - uses: actions/github-script@v7
+      - uses: actions/github-script@v8
         if: always() && github.event_name == 'pull_request'
         with:
           script: |

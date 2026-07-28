@@ -72,16 +72,16 @@ runTriggerPolicyGuardRegressions();
 
 const EXPECTED_JOB_ACTIONS = Object.freeze({
   verify: Object.freeze([
-    Object.freeze({ kind: "uses", value: "actions/checkout@v4" }),
-    Object.freeze({ kind: "uses", value: "pnpm/action-setup@v4" }),
-    Object.freeze({ kind: "uses", value: "actions/setup-node@v4" }),
+    Object.freeze({ kind: "uses", value: "actions/checkout@v6" }),
+    Object.freeze({ kind: "uses", value: "pnpm/action-setup@v6" }),
+    Object.freeze({ kind: "uses", value: "actions/setup-node@v6" }),
     Object.freeze({ kind: "run", value: "pnpm install --frozen-lockfile" }),
     Object.freeze({ kind: "run", value: "pnpm release:check" })
   ]),
   "example-smoke": Object.freeze([
-    Object.freeze({ kind: "uses", value: "actions/checkout@v4" }),
-    Object.freeze({ kind: "uses", value: "pnpm/action-setup@v4" }),
-    Object.freeze({ kind: "uses", value: "actions/setup-node@v4" }),
+    Object.freeze({ kind: "uses", value: "actions/checkout@v6" }),
+    Object.freeze({ kind: "uses", value: "pnpm/action-setup@v6" }),
+    Object.freeze({ kind: "uses", value: "actions/setup-node@v6" }),
     Object.freeze({ kind: "run", value: "pnpm install --frozen-lockfile" }),
     Object.freeze({
       kind: "run",
@@ -99,7 +99,7 @@ const EXPECTED_JOB_ACTIONS = Object.freeze({
     Object.freeze({ kind: "run", value: "pnpm calibrate:fixtures" }),
     Object.freeze({
       kind: "uses",
-      value: "actions/upload-artifact@v4",
+      value: "actions/upload-artifact@v6",
       condition: "always()"
     })
   ])
@@ -378,16 +378,16 @@ function runJobActionGuardRegressions() {
 jobs:
   verify:
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v6
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v6
       - run: pnpm install --frozen-lockfile
       - run: pnpm release:check
   example-smoke:
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v6
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v6
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @design-harness/visual-audit exec playwright install --with-deps chromium
       - run: pnpm build
@@ -401,7 +401,7 @@ jobs:
       - run: pnpm calibrate:fixtures
       - name: Upload Design Harness example artifacts
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
 `;
   assertExactJobActions(fixture, "Job action guard fixture");
 
