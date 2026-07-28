@@ -52,6 +52,7 @@ try {
   ].join("\n"));
 
   await runPnpm(["install", "--prefer-offline", "--ignore-scripts=false"], { cwd: consumerDir });
+  await assertInstalledKiwiContract(consumerDir);
   if (mode === "positive-loop") {
     await assertPositivePackedLoop(consumerDir, playwrightVersion);
     console.log("Validated positive packed CLI loop execution and one-pass missing-language repair.");
@@ -102,22 +103,33 @@ async function runDefaultPackedCliChecks(consumerDir) {
     || !help.includes("design-harness loop")
     || !help.includes("--guide <design-guide.yaml>")
     || !help.includes("--copy <copy-style.yaml>")
+    || !help.includes("--kiwi-model-dir")
+    || !help.includes("never download model assets")
     || !help.includes("guide compile")
     || !help.includes("guide check")
   ) {
     throw new Error(`Packed CLI help output did not include expected usage text:\n${help}`);
   }
-  if (!auditHelp.includes("--guide <design-guide.yaml>") || !auditHelp.includes("no auto-discovery")) {
-    throw new Error(`Packed audit help omitted explicit --guide/no-discovery behavior:\n${auditHelp}`);
+  if (
+    !auditHelp.includes("--guide <design-guide.yaml>")
+    || !auditHelp.includes("no auto-discovery")
+    || !auditHelp.includes("--kiwi-model-dir")
+    || !auditHelp.includes("no model is downloaded")
+    || !auditHelp.includes("Kiwi runs after Chromium closes")
+  ) {
+    throw new Error(`Packed audit help omitted explicit guide or offline Kiwi behavior:\n${auditHelp}`);
   }
   if (
     !loopHelp.includes("Only --until deterministic-failures==0 is supported.")
     || !loopHelp.includes("--agent-cmd executes arbitrary code with the caller's permissions.")
+    || !loopHelp.includes("--kiwi-model-dir")
+    || !loopHelp.includes("no model is downloaded")
   ) {
-    throw new Error(`Packed loop help omitted the exact gate or arbitrary-code warning:\n${loopHelp}`);
+    throw new Error(`Packed loop help omitted the exact gate, warning, or offline Kiwi behavior:\n${loopHelp}`);
   }
 
   await assertPlainAuditRejectsAgentCommand(consumerDir);
+  await assertFailClosedKiwiActivation(consumerDir);
   await assertPackedGuideCommands(consumerDir);
 
   await assertFailClosedCopyConfig({
@@ -563,8 +575,28 @@ async function assertPositiveLoopResult({
     "utf8"
   ));
   const repaired = JSON.parse(await readFile(join(outDir, "iterations", "001", "audit.json"), "utf8"));
+  const baselineMetadata = JSON.parse(await readFile(
+    join(outDir, "iterations", "000-baseline", "metadata.json"),
+    "utf8"
+  ));
+  const repairedMetadata = JSON.parse(await readFile(
+    join(outDir, "iterations", "001", "metadata.json"),
+    "utf8"
+  ));
   assertPackedNoSpacingEvidence(baseline, "baseline");
   assertPackedNoSpacingEvidence(repaired, "repaired");
+  for (const [label, metadata] of [
+    ["baseline", baselineMetadata],
+    ["repaired", repairedMetadata]
+  ]) {
+    if (
+      metadata.toolVersions?.["@design-harness/copy-audit"] !== undefined
+      || metadata.toolVersions?.["kiwi-nlp"] !== undefined
+      || metadata.toolVersions?.["kiwi-model"] !== undefined
+    ) {
+      throw new Error(`Positive packed loop ${label} unexpectedly loaded copy or Kiwi tooling.`);
+    }
+  }
   const baselineFailures = deterministicFailures(baseline);
   if (!baselineFailures.some((finding) => finding.checkName === "page-lang-missing")) {
     throw new Error("Positive packed loop baseline omitted page-lang-missing deterministic failure.");
@@ -705,6 +737,122 @@ async function assertPackedReadme(consumerDir) {
       + "or retained the old palette/spacing out-of-scope claim."
     );
   }
+  if (
+    !readme.includes("--kiwi-model-dir")
+    || !readme.includes("never downloads or discovers model assets")
+    || !readme.includes("kiwi-nlp@0.23.0")
+    || !readme.includes("josa-batchim-mismatch")
+    || !/low-confidence heuristic risks/iu.test(words)
+    || !/never deterministic failures/iu.test(words)
+  ) {
+    throw new Error("Packed CLI README omitted the offline Kiwi profile or heuristic-risk boundary.");
+  }
+}
+
+async function assertInstalledKiwiContract(consumerDir) {
+  const listOutput = await runPnpm(
+    ["list", "kiwi-nlp", "--depth", "Infinity", "--json"],
+    { cwd: consumerDir, capture: true }
+  );
+  const projects = JSON.parse(listOutput);
+  const kiwiEntries = [];
+  const visitDependencies = (dependencies) => {
+    if (!dependencies || typeof dependencies !== "object") {
+      return;
+    }
+    for (const [name, dependency] of Object.entries(dependencies)) {
+      if (name === "kiwi-nlp") {
+        kiwiEntries.push(dependency);
+      }
+      visitDependencies(dependency?.dependencies);
+    }
+  };
+  for (const project of projects) {
+    visitDependencies(project.dependencies);
+  }
+  if (kiwiEntries.length !== 1 || kiwiEntries[0]?.version !== "0.23.0") {
+    throw new Error(
+      `Packed consumer Kiwi graph was ${JSON.stringify(kiwiEntries)}; expected one exact 0.23.0 entry.`
+    );
+  }
+  const manifest = JSON.parse(await readFile(join(kiwiEntries[0].path, "package.json"), "utf8"));
+  if (manifest.version !== "0.23.0") {
+    throw new Error(`Packed consumer installed kiwi-nlp ${manifest.version}; expected exact 0.23.0.`);
+  }
+}
+
+async function assertFailClosedKiwiActivation(consumerDir) {
+  const missingCopyOut = join(consumerDir, "kiwi-missing-copy-out");
+  const missingCopy = await runPnpm([
+    "exec",
+    "design-harness",
+    "audit",
+    "--url",
+    "http://localhost:1",
+    "--out",
+    missingCopyOut,
+    "--kiwi-model-dir",
+    "missing-model"
+  ], { cwd: consumerDir, capture: true, allowFailure: true });
+  if (
+    missingCopy.code !== 1
+    || !missingCopy.stderr.includes("--kiwi-model-dir requires --copy.")
+  ) {
+    throw new Error(`Packed CLI did not reject Kiwi without --copy:\n${missingCopy.stderr}`);
+  }
+  await assertPathMissing(missingCopyOut, "Packed Kiwi missing-copy rejection created output");
+
+  const englishCopyPath = join(consumerDir, "copy-style.en.yaml");
+  const nonKoreanOut = join(consumerDir, "kiwi-non-korean-out");
+  await writeFile(englishCopyPath, "schemaVersion: '0.2'\nlocale: en\n");
+  const nonKorean = await runPnpm([
+    "exec",
+    "design-harness",
+    "audit",
+    "--url",
+    "http://localhost:1",
+    "--out",
+    nonKoreanOut,
+    "--copy",
+    englishCopyPath,
+    "--kiwi-model-dir",
+    "missing-model"
+  ], { cwd: consumerDir, capture: true, allowFailure: true });
+  if (
+    nonKorean.code !== 1
+    || !nonKorean.stderr.includes(
+      "--kiwi-model-dir requires a --copy file whose locale is ko or ko-KR."
+    )
+  ) {
+    throw new Error(`Packed CLI did not reject Kiwi with a non-Korean copy style:\n${nonKorean.stderr}`);
+  }
+  await assertPathMissing(nonKoreanOut, "Packed Kiwi locale rejection created output");
+
+  const koreanCopyPath = join(consumerDir, "copy-style.ko.yaml");
+  const emptyModelDir = join(consumerDir, "empty-kiwi-model");
+  const invalidProfileOut = join(consumerDir, "kiwi-invalid-profile-out");
+  await writeFile(koreanCopyPath, "schemaVersion: '0.2'\nlocale: ko-KR\n");
+  await mkdir(emptyModelDir);
+  const invalidProfile = await runPnpm([
+    "exec",
+    "design-harness",
+    "audit",
+    "--url",
+    "http://localhost:1",
+    "--out",
+    invalidProfileOut,
+    "--copy",
+    koreanCopyPath,
+    "--kiwi-model-dir",
+    emptyModelDir
+  ], { cwd: consumerDir, capture: true, allowFailure: true });
+  if (
+    invalidProfile.code !== 1
+    || !invalidProfile.stderr.includes("Kiwi model directory must contain exactly:")
+  ) {
+    throw new Error(`Packed CLI did not fail closed on an invalid Kiwi profile:\n${invalidProfile.stderr}`);
+  }
+  await assertPathMissing(invalidProfileOut, "Packed invalid Kiwi profile created output");
 }
 
 async function assertPackedGuideCommands(consumerDir) {

@@ -95,6 +95,7 @@ try {
   writeManifest(root, "copy-audit", {
     dependencies: {
       "@design-harness/core": "workspace:^",
+      "kiwi-nlp": "0.23.0",
       "left-pad": "1.3.0"
     }
   });
@@ -105,7 +106,10 @@ try {
   );
 
   writeManifest(root, "copy-audit", {
-    dependencies: { "@design-harness/core": "workspace:^" },
+    dependencies: {
+      "@design-harness/core": "workspace:^",
+      "kiwi-nlp": "0.23.0"
+    },
     optionalDependencies: { "optional-runtime": "1.0.0" },
     peerDependencies: { "peer-runtime": "1.0.0" }
   });
@@ -116,7 +120,10 @@ try {
   );
 
   writeManifest(root, "copy-audit", {
-    dependencies: { "@design-harness/core": "workspace:^" }
+    dependencies: {
+      "@design-harness/core": "workspace:^",
+      "kiwi-nlp": "0.23.0"
+    }
   });
   writeManifest(root, "visual-audit", {
     dependencies: { "@design-harness/cli": "workspace:^" }
@@ -143,7 +150,10 @@ function seedValidPackages(workspaceRoot) {
   writeManifest(workspaceRoot, "core", { dependencies: {} });
   writeSource(workspaceRoot, "core", "export const core = true;\n");
   writeManifest(workspaceRoot, "copy-audit", {
-    dependencies: { "@design-harness/core": "workspace:^" }
+    dependencies: {
+      "@design-harness/core": "workspace:^",
+      "kiwi-nlp": "0.23.0"
+    }
   });
   writeSource(workspaceRoot, "copy-audit", 'import type { Finding } from "@design-harness/core";\nexport type Result = Finding[];\n');
   writeManifest(workspaceRoot, "visual-audit", {

@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+- Added an offline, explicit `--kiwi-model-dir` extension for Korean `--copy`
+  audits and bounded loops. Exact `kiwi-nlp@0.23.0` is lazy-loaded in one
+  terminated worker only after browser capture, and the local five-file
+  `cong` profile is fail-closed verified before browser/output side effects and
+  reverified before initialization; no model assets are downloaded or vendored.
+- Added `josa-batchim-mismatch` for the four closed particle pairs
+  `은/는`, `이/가`, `을/를`, and `과/와`. Exact raw-offset, `J*`, unique-noun,
+  and precomposed-Hangul evidence is required; ambiguous and non-Hangul cases
+  are skipped. Findings are low-confidence heuristic risks, never failures.
+- Expanded Korean calibration with synthetic good/bad particle fixtures and a
+  deterministic injected token runner, keeping real-model provenance false in
+  CI while locking zero false positives and no parser-free regressions.
 - Added `korean-line-break-risk`: blocks of majority-Hangul text that compute
   `word-break: break-all` are reported at deterministic risk against `content.korean-line-break.word-break`,
   because Korean is written without spaces inside a word and character-level breaking splits words

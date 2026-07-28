@@ -107,6 +107,13 @@ export const CRITERION_SOURCES: CriterionSource[] = [
     note: "Project-declared copy rules are deterministic only against this configured contract."
   },
   {
+    id: "krdict-korean-particle-final-consonant-patterns",
+    title: "Korean Basic Dictionary particle entries",
+    url: "https://krdict.korean.go.kr/eng/dicSearch/SearchView?ParaWordNo=86111",
+    strength: "official-pattern",
+    note: "Official dictionary entries describe the final-consonant selection pattern for paired Korean particles. Kiwi segmentation remains heuristic evidence, so checks citing this source stay heuristic risk."
+  },
+  {
     id: "design-guide-contract",
     title: "Design Harness design guide contract",
     url: "packages/core/schemas/design-guide.schema.json",
@@ -601,6 +608,20 @@ export const CRITERIA: Criterion[] = [
     runtime: "static-dom",
     checkNames: ["josa-hedge"],
     remediationHint: "Resolve the rendered particle for the final noun, or set the project policy to allow deliberate hedge forms."
+  },
+  {
+    id: "content.josa.batchim-match",
+    category: "content",
+    title: "Analyzed Korean particles match the preceding noun form",
+    description: "When exact raw offsets and a Kiwi noun-plus-particle analysis agree, the particle should match whether the preceding precomposed Hangul syllable has a final consonant.",
+    sourceRefs: ["krdict-korean-particle-final-consonant-patterns"],
+    sourceStrength: "official-pattern",
+    determinism: "heuristic",
+    resultKind: "risk",
+    confidenceDefault: "low",
+    runtime: "static-dom",
+    checkNames: ["josa-batchim-mismatch"],
+    remediationHint: "Review the analyzed noun and intended meaning, then select the matching member of the configured particle pair."
   },
   {
     id: "content.korean-line-break.word-break",

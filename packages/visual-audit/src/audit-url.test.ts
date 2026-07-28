@@ -1735,6 +1735,89 @@ describe("auditUrl visual metric budgets", () => {
 });
 
 describe("auditUrl copy analysis", () => {
+  it("runs one complete morphology batch after browser close and records completed provenance", async () => {
+    const browserOptions: FakeBrowserOptions = {
+      measurement: copyMeasurementFor("desktop"),
+      collectionResults: [
+        { measurements: copyMeasurementFor("desktop"), notices: [] },
+        { measurements: copyMeasurementFor("mobile"), notices: [] }
+      ]
+    };
+    let analyzerCalls = 0;
+    const result = await auditUrl({
+      url: "http://localhost:3000",
+      outDir: await tempDir(),
+      viewportPresets: [viewport, mobileViewport],
+      copyStyle: copyStyle(),
+      morphologyCopyAnalyzer: async (inventories) => {
+        analyzerCalls += 1;
+        expect(browserOptions.browserCloseCount).toBe(1);
+        expect(inventories.map(({ viewport: name, evidenceRef }) => ({
+          viewport: name,
+          evidenceRef
+        }))).toEqual([
+          {
+            viewport: "desktop",
+            evidenceRef: "text-inventory-desktop"
+          },
+          {
+            viewport: "mobile",
+            evidenceRef: "text-inventory-mobile"
+          }
+        ]);
+        return {
+          findings: [],
+          notices: [],
+          provenance: {
+            kiwiNlpVersion: "0.23.0",
+            modelVersion: "0.23.0",
+            modelType: "cong",
+            modelProfileSha256: "a".repeat(64),
+            modelBytes: 93_885_643
+          }
+        };
+      },
+      launchBrowser: async () => fakeBrowser(browserOptions)
+    });
+
+    expect(analyzerCalls).toBe(1);
+    expect(result.auditResult.status).toBe("success");
+    expect(result.auditResult.failedChecks).toEqual([]);
+    expect(result.metadata.toolVersions).toMatchObject({
+      "kiwi-nlp": "0.23.0",
+      "kiwi-model": `0.23.0:cong:${"a".repeat(64)}`
+    });
+  });
+
+  it("keeps morphology failure notice-only and omits unearned provenance", async () => {
+    const result = await auditUrl({
+      url: "http://localhost:3000",
+      outDir: await tempDir(),
+      viewportPresets: [viewport],
+      copyStyle: copyStyle(),
+      morphologyCopyAnalyzer: async () => {
+        throw new Error("parser crashed");
+      },
+      launchBrowser: async () => fakeBrowser({
+        measurement: copyMeasurementFor("desktop")
+      })
+    });
+
+    expect(result.auditResult.status).toBe("success");
+    expect(result.auditResult.failedChecks).toEqual([]);
+    expect(result.auditResult.notices).toEqual([{
+      code: "copy-morphology-unavailable",
+      message: "Kiwi morphology could not complete; parser-free and visual audit results remain available.",
+      details: {
+        capability: "kiwi-morphology",
+        reason: "morphology-analyzer-failed"
+      }
+    }]);
+    expect(result.metadata.toolVersions).not.toHaveProperty("kiwi-nlp");
+    expect(result.metadata.toolVersions).not.toHaveProperty("kiwi-model");
+    expect(result.auditResult.findings).toHaveLength(5);
+  });
+
   it("analyzes pre-materialized text inventory against its exact evidence asset", async () => {
     const result = await auditUrl({
       url: "http://localhost:3000",

@@ -4,6 +4,7 @@ export interface AuditCommandArgs {
   outDir: string;
   guidePath?: string;
   copyStylePath?: string;
+  kiwiModelDir?: string;
   timeoutMs?: number;
   allowPartial: boolean;
 }
@@ -18,6 +19,7 @@ export interface LoopCommandArgs {
   agentTimeoutMs: number;
   guidePath?: string;
   copyStylePath?: string;
+  kiwiModelDir?: string;
   timeoutMs?: number;
 }
 
@@ -52,7 +54,14 @@ export type ParsedArgs =
   | GuideCheckCommandArgs
   | HelpCommandArgs;
 
-const AUDIT_VALUE_OPTIONS = new Set(["url", "out", "timeout-ms", "guide", "copy"]);
+const AUDIT_VALUE_OPTIONS = new Set([
+  "url",
+  "out",
+  "timeout-ms",
+  "guide",
+  "copy",
+  "kiwi-model-dir"
+]);
 const AUDIT_BOOLEAN_OPTIONS = new Set(["allow-partial"]);
 const LOOP_VALUE_OPTIONS = new Set([
   "url",
@@ -63,7 +72,8 @@ const LOOP_VALUE_OPTIONS = new Set([
   "agent-timeout-ms",
   "timeout-ms",
   "guide",
-  "copy"
+  "copy",
+  "kiwi-model-dir"
 ]);
 const GUIDE_COMPILE_VALUE_OPTIONS = new Set(["guide", "copy", "target"]);
 const GUIDE_CHECK_VALUE_OPTIONS = new Set(["guide", "copy", "target", "max-tokens"]);
@@ -129,6 +139,7 @@ function parseAuditArgs(rest: string[]): AuditCommandArgs {
     outDir,
     guidePath: values.get("guide"),
     copyStylePath: values.get("copy"),
+    kiwiModelDir: values.get("kiwi-model-dir"),
     timeoutMs: timeout ? parseTimeout(timeout) : undefined,
     allowPartial: flags.has("allow-partial")
   };
@@ -155,6 +166,7 @@ function parseLoopArgs(rest: string[]): LoopCommandArgs {
       : DEFAULT_AGENT_TIMEOUT_MS,
     guidePath: values.get("guide"),
     copyStylePath: values.get("copy"),
+    kiwiModelDir: values.get("kiwi-model-dir"),
     timeoutMs: timeout ? parseTimeout(timeout) : undefined
   };
 }
@@ -303,7 +315,7 @@ function rootHelpText(): string {
     "Design Harness",
     "",
     "Usage:",
-    "  design-harness audit --url <local-url> --out <directory> [--guide <design-guide.yaml>] [--copy <copy-style.yaml>] [--timeout-ms <ms>] [--allow-partial]",
+    "  design-harness audit --url <local-url> --out <directory> [--guide <design-guide.yaml>] [--copy <copy-style.yaml> --kiwi-model-dir <directory>] [--timeout-ms <ms>] [--allow-partial]",
     "  design-harness loop --url <local-url> --out <new-directory> --until deterministic-failures==0 --max-iters <1..10> --agent-cmd '<non-interactive command>' [options]",
     "  design-harness guide compile --guide <design-guide.yaml> --target <project-dir> [options]",
     "  design-harness guide check --guide <design-guide.yaml> --target <project-dir> [options]",
@@ -318,6 +330,7 @@ function rootHelpText(): string {
     "  Audit targets must be local http(s) URLs such as http://localhost:3000.",
     "  Font-family adherence is opt-in, reads only the explicit local --guide file, and performs no auto-discovery.",
     "  Copy analysis is opt-in and reads only the explicit local --copy file.",
+    "  --kiwi-model-dir is an offline Korean-only extension to --copy; audit and loop never download model assets.",
     "  Plain audit partial artifacts exit 2 unless audit --allow-partial is set; loop never supports --allow-partial.",
     "  Loop --agent-cmd executes arbitrary code with the caller's permissions and inherited environment, which may expose credentials.",
     "  Loop provides no sandbox or network boundary for the agent command.",
@@ -331,7 +344,7 @@ function loopHelpText(): string {
     "Design Harness loop",
     "",
     "Usage:",
-    "  design-harness loop --url <local-url> --out <new-directory> --until deterministic-failures==0 --max-iters <1..10> --agent-cmd '<non-interactive command>' [--agent-timeout-ms <1000..3600000>] [--guide <design-guide.yaml>] [--copy <copy-style.yaml>] [--timeout-ms <ms>]",
+    "  design-harness loop --url <local-url> --out <new-directory> --until deterministic-failures==0 --max-iters <1..10> --agent-cmd '<non-interactive command>' [--agent-timeout-ms <1000..3600000>] [--guide <design-guide.yaml>] [--copy <copy-style.yaml> --kiwi-model-dir <directory>] [--timeout-ms <ms>]",
     "",
     "Notes:",
     "  Only --until deterministic-failures==0 is supported. --max-iters counts agent passes; the baseline audit is additional.",
@@ -339,6 +352,8 @@ function loopHelpText(): string {
     "  --agent-cmd executes arbitrary code with the caller's permissions.",
     "  The command inherits the caller environment, which may expose credentials.",
     "  No sandbox or network boundary is provided.",
+    "  --kiwi-model-dir requires a Korean --copy file and an exact locally prepared Kiwi v0.23.0 core profile; no model is downloaded.",
+    "  Kiwi runs after Chromium closes. A macOS Node 22 probe reached about 726 MiB RSS after model initialization; measure the target environment.",
     "  Audit targets must be local http(s) URLs. Partial audits stop the loop with exit 2; --allow-partial is not supported."
   ].join("\n");
 }
@@ -348,12 +363,14 @@ function auditHelpText(): string {
     "Design Harness audit",
     "",
     "Usage:",
-    "  design-harness audit --url <local-url> --out <directory> [--guide <design-guide.yaml>] [--copy <copy-style.yaml>] [--timeout-ms <ms>] [--allow-partial]",
+    "  design-harness audit --url <local-url> --out <directory> [--guide <design-guide.yaml>] [--copy <copy-style.yaml> --kiwi-model-dir <directory>] [--timeout-ms <ms>] [--allow-partial]",
     "",
     "Notes:",
     "  Audit targets must be local http(s) URLs such as http://localhost:3000.",
     "  Font-family adherence is opt-in, reads only the explicit local --guide file, and performs no auto-discovery.",
     "  Copy analysis is opt-in and reads only the explicit local --copy file.",
+    "  --kiwi-model-dir requires locale ko or ko-KR and an exact locally prepared Kiwi v0.23.0 core profile; no model is downloaded.",
+    "  Kiwi runs after Chromium closes. A macOS Node 22 probe reached about 726 MiB RSS after model initialization; measure the target environment.",
     "  Partial audits write artifacts and exit 2 unless --allow-partial is set."
   ].join("\n");
 }

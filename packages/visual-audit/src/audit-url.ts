@@ -21,7 +21,13 @@ import {
   type ViewportPreset,
   type LayoutMetrics
 } from "@design-harness/core";
-import { analyzeCopy, copyAuditCapabilityNotices } from "@design-harness/copy-audit";
+import {
+  analyzeCopy,
+  copyAuditCapabilityNotices,
+  type CopyInventory,
+  type KiwiMorphologyProvenance,
+  type MorphologyCopyAnalyzer
+} from "@design-harness/copy-audit";
 import { chromium, errors } from "playwright";
 import {
   collectViewportMeasurements,
@@ -82,6 +88,7 @@ export interface AuditUrlOptions {
   typographyVariantsPolicy?: TypographyVariantBudgetPolicy;
   paletteDisciplinePolicy?: PaletteDisciplineBudgetPolicy;
   densityComplexityPolicy?: DensityComplexityBudgetPolicy;
+  morphologyCopyAnalyzer?: MorphologyCopyAnalyzer;
   launchBrowser?: () => Promise<BrowserHandle>;
 }
 
@@ -147,6 +154,7 @@ export async function auditUrl(options: AuditUrlOptions): Promise<AuditUrlResult
   const screenshotsDir = join(options.outDir, "screenshots");
   const evidenceAssets: EvidenceAsset[] = [];
   const measurementRecords: MeasurementRecord[] = [];
+  const morphologyInventories: CopyInventory[] = [];
   const findings: Finding[] = [];
   const failedChecks: string[] = [];
   const layoutMetrics: LayoutMetrics[] = [];
@@ -477,12 +485,16 @@ export async function auditUrl(options: AuditUrlOptions): Promise<AuditUrlResult
             createdAt: new Date().toISOString()
           });
           viewportEvidenceRefs.push(textInventoryEvidenceId);
-          if (options.copyStyle) {
-            findings.push(...analyzeCopy({
+          const copyInventory: CopyInventory = {
               viewport: measurement.viewport,
               evidenceRef: textInventoryEvidenceId,
               items: measurement.textInventory
-            }, options.copyStyle));
+          };
+          if (options.copyStyle) {
+            findings.push(...analyzeCopy(copyInventory, options.copyStyle));
+          }
+          if (options.morphologyCopyAnalyzer) {
+            morphologyInventories.push(copyInventory);
           }
           viewportEvidenceRefs.push(...await recordAriaSnapshotEvidence(page, evidenceAssets, viewport.name, failedChecks));
           measurementRecords.push({
@@ -509,6 +521,25 @@ export async function auditUrl(options: AuditUrlOptions): Promise<AuditUrlResult
     }
   } finally {
     await browser.close();
+  }
+
+  let morphologyProvenance: KiwiMorphologyProvenance | undefined;
+  if (options.morphologyCopyAnalyzer) {
+    try {
+      const morphology = await options.morphologyCopyAnalyzer(morphologyInventories);
+      findings.push(...morphology.findings);
+      noticeCandidates.push(...morphology.notices);
+      morphologyProvenance = morphology.provenance;
+    } catch {
+      noticeCandidates.push({
+        code: "copy-morphology-unavailable",
+        message: "Kiwi morphology could not complete; parser-free and visual audit results remain available.",
+        details: {
+          capability: "kiwi-morphology",
+          reason: "morphology-analyzer-failed"
+        }
+      });
+    }
   }
 
   findings.push(...measurementRecords.flatMap((record) => findingsFromMeasurements(record.measurement, record.evidenceRefs)));
@@ -569,7 +600,19 @@ export async function auditUrl(options: AuditUrlOptions): Promise<AuditUrlResult
     toolVersions: {
       "@design-harness/core": HARNESS_VERSION,
       "@design-harness/visual-audit": HARNESS_VERSION,
-      ...(options.copyStyle ? { "@design-harness/copy-audit": HARNESS_VERSION } : {}),
+      ...(options.copyStyle || options.morphologyCopyAnalyzer
+        ? { "@design-harness/copy-audit": HARNESS_VERSION }
+        : {}),
+      ...(morphologyProvenance
+        ? {
+            "kiwi-nlp": morphologyProvenance.kiwiNlpVersion,
+            "kiwi-model": [
+              morphologyProvenance.modelVersion,
+              morphologyProvenance.modelType,
+              morphologyProvenance.modelProfileSha256
+            ].join(":")
+          }
+        : {}),
       playwright: browserVersion ?? "unknown"
     },
     browserVersion,

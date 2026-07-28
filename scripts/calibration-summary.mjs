@@ -1,6 +1,6 @@
 export const CALIBRATION_SUMMARY_VERSION = "calibration-summary/v1";
 
-export function buildCalibrationSummary(runs) {
+export function buildCalibrationSummary(runs, options = {}) {
   const aggregate = new Map();
   const fixtures = runs.map(({ record, auditResult, error }) => {
     const expectedFindings = sortedCounts(Object.fromEntries(
@@ -63,7 +63,10 @@ export function buildCalibrationSummary(runs) {
     fixtures,
     checks,
     totals,
-    auditFailures
+    auditFailures,
+    ...(options.morphologyFixture
+      ? { morphologyFixture: { ...options.morphologyFixture } }
+      : {})
   };
 }
 

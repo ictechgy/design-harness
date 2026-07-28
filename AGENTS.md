@@ -42,7 +42,7 @@ pnpm check:report-copy-guardrails   # HARD RULE 9: no unqualified overclaims in 
 pnpm check:obedience-benchmark      # exact 12-cell snapshot, provenance, preservation + claim gate
 pnpm check:guide-data               # guide fingerprint source/generated mirror parity
 pnpm check:visual-metrics-calibration # browserless fixture hashes + exact manifest contract
-pnpm calibrate:fixtures             # six Korean fixtures → parser-free copy TP/FP/FN drift gate
+pnpm calibrate:fixtures             # manifest Korean fixtures → calibrated copy TP/FP/FN drift gate
 pnpm example:serve                  # merchant-dashboard fixture on :4173
 pnpm smoke:copy                     # live parser-free copy/materializer golden path
 pnpm smoke:guide                    # temporary-project guide compile/check + compatibility gate

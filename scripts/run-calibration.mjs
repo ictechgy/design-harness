@@ -7,6 +7,10 @@ import { auditUrl } from "../packages/visual-audit/dist/index.js";
 import { calibrationFixturePaths } from "./calibration-paths.mjs";
 import { buildCalibrationSummary } from "./calibration-summary.mjs";
 import { copyStyleForCalibration, desktopViewport } from "./copy-calibration-config.mjs";
+import {
+  deterministicKiwiCalibrationAnalyzer,
+  kiwiCalibrationFixtureProvenance
+} from "./kiwi-calibration-fixture.mjs";
 import { startLocalFixtureServer } from "./local-fixture-server.mjs";
 
 const scriptDir = dirname(fileURLToPath(import.meta.url));
@@ -33,7 +37,8 @@ try {
         url: `${baseUrl}/${encodeURI(fixtureRelativePath)}`,
         outDir: fixtureOutDir,
         viewportPresets: [desktopViewport],
-        copyStyle: copyStyleForCalibration(record.josaHedgePolicy)
+        copyStyle: copyStyleForCalibration(record.josaHedgePolicy),
+        morphologyCopyAnalyzer: deterministicKiwiCalibrationAnalyzer
       });
       writeFileSync(join(fixtureOutDir, "audit.json"), `${JSON.stringify(result.auditResult, null, 2)}\n`);
       writeFileSync(join(fixtureOutDir, "metadata.json"), `${JSON.stringify(result.metadata, null, 2)}\n`);
@@ -50,7 +55,9 @@ try {
     }
   }
 
-  const summary = buildCalibrationSummary(runs);
+  const summary = buildCalibrationSummary(runs, {
+    morphologyFixture: kiwiCalibrationFixtureProvenance
+  });
   const summaryPath = join(outRoot, "calibration-summary.json");
   writeFileSync(summaryPath, `${JSON.stringify(summary, null, 2)}\n`);
   console.log(

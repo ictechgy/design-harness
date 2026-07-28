@@ -19,7 +19,45 @@ design-harness audit \
   --copy ./copy-style.yaml
 ```
 
-Without `--copy`, the CLI does not discover a config or run copy analysis. The supported checks are `placeholder-leak`, `josa-hedge`, `glossary-banned-term`, `glossary-use-carefully-term`, and `banned-phrase`. Morphology, register, spelling, and model-judged checks are not enabled by this flag.
+Without `--copy`, the CLI does not discover a config or run copy analysis. The supported parser-free checks are `placeholder-leak`, `josa-hedge`, `glossary-banned-term`, `glossary-use-carefully-term`, and `banned-phrase`. Register, spelling, and model-judged checks are not enabled.
+
+Korean particle morphology is a second explicit opt-in layered on `--copy`:
+
+```bash
+design-harness audit \
+  --url http://localhost:3000 \
+  --out runs/demo \
+  --copy ./copy-style.ko.yaml \
+  --kiwi-model-dir /absolute/path/to/kiwi-0.23.0-cong
+```
+
+`--kiwi-model-dir` is accepted only with a copy style whose locale is exactly `ko` or `ko-KR`. The same option is available on `loop` and is prepared once, then forwarded unchanged to every audit iteration. No flag means no Kiwi preparation, loading, worker, finding, notice, or provenance.
+
+The model path is local and offline. Design Harness never downloads or discovers model assets. Before Chromium or output creation, it requires a directory containing exactly five non-symlink regular files from the Kiwi `0.23.0` `cong` core profile:
+
+| File | Bytes | SHA-256 |
+|---|---:|---|
+| `combiningRule.txt` | 3,584 | `3d864f76eade67b250d37f4ee83de848b04fb14d0cd6ed36c36d0b210ad38ebc` |
+| `cong.mdl` | 75,667,563 | `bd9ca89ee1b72e750c8e2166a17c80a0fe3fabd828c78b1f0928486a6b1833a7` |
+| `extract.mdl` | 17,370 | `a0c92ffc051e43ae497845cdb8d4c8b9e2f359893cb55c67279c76d1d531ee17` |
+| `nounchr.mdl` | 9,734,234 | `4b687e36836dd60dcb7addcfcf369ac082b339bab76549574ac1ce2b7ccd6836` |
+| `sj.morph` | 8,462,892 | `5e3dab2def6d2cc079e21d5477bd610a391c69045d08caf1e0bbeabda8db8d1b` |
+
+After browser capture closes, one isolated worker re-verifies those files, initializes exact `kiwi-nlp@0.23.0` with the `cong` model and optional dictionaries/typo correction disabled, analyzes the complete rendered-copy batch, and terminates before audit return or the next loop pass. Input sizes and startup, analysis, and shutdown times are bounded. A morphology runtime error emits one non-failing notice, adds no morphology provenance, and never changes an audit to partial.
+
+The initial `josa-batchim-mismatch` detector checks only `은/는`, `이/가`, `을/를`, and `과/와`. It requires exact raw offsets, a Kiwi `J*` token, exactly one adjacent noun interpretation, and a precomposed Hangul final syllable. Ambiguous, digit-, Latin-, symbol-, and non-noun cases are skipped. Findings are low-confidence heuristic risks with human review recommended, never deterministic failures.
+
+Kiwi's model initialization is memory-intensive. A macOS Node 22 probe reached about 726 MiB RSS; measure the actual target environment before enabling it in CI or a long-running service. `kiwi-nlp` is lazy-loaded only for this explicit path and is not part of parser-free execution.
+
+Maintainers can verify an already prepared profile offline, without browser
+capture or asset download, after building the workspace:
+
+```bash
+pnpm smoke:kiwi-real-model -- --model-dir /absolute/path/to/kiwi-0.23.0-cong
+```
+
+The command runs the strict positive/negative control batch three times with a
+fresh worker per run and requires byte-identical normalized results.
 
 Guide adherence is a separate explicit opt-in through the same strictly validated project guide used by guide compile/check:
 
