@@ -49,6 +49,7 @@ pnpm smoke:guide                    # temporary-project guide compile/check + co
 pnpm smoke:loop                     # live bounded-loop repair/no-progress/process-boundary gate
 pnpm smoke:visual-metrics           # live atomic + merchant + repeated unrelated-corpus gate
 pnpm smoke:selector-uniqueness      # live deep-DOM gate: no selector may stand in for several elements
+pnpm smoke:spacing-skip             # live gate: screen-reader-only boxes are not scolded for spacing
 pnpm design-harness -- audit --url http://localhost:4173 --out runs/demo
 ```
 

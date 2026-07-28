@@ -94,6 +94,7 @@ const EXPECTED_JOB_ACTIONS = Object.freeze({
     Object.freeze({ kind: "run", value: "pnpm smoke:visual-metrics" }),
     Object.freeze({ kind: "run", value: "pnpm smoke:loop" }),
     Object.freeze({ kind: "run", value: "pnpm smoke:selector-uniqueness" }),
+    Object.freeze({ kind: "run", value: "pnpm smoke:spacing-skip" }),
     Object.freeze({ kind: "run", value: "pnpm smoke:packed-loop" }),
     Object.freeze({ kind: "run", value: "pnpm calibrate:fixtures" }),
     Object.freeze({
@@ -395,6 +396,7 @@ jobs:
       - run: pnpm smoke:visual-metrics
       - run: pnpm smoke:loop
       - run: pnpm smoke:selector-uniqueness
+      - run: pnpm smoke:spacing-skip
       - run: pnpm smoke:packed-loop
       - run: pnpm calibrate:fixtures
       - name: Upload Design Harness example artifacts

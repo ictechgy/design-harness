@@ -64,6 +64,7 @@
     "smoke:visual-metrics": "node scripts/run-visual-metrics-smoke.mjs",
     "smoke:loop": "node scripts/run-loop-smoke.mjs",
     "smoke:selector-uniqueness": "node scripts/run-selector-uniqueness-smoke.mjs",
+    "smoke:spacing-skip": "node scripts/run-spacing-skip-smoke.mjs",
     "smoke:guide": "node scripts/run-guide-smoke.mjs && node scripts/run-guide-compat-smoke.mjs",
     "calibrate:fixtures": "pnpm validate:korean-copy && node scripts/run-calibration.mjs",
     "smoke:packed-cli": "node scripts/verify-packed-cli.mjs",

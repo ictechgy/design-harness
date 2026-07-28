@@ -1472,6 +1472,28 @@ export async function collectViewportMeasurements(page: {
           continue;
         }
 
+        // A box no larger than 1x1 CSS px lays out no content, so its margins and
+        // padding cannot express a spacing-scale decision. This is the geometry of the
+        // standard screen-reader-only idiom (position:absolute; width:1px; height:1px;
+        // margin:-1px; clip), which is deliberate accessibility markup — Tailwind ships
+        // it as `sr-only`. Measured 2026-07-27 on two real pages: 12 of 20 off-scale
+        // findings were this one pattern, four sides times two viewports, so the check
+        // scolded most where the markup was most correct.
+        let hiddenBox = false;
+        try {
+          const rect = element.getBoundingClientRect();
+          hiddenBox = rect.width <= 1 && rect.height <= 1;
+        } catch {
+          spacingAdherenceError = { code: "computed-spacing", elementIndex };
+          break;
+        }
+        if (hiddenBox) {
+          skippedSlotCount += slots.length;
+          skippedByReason["visually-hidden-box"] =
+            (skippedByReason["visually-hidden-box"] ?? 0) + slots.length;
+          continue;
+        }
+
         let style: CSSStyleDeclaration;
         let sample: ReturnType<typeof sampleElement>;
         try {
