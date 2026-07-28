@@ -25,7 +25,7 @@ Use the generated Markdown with `actions/github-script`, `gh pr comment`, or any
         if: always() && github.event_name == 'pull_request'
         run: pnpm comment:pr -- --run-dir runs/design-harness --out runs/design-harness/pr-comment.md
 
-      - uses: actions/github-script@v7
+      - uses: actions/github-script@v8
         if: always() && github.event_name == 'pull_request'
         with:
           script: |
