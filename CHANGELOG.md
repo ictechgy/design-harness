@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.6.3 - 2026-07-28
+
 - Added an offline, explicit `--kiwi-model-dir` extension for Korean `--copy`
   audits and bounded loops. Exact `kiwi-nlp@0.23.0` is lazy-loaded in one
   terminated worker only after browser capture, and the local five-file
