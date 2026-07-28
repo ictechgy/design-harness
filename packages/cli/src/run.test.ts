@@ -12,7 +12,11 @@ import {
   projectSpacingAdherencePolicy,
   projectVisualMetricsRuntimePolicies
 } from "@design-harness/core";
-import { BrowserUnavailableError, type AuditUrlOptions } from "@design-harness/visual-audit";
+import {
+  BrowserUnavailableError,
+  type AuditUrlOptions,
+  type MorphologyCopyAnalyzer
+} from "@design-harness/visual-audit";
 import { CopyStyleLoadError } from "./copy-style.js";
 import { GuideOperationError } from "./guide-errors.js";
 import type { GuideRunDependencies, GuideRunResult } from "./guide-run.js";
@@ -36,13 +40,23 @@ const baseLoopArgv = [
 
 describe("runCli", () => {
   it("preserves the no-config path without resolving cwd, invoking loaders, or passing policy properties", async () => {
-    const { dependencies, audit, loadDesignGuide, loadCopyStyle, runLoop, writeArtifacts, cwd } = successfulDependencies();
+    const {
+      dependencies,
+      audit,
+      loadDesignGuide,
+      loadCopyStyle,
+      prepareKiwiMorphology,
+      runLoop,
+      writeArtifacts,
+      cwd
+    } = successfulDependencies();
 
     await expect(runCli(baseArgv, dependencies)).resolves.toBe(0);
 
     expect(cwd).not.toHaveBeenCalled();
     expect(loadDesignGuide).not.toHaveBeenCalled();
     expect(loadCopyStyle).not.toHaveBeenCalled();
+    expect(prepareKiwiMorphology).not.toHaveBeenCalled();
     expect(audit).toHaveBeenCalledOnce();
     expect(runLoop).not.toHaveBeenCalled();
     expect(audit.mock.calls[0]?.[0]).not.toHaveProperty("copyStyle");
@@ -52,6 +66,7 @@ describe("runCli", () => {
     expect(audit.mock.calls[0]?.[0]).not.toHaveProperty("typographyVariantsPolicy");
     expect(audit.mock.calls[0]?.[0]).not.toHaveProperty("paletteDisciplinePolicy");
     expect(audit.mock.calls[0]?.[0]).not.toHaveProperty("densityComplexityPolicy");
+    expect(audit.mock.calls[0]?.[0]).not.toHaveProperty("morphologyCopyAnalyzer");
     expect(audit.mock.calls[0]?.[0]).not.toHaveProperty("guide");
     expect(audit.mock.calls[0]?.[0]).not.toHaveProperty("designGuide");
     expect(writeArtifacts).toHaveBeenCalledOnce();
@@ -168,6 +183,88 @@ describe("runCli", () => {
     expect(loadCopyStyle).toHaveBeenCalledWith("config/style.yaml", { cwd: "/project" });
     expect(audit).toHaveBeenCalledOnce();
     expect(audit.mock.calls[0]?.[0].copyStyle).toBe(copyStyle);
+  });
+
+  it("preflights and forwards one prepared Kiwi analyzer by identity", async () => {
+    const copyStyle = createMinimalCopyStyle();
+    const {
+      dependencies,
+      audit,
+      loadCopyStyle,
+      prepareKiwiMorphology,
+      morphologyCopyAnalyzer,
+      cwd
+    } = successfulDependencies();
+    loadCopyStyle.mockResolvedValue(copyStyle);
+
+    await expect(runCli([
+      ...baseArgv,
+      "--copy",
+      "config/style.yaml",
+      "--kiwi-model-dir",
+      "models/kiwi"
+    ], dependencies)).resolves.toBe(0);
+
+    expect(cwd).toHaveBeenCalledOnce();
+    expect(loadCopyStyle).toHaveBeenCalledWith("config/style.yaml", { cwd: "/project" });
+    expect(prepareKiwiMorphology).toHaveBeenCalledWith("models/kiwi", { cwd: "/project" });
+    expect(audit).toHaveBeenCalledOnce();
+    expect(audit.mock.calls[0]?.[0].copyStyle).toBe(copyStyle);
+    expect(audit.mock.calls[0]?.[0].morphologyCopyAnalyzer).toBe(morphologyCopyAnalyzer);
+  });
+
+  it("rejects Kiwi without copy or with a non-Korean copy locale before audit and output", async () => {
+    const first = successfulDependencies();
+    await expect(runCli([
+      ...baseArgv,
+      "--kiwi-model-dir",
+      "models/kiwi"
+    ], first.dependencies)).resolves.toBe(1);
+    expect(first.stderr).toHaveBeenCalledWith("--kiwi-model-dir requires --copy.");
+    expect(first.prepareKiwiMorphology).not.toHaveBeenCalled();
+    expect(first.audit).not.toHaveBeenCalled();
+    expect(first.writeArtifacts).not.toHaveBeenCalled();
+
+    const second = successfulDependencies();
+    second.loadCopyStyle.mockResolvedValue({
+      schemaVersion: "0.2",
+      locale: "en"
+    });
+    await expect(runCli([
+      ...baseArgv,
+      "--copy",
+      "config/style.yaml",
+      "--kiwi-model-dir",
+      "models/kiwi"
+    ], second.dependencies)).resolves.toBe(1);
+    expect(second.stderr).toHaveBeenCalledWith(
+      "--kiwi-model-dir requires a --copy file whose locale is ko or ko-KR."
+    );
+    expect(second.prepareKiwiMorphology).not.toHaveBeenCalled();
+    expect(second.audit).not.toHaveBeenCalled();
+    expect(second.writeArtifacts).not.toHaveBeenCalled();
+  });
+
+  it("fails model preflight before browser or artifact side effects", async () => {
+    const harness = successfulDependencies();
+    harness.prepareKiwiMorphology.mockRejectedValue(new Error("Kiwi model digest mismatch"));
+    const outDir = join(tmpdir(), `design-harness-run-kiwi-preflight-${Date.now()}`);
+
+    await expect(runCli([
+      "audit",
+      "--url",
+      "http://localhost:3000",
+      "--out",
+      outDir,
+      "--copy",
+      "config/style.yaml",
+      "--kiwi-model-dir",
+      "models/kiwi"
+    ], harness.dependencies)).resolves.toBe(1);
+
+    expect(harness.audit).not.toHaveBeenCalled();
+    expect(harness.writeArtifacts).not.toHaveBeenCalled();
+    await expect(stat(outDir)).rejects.toMatchObject({ code: "ENOENT" });
   });
 
   it("rejects the URL before loading config, auditing, or writing", async () => {
@@ -296,6 +393,8 @@ describe("runCli", () => {
       audit,
       loadDesignGuide,
       loadCopyStyle,
+      prepareKiwiMorphology,
+      morphologyCopyAnalyzer,
       runLoop,
       writeArtifacts,
       cwd,
@@ -309,6 +408,8 @@ describe("runCli", () => {
       ...baseLoopArgv,
       "--copy",
       "config/copy-style.yaml",
+      "--kiwi-model-dir",
+      "models/kiwi",
       "--guide",
       "config/design-guide.yaml",
       "--timeout-ms",
@@ -320,6 +421,7 @@ describe("runCli", () => {
     expect(cwd).toHaveBeenCalledOnce();
     expect(loadDesignGuide).toHaveBeenCalledWith("config/design-guide.yaml", { cwd: "/project" });
     expect(loadCopyStyle).toHaveBeenCalledWith("config/copy-style.yaml", { cwd: "/project" });
+    expect(prepareKiwiMorphology).toHaveBeenCalledWith("models/kiwi", { cwd: "/project" });
     expect(loadDesignGuide.mock.invocationCallOrder[0]).toBeLessThan(loadCopyStyle.mock.invocationCallOrder[0]);
     expect(runLoop).toHaveBeenCalledOnce();
     expect(runLoop.mock.calls[0]?.[0]).toMatchObject({
@@ -332,6 +434,7 @@ describe("runCli", () => {
       timeoutMs: 2500,
       cwd: "/project",
       copyStyle,
+      morphologyCopyAnalyzer,
       fontFamilyPolicy: projectFontFamilyAdherencePolicy(guide),
       colorPolicy: projectColorAdherencePolicy(guide),
       spacingPolicy: projectSpacingAdherencePolicy(guide),
@@ -465,6 +568,11 @@ function successfulDependencies(status: "success" | "partial" = "success") {
   const audit = vi.fn(async (_options: AuditUrlOptions) => ({ auditResult, metadata }));
   const loadDesignGuide = vi.fn(async () => createExampleDesignGuide());
   const loadCopyStyle = vi.fn(async () => createMinimalCopyStyle());
+  const morphologyCopyAnalyzer: MorphologyCopyAnalyzer = vi.fn(async () => ({
+    findings: [],
+    notices: []
+  }));
+  const prepareKiwiMorphology = vi.fn(async () => morphologyCopyAnalyzer);
   const writeArtifacts = vi.fn(async () => undefined);
   const stdout = vi.fn();
   const stderr = vi.fn();
@@ -478,6 +586,7 @@ function successfulDependencies(status: "success" | "partial" = "success") {
     audit,
     loadDesignGuide,
     loadCopyStyle,
+    prepareKiwiMorphology,
     runGuide,
     runLoop,
     writeArtifacts,
@@ -491,6 +600,8 @@ function successfulDependencies(status: "success" | "partial" = "success") {
     audit,
     loadDesignGuide,
     loadCopyStyle,
+    prepareKiwiMorphology,
+    morphologyCopyAnalyzer,
     runGuide,
     runLoop,
     writeArtifacts,

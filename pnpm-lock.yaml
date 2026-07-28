@@ -38,6 +38,9 @@ importers:
       '@design-harness/core':
         specifier: workspace:^
         version: link:../core
+      kiwi-nlp:
+        specifier: 0.23.0
+        version: 0.23.0
 
   packages/core: {}
 
@@ -732,6 +735,9 @@ packages:
     resolution: {integrity: sha512-XmOWe7eyHYH14cLdVPoyg+GOH3rYX++KpzrylJwSW98t3Nk+U8XOl8FWKOgwtzdb8lXGf6zYwDUzeHMWfxasyg==}
     engines: {node: '>=6'}
     hasBin: true
+
+  kiwi-nlp@0.23.0:
+    resolution: {integrity: sha512-J/rizrydoxwD6kUnzOnWb6A3ALSDZphFmmC7XzWPb0ouXZZyhiWmgQTrI458V6KrkC21zg4G8CPew7rM0x1Cmw==}
 
   loupe@3.2.1:
     resolution: {integrity: sha512-CdzqowRJCeLU72bHvWqwRBBlLcMEtIvGrlvef74kMnV2AolS9Y8xUv1I0U/MNAWMhBlKIoyuEgoJ0t/bbwHbLQ==}
@@ -1609,6 +1615,8 @@ snapshots:
       which-typed-array: 1.1.22
 
   json5@2.2.3: {}
+
+  kiwi-nlp@0.23.0: {}
 
   loupe@3.2.1: {}
 

@@ -49,7 +49,8 @@ const CLI_FORBIDDEN_MODULES = [...BUILD_ONLY_MODULES];
 const EXPECTED_RUNTIME_DEPENDENCIES = {
   core: {},
   "copy-audit": {
-    "@design-harness/core": "workspace:^"
+    "@design-harness/core": "workspace:^",
+    "kiwi-nlp": "0.23.0"
   },
   "visual-audit": {
     "@design-harness/copy-audit": "workspace:^",

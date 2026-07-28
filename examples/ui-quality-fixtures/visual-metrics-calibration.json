@@ -302,6 +302,20 @@
         "expectedNotices": []
       },
       {
+        "id": "korean-josa-bad",
+        "path": "examples/ui-quality-fixtures/korean/josa-bad.html",
+        "fixtureSha256": "0a07dbe26162e8c778397b956ebbba331e888cb27bb230e4b25ab45ea992361b",
+        "projectionSha256": "9f271a4c7b3bee1a403c5abc953c5c95cbe69fffc2b3ed494fac2c8b214f7443",
+        "expectedNotices": []
+      },
+      {
+        "id": "korean-josa-good",
+        "path": "examples/ui-quality-fixtures/korean/josa-good.html",
+        "fixtureSha256": "36d63e85a7d52f61e3743db84ca3d59b5184e16bd8ad93f9f509bf8589295a17",
+        "projectionSha256": "ab62a6e938cd7263d6509ca09078a7aa488294d799ff78bf5d0afb7a715f017a",
+        "expectedNotices": []
+      },
+      {
         "id": "midjourney-derived-scanability-bad",
         "path": "examples/ui-quality-fixtures/midjourney-derived/scanability-bad.html",
         "fixtureSha256": "dcb4b4e4b26cb260202a4bb76a053ec999cf4daeed59ed15017a070c0771d984",

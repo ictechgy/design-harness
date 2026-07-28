@@ -30,13 +30,26 @@ const exact = buildCalibrationSummary([
     shouldNotFlag,
     ["expected-check", "expected-check", "visual-check"]
   )
-]);
+], {
+  morphologyFixture: {
+    kind: "deterministic-injected-token-fixture",
+    parserContract: "kiwi-nlp@0.23.0",
+    modelProfile: "test",
+    realModelLoaded: false
+  }
+});
 assert.equal(exact.status, "pass");
 assert.deepEqual(exact.totals, { tp: 2, fp: 0, fn: 0 });
 assert.equal(exact.auditFailures, 0);
 assert.deepEqual(exact.checks["quiet-check"], { tp: 0, fp: 0, fn: 0 });
 assert.equal(exact.checks["future.check"], undefined);
 assert.deepEqual(exact.fixtures[0].outOfScopeFindings, { "visual-check": 1 });
+assert.deepEqual(exact.morphologyFixture, {
+  kind: "deterministic-injected-token-fixture",
+  parserContract: "kiwi-nlp@0.23.0",
+  modelProfile: "test",
+  realModelLoaded: false
+});
 
 const missing = buildCalibrationSummary([
   run("missing.html", [{ checkName: "expected-check", count: 2 }], emptyShouldNotFlag(), ["expected-check"])

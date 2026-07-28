@@ -12,7 +12,8 @@ import {
 import {
   auditUrl,
   type AuditUrlOptions,
-  type AuditUrlResult
+  type AuditUrlResult,
+  type MorphologyCopyAnalyzer
 } from "@design-harness/visual-audit";
 import {
   runAgentCommand,
@@ -52,6 +53,7 @@ export interface LoopRunInput {
   agentTimeoutMs: number;
   timeoutMs?: number;
   copyStyle?: CopyStyle;
+  morphologyCopyAnalyzer?: MorphologyCopyAnalyzer;
   fontFamilyPolicy?: FontFamilyAdherencePolicy;
   colorPolicy?: ColorAdherencePolicy;
   spacingPolicy?: SpacingAdherencePolicy;
@@ -211,6 +213,9 @@ export async function runLoop(
       runId,
       ...(input.timeoutMs === undefined ? {} : { timeoutMs: input.timeoutMs }),
       ...(input.copyStyle === undefined ? {} : { copyStyle: input.copyStyle }),
+      ...(input.morphologyCopyAnalyzer === undefined
+        ? {}
+        : { morphologyCopyAnalyzer: input.morphologyCopyAnalyzer }),
       ...(input.fontFamilyPolicy === undefined ? {} : { fontFamilyPolicy: input.fontFamilyPolicy }),
       ...(input.colorPolicy === undefined ? {} : { colorPolicy: input.colorPolicy }),
       ...(input.spacingPolicy === undefined ? {} : { spacingPolicy: input.spacingPolicy }),

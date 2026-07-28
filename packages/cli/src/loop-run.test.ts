@@ -216,6 +216,10 @@ describe("runLoop", () => {
 
   it("passes audit configuration and explicit derived run ids to every audit", async () => {
     const copyStyle = { schemaVersion: "0.2", locale: "ko-KR" } as const;
+    const morphologyCopyAnalyzer = async () => ({
+      findings: [],
+      notices: []
+    });
     const fontFamilyPolicy = {
       policyId: "font-family-adherence-v1" as const,
       allowedFamilies: [{ value: "Inter", kind: "named" as const }],
@@ -264,6 +268,7 @@ describe("runLoop", () => {
       loopInput({
         timeoutMs: 5_000,
         copyStyle,
+        morphologyCopyAnalyzer,
         fontFamilyPolicy,
         colorPolicy,
         spacingPolicy,
@@ -279,6 +284,7 @@ describe("runLoop", () => {
         runId: "loop-test-baseline",
         timeoutMs: 5_000,
         copyStyle,
+        morphologyCopyAnalyzer,
         fontFamilyPolicy,
         colorPolicy,
         spacingPolicy,
@@ -290,6 +296,7 @@ describe("runLoop", () => {
         runId: "loop-test-001",
         timeoutMs: 5_000,
         copyStyle,
+        morphologyCopyAnalyzer,
         fontFamilyPolicy,
         colorPolicy,
         spacingPolicy,

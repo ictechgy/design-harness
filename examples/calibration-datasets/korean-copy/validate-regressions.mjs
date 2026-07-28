@@ -62,7 +62,7 @@ try {
 
   const incompletePartition = structuredClone(records);
   incompletePartition[0].shouldNotFlag.registeredCheckNames.pop();
-  expectFailure("incomplete-partition", incompletePartition, "banned-phrase must be expected or registered under shouldNotFlag");
+  expectFailure("incomplete-partition", incompletePartition, "josa-batchim-mismatch must be expected or registered under shouldNotFlag");
 
   const declaredFuture = structuredClone(records);
   declaredFuture[0].shouldNotFlag.futureCriteria.push({

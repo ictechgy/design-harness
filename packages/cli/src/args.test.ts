@@ -24,6 +24,7 @@ describe("parseArgs", () => {
       outDir: "runs/demo",
       guidePath: undefined,
       copyStylePath: undefined,
+      kiwiModelDir: undefined,
       timeoutMs: undefined,
       allowPartial: false
     });
@@ -41,6 +42,33 @@ describe("parseArgs", () => {
     ])).toMatchObject({
       command: "audit",
       copyStylePath: "configs/copy-style.yaml"
+    });
+  });
+
+  it("parses an explicit Kiwi model directory for audit and loop", () => {
+    expect(parseArgs([
+      "audit",
+      "--url",
+      "http://localhost:3000",
+      "--out",
+      "runs/demo",
+      "--copy",
+      "configs/copy-style.yaml",
+      "--kiwi-model-dir",
+      "models/kiwi"
+    ])).toMatchObject({
+      command: "audit",
+      kiwiModelDir: "models/kiwi"
+    });
+    expect(parseArgs([
+      ...validLoopArgv,
+      "--copy",
+      "configs/copy-style.yaml",
+      "--kiwi-model-dir",
+      "models/kiwi"
+    ])).toMatchObject({
+      command: "loop",
+      kiwiModelDir: "models/kiwi"
     });
   });
 
@@ -77,6 +105,7 @@ describe("parseArgs", () => {
       agentTimeoutMs: 300_000,
       guidePath: undefined,
       copyStylePath: undefined,
+      kiwiModelDir: undefined,
       timeoutMs: undefined
     });
   });
@@ -230,7 +259,7 @@ describe("parseArgs", () => {
     ])).toThrow("Unknown option: --cop");
   });
 
-  it.each(["--url", "--out", "--timeout-ms", "--guide", "--copy"])("rejects duplicate value option %s", (option) => {
+  it.each(["--url", "--out", "--timeout-ms", "--guide", "--copy", "--kiwi-model-dir"])("rejects duplicate value option %s", (option) => {
     const argv = [
       "audit",
       "--url",
@@ -240,7 +269,7 @@ describe("parseArgs", () => {
     ];
     if (option === "--timeout-ms") {
       argv.push(option, "1000", option, "2000");
-    } else if (option === "--copy" || option === "--guide") {
+    } else if (option === "--copy" || option === "--guide" || option === "--kiwi-model-dir") {
       argv.push(option, "first.yaml", option, "second.yaml");
     } else {
       argv.push(option, option === "--url" ? "http://localhost:4000" : "duplicate");
@@ -413,6 +442,7 @@ describe("helpText", () => {
     expect(helpText()).toContain("Audit targets must be local http(s) URLs");
     expect(helpText()).toContain("--guide <design-guide.yaml>");
     expect(helpText()).toContain("--copy <copy-style.yaml>");
+    expect(helpText()).toContain("--kiwi-model-dir");
     expect(helpText()).toContain("opt-in");
     expect(helpText()).not.toContain("v0.3");
   });
@@ -443,6 +473,8 @@ describe("helpText", () => {
   it("renders audit-scoped guide help without implying discovery", () => {
     expect(helpText("audit")).toContain("--guide <design-guide.yaml>");
     expect(helpText("audit")).toContain("no auto-discovery");
+    expect(helpText("audit")).toContain("no model is downloaded");
+    expect(helpText("audit")).toContain("792 MiB");
   });
 });
 

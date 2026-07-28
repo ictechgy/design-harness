@@ -15,8 +15,11 @@ import {
 import {
   BrowserUnavailableError,
   auditUrl,
+  prepareKiwiMorphologyAnalyzer,
   type AuditUrlOptions,
-  type AuditUrlResult
+  type AuditUrlResult,
+  type MorphologyCopyAnalyzer,
+  type PrepareKiwiMorphologyAnalyzerOptions
 } from "@design-harness/visual-audit";
 import {
   helpText,
@@ -45,6 +48,10 @@ export interface RunCliDependencies {
   audit?: (options: AuditUrlOptions) => Promise<AuditUrlResult>;
   loadDesignGuide?: (path: string, options?: LoadDesignGuideOptions) => Promise<DesignGuide>;
   loadCopyStyle?: (path: string, options?: LoadCopyStyleOptions) => Promise<CopyStyle>;
+  prepareKiwiMorphology?: (
+    modelDir: string,
+    options?: PrepareKiwiMorphologyAnalyzerOptions
+  ) => Promise<MorphologyCopyAnalyzer>;
   runGuide?: (args: GuideCommandArgs, dependencies?: GuideRunDependencies) => Promise<GuideRunResult>;
   runLoop?: (input: LoopRunInput, dependencies?: LoopRunDependencies) => Promise<LoopRunResult>;
   writeArtifacts?: (input: WriteAuditArtifactsInput) => Promise<void>;
@@ -101,6 +108,9 @@ export async function runCli(argv: string[], dependencies: RunCliDependencies = 
       if (prepared.copyStyle) {
         loopInput.copyStyle = prepared.copyStyle;
       }
+      if (prepared.morphologyCopyAnalyzer) {
+        loopInput.morphologyCopyAnalyzer = prepared.morphologyCopyAnalyzer;
+      }
       if (prepared.fontFamilyPolicy) {
         loopInput.fontFamilyPolicy = prepared.fontFamilyPolicy;
       }
@@ -152,6 +162,9 @@ export async function runCli(argv: string[], dependencies: RunCliDependencies = 
     if (prepared.copyStyle) {
       auditOptions.copyStyle = prepared.copyStyle;
     }
+    if (prepared.morphologyCopyAnalyzer) {
+      auditOptions.morphologyCopyAnalyzer = prepared.morphologyCopyAnalyzer;
+    }
     if (prepared.fontFamilyPolicy) {
       auditOptions.fontFamilyPolicy = prepared.fontFamilyPolicy;
     }
@@ -199,6 +212,7 @@ interface PreparedAuditConfiguration {
   url: string;
   invocationCwd?: string;
   copyStyle?: CopyStyle;
+  morphologyCopyAnalyzer?: MorphologyCopyAnalyzer;
   fontFamilyPolicy?: FontFamilyAdherencePolicy;
   colorPolicy?: ColorAdherencePolicy;
   spacingPolicy?: SpacingAdherencePolicy;
@@ -212,7 +226,8 @@ async function prepareAuditConfiguration(
   dependencies: RunCliDependencies
 ): Promise<PreparedAuditConfiguration> {
   const url = (dependencies.assertUrl ?? assertLocalHttpUrl)(args.url);
-  const needsInvocationCwd = args.command === "loop" || Boolean(args.guidePath || args.copyStylePath);
+  const needsInvocationCwd = args.command === "loop"
+    || Boolean(args.guidePath || args.copyStylePath || args.kiwiModelDir);
   const invocationCwd = needsInvocationCwd
     ? (dependencies.cwd ?? process.cwd)()
     : undefined;
@@ -234,10 +249,28 @@ async function prepareAuditConfiguration(
   const copyStyle = args.copyStylePath
     ? await (dependencies.loadCopyStyle ?? loadCopyStyleFile)(args.copyStylePath, { cwd: invocationCwd })
     : undefined;
+  if (args.kiwiModelDir && !copyStyle) {
+    throw new Error("--kiwi-model-dir requires --copy.");
+  }
+  if (
+    args.kiwiModelDir
+    && copyStyle
+    && copyStyle.locale !== "ko"
+    && copyStyle.locale !== "ko-KR"
+  ) {
+    throw new Error("--kiwi-model-dir requires a --copy file whose locale is ko or ko-KR.");
+  }
+  const morphologyCopyAnalyzer = args.kiwiModelDir
+    ? await (dependencies.prepareKiwiMorphology ?? prepareKiwiMorphologyAnalyzer)(
+        args.kiwiModelDir,
+        { cwd: invocationCwd }
+      )
+    : undefined;
   return {
     url,
     invocationCwd,
     copyStyle,
+    morphologyCopyAnalyzer,
     fontFamilyPolicy,
     colorPolicy,
     spacingPolicy,
