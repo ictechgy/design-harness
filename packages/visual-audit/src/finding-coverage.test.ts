@@ -76,7 +76,7 @@ describe("finding coverage integrity", () => {
   });
 
   it("keeps font-family and unreachable aggregate checks outside the exact inventory", () => {
-    expect(FINDING_COVERAGE_CHECK_NAMES).toHaveLength(20);
+    expect(FINDING_COVERAGE_CHECK_NAMES).toHaveLength(21);
     expect(FINDING_COVERAGE_CHECK_NAMES).not.toContain("unapproved-font-family");
     expect(FINDING_COVERAGE_CHECK_NAMES).not.toContain("repeated-visual-weight-risk");
     expect(FINDING_COVERAGE_CHECK_NAMES).not.toContain("saturated-color-noise-risk");

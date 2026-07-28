@@ -554,6 +554,8 @@ export async function collectViewportMeasurements(page: {
     const stickyObstructionRisks = stickyObstructionRiskCollection.samples;
     const excessiveLineLengthCollection = collectExcessiveLineLength(textElements);
     const excessiveLineLength = excessiveLineLengthCollection.samples;
+    const koreanLineBreakRiskCollection = collectKoreanLineBreakRisks(textElements);
+    const koreanLineBreakRisks = koreanLineBreakRiskCollection.samples;
     const tapTargetCandidates = collectTapTargetCandidates(interactiveElements);
     const formErrorAssociationRiskCollection = collectFormErrorAssociationRisks(formControls);
     const formErrorAssociationRisks = formErrorAssociationRiskCollection.samples;
@@ -646,6 +648,11 @@ export async function collectViewportMeasurements(page: {
         materializedSampleCount(excessiveLineLength)
       ),
       findingCoverageEntry(
+        "korean-line-break-risk",
+        koreanLineBreakRiskCollection.detectedCount,
+        materializedSampleCount(koreanLineBreakRisks)
+      ),
+      findingCoverageEntry(
         "form-error-association-risk",
         formErrorAssociationRiskCollection.detectedCount,
         materializedSampleCount(formErrorAssociationRisks)
@@ -706,6 +713,7 @@ export async function collectViewportMeasurements(page: {
       fixedWidthRisks,
       stickyObstructionRisks,
       excessiveLineLength,
+      koreanLineBreakRisks,
       tapTargetRisks: [],
       formErrorAssociationRisks,
       colorOnlyStateRisks,
@@ -3210,6 +3218,55 @@ export async function collectViewportMeasurements(page: {
           .map(({ element, estimatedCharactersPerLine }) => ({
             ...sampleElement(element),
             estimatedCharactersPerLine
+          }))
+      };
+    }
+
+    function hangulCharacterShare(text: string): number {
+      let hangulCount = 0;
+      let totalCount = 0;
+      for (const character of text) {
+        if (/\s/.test(character)) {
+          continue;
+        }
+        totalCount += 1;
+        // Hangul Jamo and Hangul Syllables only. The broader CJK ranges are
+        // deliberately excluded: Chinese and Japanese break between characters by
+        // convention, so break-all is not a defect for them.
+        if (/[ᄀ-ᇿ가-힯]/.test(character)) {
+          hangulCount += 1;
+        }
+      }
+      return totalCount === 0 ? 0 : hangulCount / totalCount;
+    }
+
+    // Korean words are written without spaces inside an eojeol, so `word-break: break-all`
+    // moves the break opportunity to every syllable and splits words mid-word. `keep-all`
+    // is the property value CSS Text 3 provides for this. Only break-all is reported:
+    // merely omitting keep-all is the browser default on essentially every Korean page,
+    // so flagging it would be noise rather than a defect.
+    function collectKoreanLineBreakRisks(elements: HTMLElement[]) {
+      const matches = elements
+        .filter(isReadableTextMeasureCandidate)
+        .map((element) => {
+          const style = window.getComputedStyle(element);
+          const text = element.innerText.trim();
+          return { element, text, wordBreak: style.wordBreak };
+        })
+        .filter(({ text, wordBreak }) => (
+          wordBreak === "break-all"
+          // Enough text that a line break is actually reachable; a short label
+          // rarely wraps, so break-all on it is inert.
+          && text.length >= 20
+          && hangulCharacterShare(text) > 0.5
+        ));
+      return {
+        detectedCount: matches.length,
+        samples: matches
+          .slice(0, MAX_BROWSER_FINDING_SAMPLES)
+          .map(({ element, wordBreak }) => ({
+            ...sampleElement(element),
+            wordBreak
           }))
       };
     }

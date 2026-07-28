@@ -73,7 +73,7 @@ Criterion in `packages/core/src/criteria.ts` (with `CRITERION_SOURCES` entry) �
 | `page-lang-missing` | deterministic **failure** | WCAG 3.1.1; `lang` mismatch is deterministic ONLY against an explicit declaration (`--locale` / config), never via language inference |
 | Rendered josa hedge "을(를)"/"이(가)" | deterministic **risk** | pure regex, no parser; also a deliberate Korean form convention — never failure; configurable via `josaHedgePolicy` |
 | `josa-batchim-mismatch` | **heuristic** risk | Kiwi-parser-dependent segmentation → heuristic (rule 1 corollary below). Deterministic risk allowed ONLY for the parser-free subset: Hangul-final token + particle provable from raw text. SKIP digit/Latin/symbol-final tokens; require `J*` POS confirmation |
-| Korean line-break (`break-all` / missing `keep-all`) | deterministic **risk** | computed-style |
+| Korean line-break (`break-all`) | deterministic **risk** | computed-style; `korean-line-break-risk` ships the `break-all` half only. Merely omitting `keep-all` is the browser default on nearly every Korean page, so flagging it would be noise — reopen as a separate opt-in decision, not as part of this check |
 | Glossary/terminology (typed term tiers: approved/banned/use-carefully) | deterministic **risk** | only when a project glossary is configured |
 | Register mixing (해요체/합쇼체/반말 via Kiwi EF tags) | heuristic | only against a configured per-surface register map; `noun-form` is a valid target for labels/fragments, which the EF-based mixing detector excludes |
 | Object honorifics (사물존칭) | **LLM judge only** (v0.7 unscheduled, needs-review, score-exempt) | re-tiered 2026-07-07: no dataset or detector exists; NIKL calls the 간접존대 boundary undefined; no rule check in copy-audit v1 |

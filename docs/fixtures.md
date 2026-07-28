@@ -19,6 +19,8 @@ They are intentionally small, framework-free HTML pages used to calibrate determ
 - `midjourney-derived/scanability-bad.html`: hand-authored dense-dashboard scanability stress fixture for responsive/readability risks.
 - `korean-line-length-good.html`: Korean long-form text at a comfortable CJK measure (~40 chars/line); calibrates the CJK-aware line-length estimate against false positives.
 - `korean-line-length-bad.html`: unconstrained full-width Korean paragraph; expects exactly one desktop `excessive-line-length` finding.
+- `korean-line-break-good.html`: Korean body copy with `word-break: keep-all` plus `overflow-wrap: break-word`; must stay silent.
+- `korean-line-break-bad.html`: the same copy with `word-break: break-all`; expects one `korean-line-break-risk` per Korean paragraph per viewport.
 - `korean-status-good.html`: Korean "저장 중..." status with `role="status"`; must stay silent.
 - `korean-status-bad.html`: Korean status text without live-region semantics; expects `status-live-region-risk` per viewport.
 - `korean/copy-good.html`: synthetic improved Korean copy; expects zero parser-free copy findings under `josaHedgePolicy: allow`; its rendered `을(를)` line is the allow-policy control.

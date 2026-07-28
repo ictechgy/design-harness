@@ -26,6 +26,7 @@ export const FINDING_COVERAGE_CHECK_NAMES = [
   "fixed-width-risk",
   "sticky-obstruction-risk",
   "excessive-line-length",
+  "korean-line-break-risk",
   "form-error-association-risk",
   "color-only-state-risk",
   "disabled-without-explanation",

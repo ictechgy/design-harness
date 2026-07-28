@@ -36,6 +36,7 @@ const baseMeasurements: ViewportMeasurements = {
   fixedWidthRisks: [],
   stickyObstructionRisks: [],
   excessiveLineLength: [],
+  koreanLineBreakRisks: [],
   tapTargetRisks: [],
   formErrorAssociationRisks: [],
   colorOnlyStateRisks: [],
@@ -545,6 +546,44 @@ describe("findingsFromMeasurements", () => {
       determinism: "deterministic",
       resultKind: "risk"
     });
+  });
+
+  it("reports Korean text that breaks inside words, at deterministic risk", () => {
+    const findings = findingsFromMeasurements(
+      {
+        ...baseMeasurements,
+        koreanLineBreakRisks: [{
+          selector: "main > p",
+          wordBreak: "break-all",
+          region: { x: 0, y: 0, width: 544, height: 96 }
+        }]
+      },
+      ["screenshot-desktop", "measurement-desktop"]
+    );
+
+    const finding = findings.find((entry) => entry.checkName === "korean-line-break-risk");
+    expect(finding).toMatchObject({
+      category: "content",
+      criterionId: "content.korean-line-break.word-break",
+      determinism: "deterministic",
+      resultKind: "risk",
+      confidence: "high",
+      severity: "medium",
+      selector: "main > p",
+      observed: { wordBreak: "break-all" }
+    });
+    // The remediation has to name keep-all, otherwise the finding states a problem
+    // without the one property value that resolves it.
+    expect(finding?.recommendation).toContain("keep-all");
+  });
+
+  it("stays silent when no Korean block computes character-level breaking", () => {
+    const findings = findingsFromMeasurements(
+      { ...baseMeasurements, koreanLineBreakRisks: [] },
+      ["screenshot-desktop", "measurement-desktop"]
+    );
+
+    expect(findings.some((entry) => entry.checkName === "korean-line-break-risk")).toBe(false);
   });
 
   it("emits reference-derived hierarchy review prompts for repeated visual weight", () => {

@@ -3,6 +3,7 @@ import { createReadStream, existsSync, readFileSync, rmSync, statSync } from "no
 import { createServer } from "node:http";
 import { extname, join, normalize, resolve, sep } from "node:path";
 import { parserFreeCopyCheckNames } from "./copy-calibration-config.mjs";
+import { FINDING_COVERAGE_CHECK_NAMES } from "../packages/visual-audit/dist/finding-coverage.js";
 
 const root = resolve("examples");
 const outRoot = resolve("runs/example-smoke");
@@ -854,8 +855,11 @@ function assertFindingCoverageOverLimit(auditResult) {
     if (coverage?.viewport !== viewport || !Array.isArray(coverage.entries)) {
       throw new Error(`${label} ${viewport} has no matching findingCoverage { viewport, entries } block`);
     }
-    if (coverage.entries.length !== 20) {
-      throw new Error(`${label} ${viewport} findingCoverage has ${coverage.entries.length} entries, expected 20`);
+    if (coverage.entries.length !== FINDING_COVERAGE_CHECK_NAMES.length) {
+      throw new Error(
+        `${label} ${viewport} findingCoverage has ${coverage.entries.length} entries, `
+        + `expected ${FINDING_COVERAGE_CHECK_NAMES.length}`
+      );
     }
     const distinctCheckNames = new Set(coverage.entries.map((entry) => entry.checkName));
     if (distinctCheckNames.size !== coverage.entries.length) {

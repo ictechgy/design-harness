@@ -93,6 +93,13 @@ export const CRITERION_SOURCES: CriterionSource[] = [
     note: "Used for language-agnostic double-brace variable syntax."
   },
   {
+    id: "css-text-3",
+    title: "CSS Text Module Level 3",
+    url: "https://www.w3.org/TR/css-text-3/#word-break-property",
+    strength: "official-pattern",
+    note: "Defines word-break, including keep-all for CJK. The spec states the property values and their effect on soft wrap opportunities; it does not declare a conformance failure for any particular language, so criteria citing it stay at deterministic risk."
+  },
+  {
     id: "copy-style-contract",
     title: "Design Harness copy style contract",
     url: "packages/core/schemas/copy-style.schema.json",
@@ -594,6 +601,20 @@ export const CRITERIA: Criterion[] = [
     runtime: "static-dom",
     checkNames: ["josa-hedge"],
     remediationHint: "Resolve the rendered particle for the final noun, or set the project policy to allow deliberate hedge forms."
+  },
+  {
+    id: "content.korean-line-break.word-break",
+    category: "content",
+    title: "Korean text does not use character-level line breaking",
+    description: "Blocks of majority-Hangul text should not compute word-break: break-all, which breaks Korean words at arbitrary characters instead of at word boundaries.",
+    sourceRefs: ["css-text-3"],
+    sourceStrength: "official-pattern",
+    determinism: "deterministic",
+    resultKind: "risk",
+    confidenceDefault: "high",
+    runtime: "computed-style",
+    checkNames: ["korean-line-break-risk"],
+    remediationHint: "Use word-break: keep-all for Korean text, and rely on overflow-wrap: break-word for the rare unbreakable string."
   },
   {
     id: "content.glossary.banned-term",

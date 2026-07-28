@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>한국어 줄바꿈 결함 픽스처</title>
+  <style>
+    body { margin: 0; background: #ffffff; color: #1a1a1a; font: 16px/1.7 sans-serif; }
+    main { max-width: 34rem; margin: 2rem auto; padding: 0 1rem; }
+    /* 결함: 한국어 본문에 문자 단위 줄바꿈을 적용해 어절 중간에서 줄이 끊긴다. */
+    p { word-break: break-all; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>정산 내역 안내</h1>
+    <p>이번 달 정산 금액은 영업일 기준 사흘 안에 등록하신 계좌로 입금됩니다. 입금이 지연되면 고객센터로 문의해 주세요.</p>
+    <p>세금계산서는 정산이 완료된 다음 날 발행되며, 발행 내역은 정산 상세 화면에서 언제든지 다시 확인하실 수 있습니다.</p>
+  </main>
+</body>
+</html>

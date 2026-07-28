@@ -84,6 +84,10 @@ export interface LineLengthSample extends ElementSample {
   estimatedCharactersPerLine: number;
 }
 
+export interface KoreanLineBreakSample extends ElementSample {
+  wordBreak: string;
+}
+
 export interface TextInventoryItem {
   selector: string;
   text: string;
@@ -153,6 +157,7 @@ export interface ViewportMeasurements {
   fixedWidthRisks: ElementSample[];
   stickyObstructionRisks: ElementSample[];
   excessiveLineLength: LineLengthSample[];
+  koreanLineBreakRisks: KoreanLineBreakSample[];
   tapTargetRisks: ElementSample[];
   formErrorAssociationRisks: ElementSample[];
   colorOnlyStateRisks: ElementSample[];
@@ -752,6 +757,27 @@ export function findingsFromMeasurements(
         region: sample.region
       },
       expected: "Reading-heavy text stays within a comfortable line length."
+    }));
+  }
+
+  for (const [index, sample] of measurements.koreanLineBreakRisks.slice(0, 5).entries()) {
+    findings.push(createFinding({
+      id: `finding-${measurements.viewport}-korean-line-break-risk-${index + 1}`,
+      category: "content",
+      severity: "medium",
+      confidence: "high",
+      viewport: measurements.viewport,
+      selector: sample.selector,
+      region: sample.region,
+      evidenceRefs,
+      problem: `Korean text in ${sample.selector} computes word-break: ${sample.wordBreak}, so lines break inside words instead of between them.`,
+      recommendation: "Set word-break: keep-all for Korean text, and add overflow-wrap: break-word only where an unbreakable string must still fit.",
+      checkName: "korean-line-break-risk",
+      observed: {
+        wordBreak: sample.wordBreak,
+        region: sample.region
+      },
+      expected: "Korean text breaks at word boundaries."
     }));
   }
 

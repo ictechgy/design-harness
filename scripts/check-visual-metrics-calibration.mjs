@@ -1229,7 +1229,8 @@ async function main() {
   }
   console.log(
     "Visual metrics calibration validation passed "
-    + "(7 exact cases, 3 closed pairs, 48 unrelated fixtures)."
+    + `(${inputs.manifest?.cases?.length ?? 0} exact cases, ${inputs.manifest?.pairs?.length ?? 0} closed pairs, `
+    + `${inputs.manifest?.corpus?.entries?.length ?? 0} unrelated fixtures).`
   );
 }
 
