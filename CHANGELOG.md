@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- Fixed `off-scale-spacing` reporting the standard screen-reader-only idiom. Accessible
+  markup hides text from sight with a 1x1 px box pushed aside by `margin: -1px` (Tailwind
+  ships it as `sr-only`); those margins are not a spacing-scale decision. A box no larger
+  than 1x1 CSS px now skips spacing evaluation with the disclosed reason
+  `visually-hidden-box`. Measured on two real pages: 12 of 20 off-scale findings were this
+  one idiom, and because findings are capped at five groups per viewport the noise had
+  also been crowding out seven genuine violations, which now surface.
+- Added `pnpm smoke:spacing-skip`, a live gate proving the screen-reader-only idiom is
+  skipped and disclosed while genuine off-scale values are still reported.
+
 ## 0.6.2 - 2026-07-27
 
 - Added `off-palette-color`: rendered computed text, background, and painted border colors compared with the guide's semantic sRGB tokens after exact RGBA8 normalization, with a selector-only `audit.color.ignoreSelectors` overlay and explicit candidate/evaluated/ignored/skipped/violation counts.
