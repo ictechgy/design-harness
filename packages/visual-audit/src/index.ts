@@ -11,6 +11,7 @@ export {
   KIWI_MORPHOLOGY_INPUT_LIMITS,
   KIWI_NLP_VERSION,
   KiwiModelVerificationError,
+  isKiwiModelIntegrityError,
   prepareKiwiMorphologyAnalyzer,
   verifyKiwiModelDirectory
 } from "@design-harness/copy-audit";

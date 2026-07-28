@@ -19,6 +19,7 @@ const DENYLIST = ["hanspell", "py-hanspell", "hanspell-cli", "pusan-speller", "n
 const KIWI_VERSION = "0.23.0";
 const KIWI_MANIFEST = "packages/copy-audit/package.json";
 const KIWI_LOADER = "packages/copy-audit/src/kiwi-worker.ts";
+const kiwiLoaderSource = readFileSync(resolve(root, KIWI_LOADER), "utf8");
 
 const manifestPaths = ["package.json"];
 for (const dir of readdirSync(resolve(root, "packages"))) {
@@ -82,6 +83,13 @@ for (const sourceRoot of sourceRoots) {
       failures.push(`${relativeFile}: static kiwi-nlp imports are forbidden.`);
     }
   }
+}
+
+if (!/reverifyAndReadPreparedKiwiModelFiles/u.test(kiwiLoaderSource)) {
+  failures.push(`${KIWI_LOADER}: Kiwi initialization must consume bytes returned by same-handle profile re-verification.`);
+}
+if (/(?:readFile|createReadStream)\s*\(/u.test(kiwiLoaderSource)) {
+  failures.push(`${KIWI_LOADER}: model files must not be re-read after verified bytes are returned.`);
 }
 
 for (const scanRoot of ["packages", "examples", "docs"]) {

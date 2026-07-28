@@ -14,6 +14,7 @@ export {
   KIWI_MODEL_VERSION,
   KIWI_NLP_VERSION,
   KiwiModelVerificationError,
+  isKiwiModelIntegrityError,
   reverifyPreparedKiwiModelProfile,
   verifyKiwiModelDirectory
 } from "./kiwi-model.js";

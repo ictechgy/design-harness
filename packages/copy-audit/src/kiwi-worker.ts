@@ -1,9 +1,8 @@
-import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { parentPort } from "node:worker_threads";
 
 import {
-  reverifyPreparedKiwiModelProfile,
+  reverifyAndReadPreparedKiwiModelFiles,
   type PreparedKiwiModelProfile
 } from "./kiwi-model.js";
 import type {
@@ -45,14 +44,10 @@ async function analyze(request: AnalyzeRequest): Promise<AnalyzeSuccess> {
   if (request.type !== "analyze") {
     throw new Error("invalid-request");
   }
-  const profile = await reverifyPreparedKiwiModelProfile(request.profile);
+  const modelFiles = await loadVerifiedModelFiles(request.profile);
   const kiwiModule = await import("kiwi-nlp");
   const kiwiEntry = import.meta.resolve("kiwi-nlp");
   const wasmPath = fileURLToPath(new URL("./kiwi-wasm.wasm", kiwiEntry));
-  const modelFiles: Record<string, Uint8Array> = {};
-  for (const file of profile.files) {
-    modelFiles[file.name] = await readFile(file.path);
-  }
   const builder = await kiwiModule.KiwiBuilder.create(wasmPath);
   const kiwi = await builder.build({
     modelFiles,
@@ -75,6 +70,21 @@ async function analyze(request: AnalyzeRequest): Promise<AnalyzeSuccess> {
     }
   }
   return { type: "result", analyses };
+}
+
+async function loadVerifiedModelFiles(
+  profile: PreparedKiwiModelProfile
+): Promise<Readonly<Record<string, Uint8Array>>> {
+  try {
+    return await reverifyAndReadPreparedKiwiModelFiles(profile);
+  } catch (error) {
+    const code = workerErrorCode(error);
+    throw Object.assign(new Error("Kiwi model profile re-verification failed."), {
+      code: code === "kiwi-worker-failed"
+        ? "model-profile-reverification-failed"
+        : code
+    });
+  }
 }
 
 function projectToken(token: {

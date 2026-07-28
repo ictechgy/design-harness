@@ -353,7 +353,7 @@ function loopHelpText(): string {
     "  The command inherits the caller environment, which may expose credentials.",
     "  No sandbox or network boundary is provided.",
     "  --kiwi-model-dir requires a Korean --copy file and an exact locally prepared Kiwi v0.23.0 core profile; no model is downloaded.",
-    "  Kiwi runs after Chromium closes. A macOS Node 22 probe reached about 726 MiB RSS after model initialization; measure the target environment.",
+    "  Kiwi runs after Chromium closes. A macOS Node 22 probe reached about 792 MiB RSS after same-handle model verification and initialization; measure the target environment.",
     "  Audit targets must be local http(s) URLs. Partial audits stop the loop with exit 2; --allow-partial is not supported."
   ].join("\n");
 }
@@ -370,7 +370,7 @@ function auditHelpText(): string {
     "  Font-family adherence is opt-in, reads only the explicit local --guide file, and performs no auto-discovery.",
     "  Copy analysis is opt-in and reads only the explicit local --copy file.",
     "  --kiwi-model-dir requires locale ko or ko-KR and an exact locally prepared Kiwi v0.23.0 core profile; no model is downloaded.",
-    "  Kiwi runs after Chromium closes. A macOS Node 22 probe reached about 726 MiB RSS after model initialization; measure the target environment.",
+    "  Kiwi runs after Chromium closes. A macOS Node 22 probe reached about 792 MiB RSS after same-handle model verification and initialization; measure the target environment.",
     "  Partial audits write artifacts and exit 2 unless --allow-partial is set."
   ].join("\n");
 }

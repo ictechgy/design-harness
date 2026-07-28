@@ -85,10 +85,54 @@ export class KiwiModelVerificationError extends Error {
   }
 }
 
+export function isKiwiModelIntegrityError(error: unknown): boolean {
+  const code = (error as { code?: unknown })?.code;
+  return typeof code === "string" && (
+    code.startsWith("model-")
+    || code === "invalid-model-contract"
+    || code === "invalid-model-directory"
+  );
+}
+
 export async function verifyKiwiModelDirectory(
   modelDir: string,
   options: VerifyKiwiModelDirectoryOptions = {}
 ): Promise<PreparedKiwiModelProfile> {
+  return (await inspectKiwiModelDirectory(modelDir, options, false)).profile;
+}
+
+export async function reverifyPreparedKiwiModelProfile(
+  prepared: PreparedKiwiModelProfile,
+  contract: KiwiModelContract = KIWI_MODEL_CONTRACT
+): Promise<PreparedKiwiModelProfile> {
+  const verified = await verifyKiwiModelDirectory(prepared.rootDir, { contract });
+  assertPreparedProfileMatches(prepared, verified);
+  return verified;
+}
+
+export async function reverifyAndReadPreparedKiwiModelFiles(
+  prepared: PreparedKiwiModelProfile,
+  contract: KiwiModelContract = KIWI_MODEL_CONTRACT
+): Promise<Readonly<Record<string, Uint8Array>>> {
+  const loaded = await inspectKiwiModelDirectory(
+    prepared.rootDir,
+    { contract },
+    true
+  );
+  assertPreparedProfileMatches(prepared, loaded.profile);
+  return loaded.modelFiles;
+}
+
+interface InspectedKiwiModelDirectory {
+  readonly profile: PreparedKiwiModelProfile;
+  readonly modelFiles: Readonly<Record<string, Uint8Array>>;
+}
+
+async function inspectKiwiModelDirectory(
+  modelDir: string,
+  options: VerifyKiwiModelDirectoryOptions,
+  retainVerifiedBytes: boolean
+): Promise<InspectedKiwiModelDirectory> {
   if (!modelDir || modelDir.includes("\0")) {
     throw new KiwiModelVerificationError(
       "invalid-model-directory",
@@ -112,6 +156,7 @@ export async function verifyKiwiModelDirectory(
   }
 
   const preparedFiles: PreparedKiwiModelFile[] = [];
+  const modelFiles: Record<string, Uint8Array> = {};
   for (const expected of contract.files) {
     const requestedFile = resolve(rootBefore, expected.name);
     const linkStat = await lstat(requestedFile);
@@ -123,7 +168,14 @@ export async function verifyKiwiModelDirectory(
     }
     const canonicalFile = await realpath(requestedFile);
     assertContained(rootBefore, canonicalFile, expected.name);
-    await verifyFile(canonicalFile, expected);
+    const verifiedBytes = await verifyFile(
+      canonicalFile,
+      expected,
+      retainVerifiedBytes
+    );
+    if (verifiedBytes) {
+      modelFiles[expected.name] = verifiedBytes;
+    }
     preparedFiles.push(Object.freeze({
       ...expected,
       path: canonicalFile
@@ -143,7 +195,7 @@ export async function verifyKiwiModelDirectory(
     );
   }
 
-  return Object.freeze({
+  const profile = Object.freeze({
     rootDir: rootBefore,
     version: contract.version,
     modelType: contract.modelType,
@@ -151,13 +203,16 @@ export async function verifyKiwiModelDirectory(
     totalBytes: contract.files.reduce((sum, file) => sum + file.bytes, 0),
     files: Object.freeze(preparedFiles)
   });
+  return {
+    profile,
+    modelFiles: Object.freeze(modelFiles)
+  };
 }
 
-export async function reverifyPreparedKiwiModelProfile(
+function assertPreparedProfileMatches(
   prepared: PreparedKiwiModelProfile,
-  contract: KiwiModelContract = KIWI_MODEL_CONTRACT
-): Promise<PreparedKiwiModelProfile> {
-  const verified = await verifyKiwiModelDirectory(prepared.rootDir, { contract });
+  verified: PreparedKiwiModelProfile
+): void {
   if (
     verified.version !== prepared.version
     || verified.modelType !== prepared.modelType
@@ -171,7 +226,6 @@ export async function reverifyPreparedKiwiModelProfile(
       "Kiwi model profile changed after CLI preflight."
     );
   }
-  return verified;
 }
 
 function validateContract(contract: KiwiModelContract): void {
@@ -219,7 +273,11 @@ async function canonicalDirectory(path: string): Promise<string> {
   return canonical;
 }
 
-async function verifyFile(path: string, expected: KiwiModelFileContract): Promise<void> {
+async function verifyFile(
+  path: string,
+  expected: KiwiModelFileContract,
+  retainVerifiedBytes: boolean
+): Promise<Uint8Array | undefined> {
   const noFollow = typeof constants.O_NOFOLLOW === "number" ? constants.O_NOFOLLOW : 0;
   let handle;
   try {
@@ -246,8 +304,20 @@ async function verifyFile(path: string, expected: KiwiModelFileContract): Promis
     }
 
     const hash = createHash("sha256");
+    const verifiedBytes = retainVerifiedBytes
+      ? new Uint8Array(expected.bytes)
+      : undefined;
+    let readBytes = 0;
     for await (const chunk of handle.createReadStream({ autoClose: false, start: 0 })) {
+      if (readBytes + chunk.length > expected.bytes) {
+        throw new KiwiModelVerificationError(
+          "model-file-changed",
+          `Kiwi model file ${expected.name} changed while it was being verified.`
+        );
+      }
       hash.update(chunk);
+      verifiedBytes?.set(chunk, readBytes);
+      readBytes += chunk.length;
     }
     const after = await handle.stat({ bigint: true });
     if (
@@ -256,6 +326,7 @@ async function verifyFile(path: string, expected: KiwiModelFileContract): Promis
       || before.size !== after.size
       || before.mtimeNs !== after.mtimeNs
       || before.ctimeNs !== after.ctimeNs
+      || readBytes !== expected.bytes
     ) {
       throw new KiwiModelVerificationError(
         "model-file-changed",
@@ -268,6 +339,7 @@ async function verifyFile(path: string, expected: KiwiModelFileContract): Promis
         `Kiwi model file ${expected.name} has the wrong SHA-256 digest.`
       );
     }
+    return verifiedBytes;
   } finally {
     await handle.close();
   }

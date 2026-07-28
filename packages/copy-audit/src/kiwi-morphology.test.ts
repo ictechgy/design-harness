@@ -68,9 +68,9 @@ describe("prepareKiwiMorphologyAnalyzer", () => {
     });
   });
 
-  it("converts worker errors into one bounded non-failing notice without provenance", async () => {
+  it("converts parser runtime errors into one bounded non-failing notice without provenance", async () => {
     const error = Object.assign(new Error("contains /private/model path"), {
-      code: "model-file-digest-mismatch"
+      code: "kiwi-worker-analysis-failed"
     });
     const analyzer = await prepareKiwiMorphologyAnalyzer("model", {
       contract: CONTRACT,
@@ -87,10 +87,28 @@ describe("prepareKiwiMorphologyAnalyzer", () => {
       message: "Kiwi morphology could not complete; parser-free and visual audit results remain available.",
       details: {
         capability: "kiwi-morphology",
-        reason: "model-file-digest-mismatch"
+        reason: "kiwi-worker-analysis-failed"
       }
     }]);
     expect(JSON.stringify(result)).not.toContain("/private/model");
+  });
+
+  it.each([
+    "model-file-digest-mismatch",
+    "model-profile-reverification-failed",
+    "invalid-model-contract",
+    "invalid-model-directory"
+  ])("fails closed for model integrity code %s", async (code) => {
+    const error = Object.assign(new Error("model integrity failed"), { code });
+    const analyzer = await prepareKiwiMorphologyAnalyzer("model", {
+      contract: CONTRACT,
+      verifyModelDirectory: vi.fn(async () => PROFILE),
+      runWorker: vi.fn(async () => {
+        throw error;
+      })
+    });
+
+    await expect(analyzer(inventory("마을를"))).rejects.toBe(error);
   });
 
   it("skips an over-cap batch without invoking the worker or truncating", async () => {

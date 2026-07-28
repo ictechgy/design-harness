@@ -8,6 +8,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import {
   KIWI_MODEL_CONTRACT,
   KiwiModelVerificationError,
+  reverifyAndReadPreparedKiwiModelFiles,
   reverifyPreparedKiwiModelProfile,
   verifyKiwiModelDirectory,
   type KiwiModelContract
@@ -174,6 +175,18 @@ describe("verifyKiwiModelDirectory", () => {
     const profile = await verifyKiwiModelDirectory(root, { contract: CONTRACT });
     await writeFile(join(root, "model.bin"), "other");
     await expect(reverifyPreparedKiwiModelProfile(profile, CONTRACT))
+      .rejects.toBeInstanceOf(KiwiModelVerificationError);
+  });
+
+  it("binds initialization bytes to the same safe handles used for re-verification", async () => {
+    const root = await fixtureDirectory();
+    const profile = await verifyKiwiModelDirectory(root, { contract: CONTRACT });
+    const modelFiles = await reverifyAndReadPreparedKiwiModelFiles(profile, CONTRACT);
+
+    await writeFile(join(root, "model.bin"), "other");
+
+    expect(new TextDecoder().decode(modelFiles["model.bin"])).toBe("model");
+    await expect(reverifyAndReadPreparedKiwiModelFiles(profile, CONTRACT))
       .rejects.toBeInstanceOf(KiwiModelVerificationError);
   });
 });

@@ -1818,6 +1818,28 @@ describe("auditUrl copy analysis", () => {
     expect(result.auditResult.findings).toHaveLength(5);
   });
 
+  it("fails closed after browser cleanup when explicit model integrity changes", async () => {
+    const browserOptions: FakeBrowserOptions = {
+      measurement: copyMeasurementFor("desktop")
+    };
+    const integrityError = Object.assign(new Error("model changed"), {
+      code: "model-file-digest-mismatch"
+    });
+
+    await expect(auditUrl({
+      url: "http://localhost:3000",
+      outDir: await tempDir(),
+      viewportPresets: [viewport],
+      copyStyle: copyStyle(),
+      morphologyCopyAnalyzer: async () => {
+        throw integrityError;
+      },
+      launchBrowser: async () => fakeBrowser(browserOptions)
+    })).rejects.toBe(integrityError);
+
+    expect(browserOptions.browserCloseCount).toBe(1);
+  });
+
   it("analyzes pre-materialized text inventory against its exact evidence asset", async () => {
     const result = await auditUrl({
       url: "http://localhost:3000",

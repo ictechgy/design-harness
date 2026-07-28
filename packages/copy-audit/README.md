@@ -44,9 +44,20 @@ files; names, byte lengths, and SHA-256 digests are fixed:
 | `sj.morph` | 8,462,892 | `5e3dab2def6d2cc079e21d5477bd610a391c69045d08caf1e0bbeabda8db8d1b` |
 
 The package never downloads, discovers, or vendors model files. It re-verifies
-the prepared profile inside one worker, analyzes the complete rendered batch,
-and terminates that worker before returning. Runtime failure produces one
-non-failing notice and no morphology finding or provenance.
+the prepared profile inside one worker and initializes Kiwi only from the bytes
+read and hashed through those same safe file handles. It then analyzes the
+complete rendered batch and terminates that worker before returning. A parser
+runtime failure produces one non-failing notice and no morphology finding or
+provenance. A missing, replaced, or changed explicit model profile fails the
+audit instead of being downgraded to a notice.
+
+Operators obtain the official model themselves from the upstream
+[Kiwi v0.23.0 release](https://github.com/bab2min/Kiwi/releases/tag/v0.23.0).
+The expected archive is `kiwi_model_v0.23.0_base.tgz` (88,069,544 bytes,
+SHA-256 `355a006ab0bd4dec171cdca8e0b0d951e82bd5bc5993265421d8961876f20430`).
+Extract it outside Design Harness, then point the API at a directory containing
+only the five files above. Design Harness does not fetch or redistribute that
+archive.
 
 The initial detector, `josa-batchim-mismatch`, covers only `은/는`, `이/가`,
 `을/를`, and `과/와`. It requires exact raw offsets, a Kiwi `J*` token, one

@@ -33,7 +33,7 @@ design-harness audit \
 
 `--kiwi-model-dir` is accepted only with a copy style whose locale is exactly `ko` or `ko-KR`. The same option is available on `loop` and is prepared once, then forwarded unchanged to every audit iteration. No flag means no Kiwi preparation, loading, worker, finding, notice, or provenance.
 
-The model path is local and offline. Design Harness never downloads or discovers model assets. Before Chromium or output creation, it requires a directory containing exactly five non-symlink regular files from the Kiwi `0.23.0` `cong` core profile:
+The model path is local and offline. Design Harness never downloads or discovers model assets. Operators obtain `kiwi_model_v0.23.0_base.tgz` from the official [Kiwi v0.23.0 release](https://github.com/bab2min/Kiwi/releases/tag/v0.23.0), verify its 88,069,544-byte archive SHA-256 (`355a006ab0bd4dec171cdca8e0b0d951e82bd5bc5993265421d8961876f20430`), extract it outside Design Harness, and provide a directory containing only the five files below. Before Chromium or output creation, the CLI requires that exact non-symlink regular-file profile:
 
 | File | Bytes | SHA-256 |
 |---|---:|---|
@@ -43,11 +43,11 @@ The model path is local and offline. Design Harness never downloads or discovers
 | `nounchr.mdl` | 9,734,234 | `4b687e36836dd60dcb7addcfcf369ac082b339bab76549574ac1ce2b7ccd6836` |
 | `sj.morph` | 8,462,892 | `5e3dab2def6d2cc079e21d5477bd610a391c69045d08caf1e0bbeabda8db8d1b` |
 
-After browser capture closes, one isolated worker re-verifies those files, initializes exact `kiwi-nlp@0.23.0` with the `cong` model and optional dictionaries/typo correction disabled, analyzes the complete rendered-copy batch, and terminates before audit return or the next loop pass. Input sizes and startup, analysis, and shutdown times are bounded. A morphology runtime error emits one non-failing notice, adds no morphology provenance, and never changes an audit to partial.
+After browser capture closes, one isolated worker re-verifies those files and initializes exact `kiwi-nlp@0.23.0` only from the bytes read and hashed through the same safe file handles. With the `cong` model and optional dictionaries/typo correction disabled, it analyzes the complete rendered-copy batch and terminates before audit return or the next loop pass. Input sizes and startup, analysis, and shutdown times are bounded. A parser runtime error emits one non-failing notice, adds no morphology provenance, and never changes an audit to partial. A missing, replaced, or changed explicit model profile fails the audit and makes a loop iteration record `audit-error`.
 
 The initial `josa-batchim-mismatch` detector checks only `은/는`, `이/가`, `을/를`, and `과/와`. It requires exact raw offsets, a Kiwi `J*` token, exactly one adjacent noun interpretation, and a precomposed Hangul final syllable. Ambiguous, digit-, Latin-, symbol-, and non-noun cases are skipped. Findings are low-confidence heuristic risks with human review recommended, never deterministic failures.
 
-Kiwi's model initialization is memory-intensive. A macOS Node 22 probe reached about 726 MiB RSS; measure the actual target environment before enabling it in CI or a long-running service. `kiwi-nlp` is lazy-loaded only for this explicit path and is not part of parser-free execution.
+Kiwi's model verification and initialization are memory-intensive. A macOS Node 22 probe reached about 792 MiB RSS while binding initialization to same-handle verified bytes; measure the actual target environment before enabling it in CI or a long-running service. `kiwi-nlp` is lazy-loaded only for this explicit path and is not part of parser-free execution.
 
 Maintainers can verify an already prepared profile offline, without browser
 capture or asset download, after building the workspace:

@@ -24,6 +24,7 @@ import {
 import {
   analyzeCopy,
   copyAuditCapabilityNotices,
+  isKiwiModelIntegrityError,
   type CopyInventory,
   type KiwiMorphologyProvenance,
   type MorphologyCopyAnalyzer
@@ -530,7 +531,10 @@ export async function auditUrl(options: AuditUrlOptions): Promise<AuditUrlResult
       findings.push(...morphology.findings);
       noticeCandidates.push(...morphology.notices);
       morphologyProvenance = morphology.provenance;
-    } catch {
+    } catch (error) {
+      if (isKiwiModelIntegrityError(error)) {
+        throw error;
+      }
       noticeCandidates.push({
         code: "copy-morphology-unavailable",
         message: "Kiwi morphology could not complete; parser-free and visual audit results remain available.",

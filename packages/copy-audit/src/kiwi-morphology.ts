@@ -12,6 +12,7 @@ import {
 import {
   KIWI_MODEL_CONTRACT,
   KIWI_NLP_VERSION,
+  isKiwiModelIntegrityError,
   type KiwiModelContract,
   type PreparedKiwiModelProfile,
   verifyKiwiModelDirectory
@@ -123,6 +124,9 @@ export async function prepareKiwiMorphologyAnalyzer(
         }
       };
     } catch (error) {
+      if (isKiwiModelIntegrityError(error)) {
+        throw error;
+      }
       return {
         findings: [],
         notices: [runtimeUnavailableNotice(runtimeErrorCode(error))]

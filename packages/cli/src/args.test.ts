@@ -474,7 +474,7 @@ describe("helpText", () => {
     expect(helpText("audit")).toContain("--guide <design-guide.yaml>");
     expect(helpText("audit")).toContain("no auto-discovery");
     expect(helpText("audit")).toContain("no model is downloaded");
-    expect(helpText("audit")).toContain("726 MiB");
+    expect(helpText("audit")).toContain("792 MiB");
   });
 });
 

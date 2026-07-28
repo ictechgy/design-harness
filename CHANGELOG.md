@@ -6,7 +6,9 @@
   audits and bounded loops. Exact `kiwi-nlp@0.23.0` is lazy-loaded in one
   terminated worker only after browser capture, and the local five-file
   `cong` profile is fail-closed verified before browser/output side effects and
-  reverified before initialization; no model assets are downloaded or vendored.
+  reverified before initialization from the exact same-handle bytes; a changed
+  explicit profile fails the audit while parser runtime failures remain
+  notice-only. No model assets are downloaded or vendored.
 - Added `josa-batchim-mismatch` for the four closed particle pairs
   `은/는`, `이/가`, `을/를`, and `과/와`. Exact raw-offset, `J*`, unique-noun,
   and precomposed-Hangul evidence is required; ambiguous and non-Hangul cases
