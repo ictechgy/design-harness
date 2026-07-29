@@ -45,7 +45,7 @@
     "validate:calibration-datasets": "pnpm validate:midjourney-lab && pnpm validate:korean-copy && pnpm validate:korean-register && pnpm check:midjourney-policy && pnpm check:reference-session",
     "validate:midjourney-lab": "node examples/calibration-datasets/midjourney-reference-lab/validate-manifest.mjs examples/calibration-datasets/midjourney-reference-lab/manifest.example.jsonl && node examples/calibration-datasets/midjourney-reference-lab/validate-regressions.mjs",
     "validate:korean-copy": "node examples/calibration-datasets/korean-copy/validate-manifest.mjs && node examples/calibration-datasets/korean-copy/validate-regressions.mjs && node scripts/run-calibration-regressions.mjs",
-    "validate:korean-register": "node scripts/korean-register/validate.mjs && node scripts/korean-register/analyzer-regressions.mjs && node scripts/korean-register/validate-regressions.mjs",
+    "validate:korean-register": "node scripts/korean-register/validate.mjs && node scripts/korean-register/analyzer-regressions.mjs && node scripts/korean-register/publication-regressions.mjs && node scripts/korean-register/validate-regressions.mjs",
     "check:korean-register-policy": "node scripts/check-korean-register-policy.mjs",
     "check:midjourney-policy": "node scripts/check-midjourney-reference-policy.mjs",
     "check:reference-session": "node scripts/reference-session-regressions.mjs",

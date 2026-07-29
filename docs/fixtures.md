@@ -110,10 +110,12 @@ test pairs, so the discrepancy remains explicit. `pnpm
 validate:korean-register` checks the immutable data projection, balanced
 annotation stripping, aggregate-only output, three-run byte repeatability,
 synthetic controls, and fail-closed mutations. An operator may regenerate the
-committed aggregate with `pnpm calibrate:korean-register --model-dir <dir>`
-using the already supported verified offline Kiwi profile. The binary
-`formal`/`informal` labels are not mapped to the four project register labels,
-and the observation is not a detector benchmark.
+candidate aggregate with `pnpm calibrate:korean-register --model-dir <dir>
+--out <fresh-dir>` using the already supported verified offline Kiwi profile.
+The command never overwrites the committed snapshot. Updating that snapshot
+requires an intentional review of the candidate, its pinned digest, and all
+derived records. The binary `formal`/`informal` labels are not mapped to the
+four project register labels, and the observation is not a detector benchmark.
 
 Internal calibration only — NEVER commit fixtures derived from these:
 

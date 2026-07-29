@@ -14,8 +14,10 @@ import { join } from "node:path";
 import {
   DATASET_ROOT,
   OUTPUT_ROOT,
-  canonicalJson
+  canonicalJson,
+  sha256
 } from "./contract.mjs";
+import { renderObservationReadme } from "./output.mjs";
 import {
   validateKoreanRegisterCalibration
 } from "./validate-lib.mjs";
@@ -144,6 +146,45 @@ try {
     "aggregate counts keys must be exactly"
   );
   await expectInvalid(
+    "coherent-aggregate-observation-drift",
+    async ({ output }) => {
+      const aggregate = await readJson(
+        join(output, "aggregate-run-1.json")
+      );
+      aggregate.counts.overallBuckets["single-terminal-ef"] -= 1;
+      aggregate.counts.overallBuckets["multiple-ef"] += 1;
+      aggregate.counts.byLabel.formal.buckets["single-terminal-ef"] -= 1;
+      aggregate.counts.byLabel.formal.buckets["multiple-ef"] += 1;
+      const bytes = canonicalJson(aggregate);
+      const digest = sha256(bytes);
+      for (let run = 1; run <= 3; run += 1) {
+        await writeFile(
+          join(output, `aggregate-run-${run}.json`),
+          bytes
+        );
+      }
+      const repeatability = await readJson(
+        join(output, "repeatability.json")
+      );
+      repeatability.aggregateSha256 = digest;
+      for (const runFile of repeatability.runFiles) {
+        runFile.sha256 = digest;
+      }
+      await writeJson(
+        join(output, "repeatability.json"),
+        repeatability
+      );
+      const status = await readJson(join(output, "status.json"));
+      status.aggregateSha256 = digest;
+      await writeJson(join(output, "status.json"), status);
+      await writeFile(
+        join(output, "README.md"),
+        renderObservationReadme(aggregate, repeatability)
+      );
+    },
+    "committed aggregate snapshot digest drifted"
+  );
+  await expectInvalid(
     "run-byte-drift",
     async ({ output }) => {
       const path = join(output, "aggregate-run-3.json");
@@ -169,7 +210,7 @@ try {
     "deterministic rendering"
   );
   console.log(
-    "Korean register validation regressions passed (14 fail-closed mutations plus unchanged control)."
+    "Korean register validation regressions passed (15 fail-closed mutations plus unchanged control)."
   );
 } finally {
   await rm(temp, { recursive: true, force: true });

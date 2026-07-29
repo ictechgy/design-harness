@@ -8,6 +8,7 @@ import { join, resolve } from "node:path";
 import {
   AGGREGATE_SCHEMA_VERSION,
   CALIBRATION_ID,
+  COMMITTED_AGGREGATE_SHA256,
   DATASET_ROOT,
   DATA_FILES,
   LABELS,
@@ -252,6 +253,9 @@ export async function validateOutputRoot(
   const aggregate = JSON.parse(runBytes[0].toString("utf8"));
   validateAggregate(aggregate, dataset);
   const aggregateSha256 = sha256(runBytes[0]);
+  if (aggregateSha256 !== COMMITTED_AGGREGATE_SHA256) {
+    throw new Error("committed aggregate snapshot digest drifted");
+  }
   const repeatability = await readJson(
     join(resolvedRoot, "repeatability.json")
   );

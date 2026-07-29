@@ -15,7 +15,7 @@ const packageJson = JSON.parse(
 );
 const expectedScripts = {
   "validate:korean-register":
-    "node scripts/korean-register/validate.mjs && node scripts/korean-register/analyzer-regressions.mjs && node scripts/korean-register/validate-regressions.mjs",
+    "node scripts/korean-register/validate.mjs && node scripts/korean-register/analyzer-regressions.mjs && node scripts/korean-register/publication-regressions.mjs && node scripts/korean-register/validate-regressions.mjs",
   "check:korean-register-policy":
     "node scripts/check-korean-register-policy.mjs",
   "calibrate:korean-register":

@@ -34,6 +34,8 @@ export const REAL_RUN_COUNT = 3;
 export const SNAPSHOT_DATE = "2026-07-29";
 export const MODEL_PROFILE_ID =
   "kiwi-v0.23.0-cong-core-control-v1";
+export const COMMITTED_AGGREGATE_SHA256 =
+  "58eabfc1141841f883f542776819523cfaa0aa5fa9dc5fcb96bd8004c8dba42f";
 
 export const DATA_FILES = Object.freeze({
   source:

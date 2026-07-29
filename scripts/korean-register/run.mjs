@@ -1,15 +1,9 @@
 #!/usr/bin/env node
 
 import {
-  lstat,
-  mkdir,
-  mkdtemp,
-  realpath,
-  rename,
-  rm,
-  writeFile
+  lstat
 } from "node:fs/promises";
-import { basename, dirname, join, resolve } from "node:path";
+import { resolve } from "node:path";
 
 import {
   KIWI_NLP_VERSION,
@@ -23,11 +17,12 @@ import {
   REAL_RUN_COUNT,
   REFERENCE_COUNT,
   REPEATABILITY_SCHEMA_VERSION,
-  STATUS_SCHEMA_VERSION,
-  aggregatePath,
-  canonicalJson
+  STATUS_SCHEMA_VERSION
 } from "./contract.mjs";
 import { renderObservationReadme } from "./output.mjs";
+import {
+  publishCalibrationOutput
+} from "./publication.mjs";
 import {
   assertExpectedInputShape,
   runRepeatedCalibration
@@ -82,7 +77,7 @@ const status = {
   aggregateSha256: result.aggregateSha256,
   claimBoundary: "aggregate-evidence-only"
 };
-await publishAtomically(outputRoot, {
+await publishCalibrationOutput(outputRoot, {
   aggregateBytes: result.aggregateBytes,
   repeatability,
   status,
@@ -133,43 +128,4 @@ async function assertAbsent(path) {
     throw error;
   }
   throw new Error(`refusing to overwrite existing output directory: ${path}`);
-}
-
-async function publishAtomically(root, files) {
-  const parent = dirname(root);
-  await mkdir(parent, { recursive: true });
-  const realParent = await realpath(parent);
-  const expectedParent = resolve(parent);
-  if (realParent !== expectedParent) {
-    throw new Error("output parent must not traverse a symlink");
-  }
-  const stage = await mkdtemp(
-    join(realParent, `.${basename(root)}-stage-`)
-  );
-  try {
-    for (let run = 1; run <= REAL_RUN_COUNT; run += 1) {
-      await writeFile(
-        aggregatePath(stage, run),
-        files.aggregateBytes,
-        { flag: "wx" }
-      );
-    }
-    await writeFile(
-      join(stage, "repeatability.json"),
-      canonicalJson(files.repeatability),
-      { flag: "wx" }
-    );
-    await writeFile(
-      join(stage, "status.json"),
-      canonicalJson(files.status),
-      { flag: "wx" }
-    );
-    await writeFile(join(stage, "README.md"), files.readme, {
-      flag: "wx"
-    });
-    await rename(stage, root);
-  } catch (error) {
-    await rm(stage, { recursive: true, force: true });
-    throw error;
-  }
 }
