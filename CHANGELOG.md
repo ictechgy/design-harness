@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+## 0.6.4 - 2026-07-29
+
+- Updated repository CI and its exact policy guard to the Node 24-backed
+  JavaScript Action majors while retaining Node.js 22 as the project runtime.
+  Triggers, permissions, jobs, package behavior, dependencies, schemas, and
+  release gates are unchanged.
+- Added a bounded repo-local `reference:session prepare/check` helper for the
+  owner-operated Midjourney workflow. It inventories ignored direct-child
+  PNG/JPEG/WebP bytes and a blank local worksheet without decoding images,
+  extracting tokens, emitting guides, entering public packages, or adding a
+  network path.
 - Added a browserless, aggregate-only Korean register evidence calibration
   against the exact 597-row IWSLT 2023 EN-KO formality test projection at
   upstream commit `441e23a7c41beeac6329ffdb27d47024eb71b829`. The two
