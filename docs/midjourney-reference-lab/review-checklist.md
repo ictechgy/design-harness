@@ -17,13 +17,16 @@ That branch does not create a calibration manifest or expected finding.
 ## Generation Boundary
 
 - Generation was manual.
-- No scripts, bots, scrapers, browser automation, unofficial API wrappers, or Discord automation were used.
+- No scripts, bots, scrapers, browser automation, unofficial API wrappers, or Discord automation were used to generate images or access the provider. The repo-local preparation helper may only inventory already-local opaque bytes.
 - Midjourney is not added as a package, service, test dependency, or runtime dependency.
 
 ## Asset Handling
 
 - Generated image files are absent from the commit unless the asset-approved exception path is explicitly met.
 - Local assets, if any, live under `datasets/midjourney-reference-lab/local-assets/`.
+- If `reference:session prepare` was used, `inventory.json` and `session.md`
+  were created once under the same ignored session; `reference:session check`
+  reported current bytes without modifying the worksheet or images.
 - Manifest paths are relative and do not expose `/Users/`, `/home/`, private CDN links, or account-specific URLs.
 - `commitPolicy` is correct: `no-asset-commit`, `local-only`, or `asset-approved`.
 - `rightsReview.status` is correct for the intended commit.
@@ -61,9 +64,10 @@ That branch does not create a calibration manifest or expected finding.
 - The generic dry-run is labeled non-authoritative: it proves guide
   compile/check compatibility, not real-project usefulness, accessibility, or
   design quality.
-- `guide from-references`, OCR, VLM analysis, and provider automation remain
-  blocked until the real-project evidence gate, owner usefulness verdict,
-  fresh RALPLAN, and explicit owner reopening.
+- The repo-local helper is described only as opaque-byte inventory and blank
+  worksheet preparation. `guide from-references`, image analysis, OCR, VLM,
+  provider/network automation, guide emission, audit interpretation, and
+  public CLI packaging remain blocked.
 
 ## Expected Findings
 

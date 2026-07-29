@@ -35,6 +35,32 @@ contains accepted project decisions only.
 | Calibration manifest and fixtures | Unchanged | Separate reference-to-fixture branch |
 | Generic dry-run evidence | Ignored local experiment | Compatibility evidence only |
 
+## Optional local session preparation
+
+After rights-cleared images already exist locally, the owner-approved
+repo-local helper may replace manual renaming, hashing, and blank worksheet
+setup:
+
+```bash
+pnpm reference:session -- prepare --session <lowercase-slug>
+pnpm reference:session -- check --session <lowercase-slug>
+```
+
+The session must already exist at
+`datasets/midjourney-reference-lab/local-assets/<lowercase-slug>/`. `prepare`
+accepts at most 32 direct-child PNG/JPEG/WebP files, treats them as opaque
+bytes, creates ignored `inventory.json` and `session.md` exactly once, and
+never renames or modifies an image. `check` compares current bytes with the
+canonical inventory and writes nothing. Both commands fail closed on unsafe
+names, symlinks, special files, unsupported signatures, caps, drift, and
+existing outputs.
+
+This is bookkeeping, not provider automation or image analysis. It does not
+decode pixels or metadata, infer a cue, populate a decision, emit a guide,
+interpret an audit, access a network, or enter the packaged
+`design-harness` CLI. Rights, confidentiality, provenance, observed cues,
+candidate choices, owner decisions, and validation remain human work.
+
 ## Provider evidence, checked 2026-07-26
 
 Provider behavior can change. Recheck these official pages before each session:
@@ -181,8 +207,11 @@ Compilation proves neither accessibility nor design quality.
 
 ## Stage 4 — real-project proof before any future CLI
 
-Workflow v1 can land without this stage. `guide from-references` remains blocked
-until all of the following exist:
+Workflow v1 can land without this stage. The repo-local opaque-byte preparation
+helper was separately reopened after the completed proof, RALPLAN, and owner
+decision. `guide from-references`, image analysis, and public packaging remain
+blocked until all of the following exist and a later plan explicitly reopens
+that broader scope:
 
 1. one owner-selected real project and rights-cleared, non-confidential manual
    session;
@@ -193,8 +222,9 @@ until all of the following exist:
 6. an owner usefulness verdict identifying repeated manual friction;
 7. a fresh RALPLAN and explicit owner decision reopening the cut-list item.
 
-That evidence does not pre-authorize image input, OCR, a VLM, provider
-integration, or a network path.
+That evidence and the local helper do not pre-authorize image decoding or
+analysis, OCR, a VLM, provider integration, guide emission, public packaging,
+or a network path.
 
 ## Adversarial decisions
 
@@ -208,7 +238,7 @@ integration, or a network path.
 | Infer an audit maximum from one reference | Reject |
 | Add a guide or manifest field for an unrepresentable cue | Stop and replan |
 | Commit a generated image or provider resource locator | Reject |
-| Start a CLI/VLM after the generic dry-run | Keep the Stage 4 gate closed |
+| Treat the local helper as a CLI/VLM or image-to-guide path | Reject; it inventories opaque bytes only |
 
 ## Review and lapse test
 
