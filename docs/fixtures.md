@@ -102,6 +102,19 @@ Redistributable — may be committed:
 - IWSLT2023 EN-KO formality test data (CDLA-Sharing-1.0) for politeness-register calibration.
 - Hand-authored Korean fixtures (`korean/copy-good.html`, `korean/copy-bad.html`), reviewed by a native speaker.
 
+The pinned register evidence corpus lives under
+`examples/calibration-datasets/korean-register/`. Its provenance gate records
+the exact upstream commit, file hashes, CDLA-Sharing-1.0 license, 597 observed
+source rows, and 1,194 Korean references; the upstream task page describes 600
+test pairs, so the discrepancy remains explicit. `pnpm
+validate:korean-register` checks the immutable data projection, balanced
+annotation stripping, aggregate-only output, three-run byte repeatability,
+synthetic controls, and fail-closed mutations. An operator may regenerate the
+committed aggregate with `pnpm calibrate:korean-register --model-dir <dir>`
+using the already supported verified offline Kiwi profile. The binary
+`formal`/`informal` labels are not mapped to the four project register labels,
+and the observation is not a detector benchmark.
+
 Internal calibration only — NEVER commit fixtures derived from these:
 
 - NIKL corpora from 모두의 말뭉치 (application-gated; no redistribution; no LLM augmentation).

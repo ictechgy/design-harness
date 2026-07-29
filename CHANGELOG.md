@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- Added a browserless, aggregate-only Korean register evidence calibration
+  against the exact 597-row IWSLT 2023 EN-KO formality test projection at
+  upstream commit `441e23a7c41beeac6329ffdb27d47024eb71b829`. The two
+  CDLA-Sharing-1.0 reference labels remain `formal` and `informal`; six
+  project-authored Apache-2.0 controls stay separate. A verified local
+  `kiwi-nlp@0.23.0` model analyzed all 1,194 references in three independent
+  runs whose aggregate output was byte-identical. The result is descriptive
+  POS evidence only and does not add a detector, finding, score, schema,
+  dependency, model asset, network path, or CLI flag.
 - Added a fail-closed repeated obedience benchmark preparation contract for
   two project-authored synthetic cases, three repetitions, and the existing
   twelve executor/model/delivery coordinates. The 72-cell workflow records

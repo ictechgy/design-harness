@@ -1,0 +1,12 @@
+{
+  "schemaVersion": "korean-register-evidence-v1/status/v1",
+  "calibrationId": "korean-register-evidence-v1",
+  "status": "complete",
+  "realModelLoaded": true,
+  "sourceRowCount": 597,
+  "referenceCount": 1194,
+  "runCount": 3,
+  "byteIdentical": true,
+  "aggregateSha256": "58eabfc1141841f883f542776819523cfaa0aa5fa9dc5fcb96bd8004c8dba42f",
+  "claimBoundary": "aggregate-evidence-only"
+}
