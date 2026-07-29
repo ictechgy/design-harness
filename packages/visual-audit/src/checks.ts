@@ -412,7 +412,7 @@ export function findingsFromMeasurements(
     const textClusters = densityComplexity.textClusters;
     if (
       densityComplexity.maxTextClusters !== undefined
-      && textClusters?.coverage === "complete"
+      && textClusters
       && textClusters.textClusterCount > densityComplexity.maxTextClusters
     ) {
       densityOverages.push({

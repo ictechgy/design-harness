@@ -402,7 +402,7 @@ describe("analyzeDensityComplexity", () => {
     ]);
   });
 
-  it("keeps visible lower bounds evaluable while making skipped text explicitly incomplete", () => {
+  it("keeps partial text evidence as a distinct-flow-root lower bound without clustering it", () => {
     const fragments = Array.from(
       { length: 1_415 },
       (_, index) => fragment("same-root", `#f-${index}`, index * 100, 0, index * 100 + 10, 10)
@@ -443,12 +443,73 @@ describe("analyzeDensityComplexity", () => {
           skippedElementCount: 1
         },
         textClusters: {
-          coverage: "incomplete",
-          textClusterCount: null,
+          coverage: "lower-bound",
+          lowerBoundMethodId: "supported-flow-root-count-v1",
+          textClusterCount: 1,
           edgeTestCount: null,
           emittedSampleCount: 0,
-          omittedSampleCount: null,
+          omittedSampleCount: 1,
           samples: []
+        }
+      }
+    });
+  });
+
+  it("counts distinct supported flow roots instead of unsafe observed components", () => {
+    const result = analyzeDensityComplexity({
+      textClusters: {
+        textNodeUniverseCount: 4,
+        ignoredTextNodeCount: 0,
+        ineligibleTextNodeCount: 0,
+        skippedTextNodeCount: 1,
+        evaluatedTextNodeCount: 3,
+        skippedByReason: { "unsupported-clip-or-mask": 1 },
+        textFragmentCount: 3,
+        fragments: [
+          fragment("shared-root", "#left", 0, 0, 10, 10),
+          fragment("shared-root", "#right", 1_000, 0, 1_010, 10),
+          fragment("other-root", "#other", 0, 100, 10, 110)
+        ]
+      }
+    }, densityPolicy({ visible: false }));
+
+    expect(result).toMatchObject({
+      ok: true,
+      summary: {
+        textClusters: {
+          coverage: "lower-bound",
+          lowerBoundMethodId: "supported-flow-root-count-v1",
+          textClusterCount: 2,
+          edgeTestCount: null,
+          emittedSampleCount: 0,
+          omittedSampleCount: 2,
+          samples: []
+        }
+      }
+    });
+  });
+
+  it("retains a valid zero lower bound when no supported flow root is represented", () => {
+    const result = analyzeDensityComplexity({
+      textClusters: {
+        textNodeUniverseCount: 1,
+        ignoredTextNodeCount: 0,
+        ineligibleTextNodeCount: 0,
+        skippedTextNodeCount: 1,
+        evaluatedTextNodeCount: 0,
+        skippedByReason: { "unsupported-clip-or-mask": 1 },
+        textFragmentCount: 0,
+        fragments: []
+      }
+    }, densityPolicy({ visible: false }));
+
+    expect(result).toMatchObject({
+      ok: true,
+      summary: {
+        textClusters: {
+          coverage: "lower-bound",
+          textClusterCount: 0,
+          omittedSampleCount: 0
         }
       }
     });

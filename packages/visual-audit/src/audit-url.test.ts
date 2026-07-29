@@ -1622,7 +1622,7 @@ describe("auditUrl visual metric budgets", () => {
     expect(() => assertAuditResultIntegrity(result.auditResult)).not.toThrow();
   });
 
-  it("discloses incomplete text clusters without failing the audit, while preserving a sound visible-element overage", async () => {
+  it("discloses a non-exceeding text-cluster lower bound without failing the audit", async () => {
     const measurement = measurementFor("desktop");
     const result = await auditUrl({
       url: "http://localhost:3000",
@@ -1680,9 +1680,8 @@ describe("auditUrl visual metric budgets", () => {
       asset.type === "measurement"
       && asset.data?.checkName === "density-complexity-budget-text-clusters"
     ));
-    // Incomplete text-cluster coverage is a disclosure, not a failure: escalating it
-    // would flip the audit to partial/exit 2 and stop `design-harness loop` before it
-    // evaluates its condition. One masked element is enough to reach this state.
+    // Partial text-cluster coverage is a disclosure, not a failed check. Its
+    // supported-flow-root count can prove an overage, but equality is not a pass.
     expect(result.auditResult.status).toBe("success");
     expect(result.auditResult.failedChecks).toEqual([]);
     expect(measurementEvidence?.data?.densityComplexity).toMatchObject({
@@ -1692,8 +1691,9 @@ describe("auditUrl visual metric budgets", () => {
         maxVisibleElements: 1
       },
       textClusters: {
-        coverage: "incomplete",
-        textClusterCount: null,
+        coverage: "lower-bound",
+        lowerBoundMethodId: "supported-flow-root-count-v1",
+        textClusterCount: 1,
         maxTextClusters: 1,
         skippedTextNodeCount: 1
       }
@@ -1719,6 +1719,8 @@ describe("auditUrl visual metric budgets", () => {
       data: {
         checkName: "density-complexity-budget-text-clusters",
         methodId: "text-flow-connectivity-v1",
+        lowerBoundMethodId: "supported-flow-root-count-v1",
+        textClusterCount: 1,
         skippedTextNodeCount: 1,
         viewport: "desktop"
       }
@@ -1729,6 +1731,91 @@ describe("auditUrl visual metric budgets", () => {
     expect(result.auditResult.notices?.map(({ code }) => code)).toEqual([
       "density-visible-elements-skipped",
       "density-text-clusters-incomplete"
+    ]);
+    expect(() => assertAuditResultIntegrity(result.auditResult)).not.toThrow();
+  });
+
+  it("emits one heuristic risk when the partial text-cluster lower bound exceeds the budget", async () => {
+    const measurement = measurementFor("desktop");
+    const result = await auditUrl({
+      url: "http://localhost:3000",
+      outDir: await tempDir(),
+      viewportPresets: [viewport],
+      densityComplexityPolicy: densityComplexityBudgetPolicy(),
+      launchBrowser: async () => fakeBrowser({
+        measurement,
+        collectionResults: [{
+          measurements: measurement,
+          notices: [],
+          densityComplexityCollection: {
+            visibleElements: {
+              elementUniverseCount: 1,
+              visibleElementCount: 1,
+              ignoredElementCount: 0,
+              ineligibleElementCount: 0,
+              skippedElementCount: 0,
+              skippedByReason: {},
+              samples: [{
+                selector: "main",
+                region: { x: 24, y: 24, width: 640, height: 320 }
+              }],
+              omittedSampleCount: 0
+            },
+            textClusters: {
+              textNodeUniverseCount: 3,
+              ignoredTextNodeCount: 0,
+              ineligibleTextNodeCount: 0,
+              skippedTextNodeCount: 1,
+              evaluatedTextNodeCount: 2,
+              skippedByReason: { "unsupported-clip-or-mask": 1 },
+              textFragmentCount: 2,
+              fragments: [{
+                rootId: "root-1",
+                selector: "#first",
+                left: 24,
+                top: 24,
+                right: 224,
+                bottom: 48
+              }, {
+                rootId: "root-2",
+                selector: "#second",
+                left: 24,
+                top: 80,
+                right: 224,
+                bottom: 104
+              }]
+            }
+          }
+        }]
+      })
+    });
+
+    expect(result.auditResult.status).toBe("success");
+    expect(result.auditResult.failedChecks).toEqual([]);
+    expect(result.auditResult.findings).toEqual([
+      expect.objectContaining({
+        checkName: "density-complexity-budget",
+        determinism: "heuristic",
+        resultKind: "risk",
+        observed: expect.objectContaining({
+          overages: [{
+            component: "textClusterCount",
+            observedCount: 2,
+            configuredMaximum: 1,
+            excess: 1,
+            coverage: "lower-bound"
+          }]
+        })
+      })
+    ]);
+    expect(result.auditResult.notices).toEqual([
+      expect.objectContaining({
+        code: "density-text-clusters-incomplete",
+        details: expect.objectContaining({
+          textClusterCount: 2,
+          lowerBoundMethodId: "supported-flow-root-count-v1"
+        })
+      })
     ]);
     expect(() => assertAuditResultIntegrity(result.auditResult)).not.toThrow();
   });

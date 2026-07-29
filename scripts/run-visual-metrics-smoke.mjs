@@ -531,6 +531,9 @@ function projectVisibleElements(summary) {
 function projectTextClusters(summary) {
   return {
     methodId: summary.methodId,
+    ...(summary.lowerBoundMethodId === undefined
+      ? {}
+      : { lowerBoundMethodId: summary.lowerBoundMethodId }),
     maxTextClusters: summary.maxTextClusters,
     coverage: summary.coverage,
     textNodeUniverseCount: summary.textNodeUniverseCount,

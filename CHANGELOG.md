@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Partial text-cluster density evidence now records the number of distinct
+  represented flow roots as a conservative `supported-flow-root-count-v1`
+  lower bound instead of a null count. The bound may emit a low-confidence
+  heuristic risk only when it already exceeds the project maximum; otherwise
+  the audit retains an incomplete-evidence notice and makes no pass claim.
+
 ## 0.6.3 - 2026-07-28
 
 - Added an offline, explicit `--kiwi-model-dir` extension for Korean `--copy`

@@ -65,6 +65,7 @@
     "smoke:copy": "node scripts/run-copy-smoke.mjs",
     "smoke:kiwi-real-model": "node scripts/run-kiwi-real-model-smoke.mjs",
     "smoke:visual-metrics": "node scripts/run-visual-metrics-smoke.mjs",
+    "smoke:density-lower-bound": "node scripts/run-density-lower-bound-smoke.mjs",
     "smoke:loop": "node scripts/run-loop-smoke.mjs",
     "smoke:selector-uniqueness": "node scripts/run-selector-uniqueness-smoke.mjs",
     "smoke:spacing-skip": "node scripts/run-spacing-skip-smoke.mjs",
