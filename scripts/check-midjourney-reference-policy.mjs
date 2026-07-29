@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { basename, posix } from "node:path";
 import { spawnSync } from "node:child_process";
 
@@ -26,6 +26,50 @@ const forbiddenRuntimePatterns = [
   /@discordjs\b/i,
   /discord\.js\b/i,
 ];
+const referenceSessionImplementationPaths = [
+  "scripts/reference-session-lib.mjs",
+  "scripts/reference-session.mjs"
+];
+const referenceSessionAllPaths = [
+  ...referenceSessionImplementationPaths,
+  "scripts/reference-session-regressions.mjs"
+];
+const forbiddenReferenceSessionDependencies = new Set([
+  "canvas",
+  "image-js",
+  "jimp",
+  "onnxruntime-node",
+  "onnxruntime-web",
+  "sharp",
+  "tesseract.js"
+]);
+const forbiddenReferenceSessionImportSpecifiers = new Set([
+  "child_process",
+  "node:child_process"
+]);
+const forbiddenReferenceSessionSourcePatterns = [
+  /\bfetch\s*\(/u,
+  /\bXMLHttpRequest\b/u,
+  /\bWebSocket\b/u,
+  /node:(?:http|https|net|tls|dns)\b/u,
+  /\b(?:https?|wss?):\/\//u,
+  /\b(?:playwright|puppeteer)\b/u,
+  /\b(?:tesseract|onnxruntime|sharp|jimp|canvas|image-js)\b/iu,
+  /\b(?:node:)?child_process\b/u,
+  /\b(?:spawn|spawnSync|exec|execSync|execFile|execFileSync)\s*\(/u,
+  /["'](?:[^"']*\/)?(?:sips|magick|convert|identify|exiftool|qlmanage|ffmpeg|ffprobe)["']/iu,
+  /\bdesign-guide\.yaml\b/u,
+  /packages\/(?:core|copy-audit|visual-audit|cli)\//u
+];
+const referenceSessionPolicyRegressionSources = [
+  ["Node child_process import", 'import { spawn } from "node:child_process";'],
+  ["bare child_process import", 'import { execFile } from "child_process";'],
+  ["spawn API call", "spawn(tool, args);"],
+  ["execFile API call", "execFile(tool, args);"],
+  ["macOS image decoder command", 'run("/usr/bin/sips");'],
+  ["ImageMagick command", 'run("magick");'],
+  ["metadata analysis command", 'run("exiftool");']
+];
 const approvedAssetPaths = collectApprovedAssetPaths(trackedFiles);
 
 function collectApprovedAssetPaths(files) {
@@ -50,6 +94,25 @@ function collectApprovedAssetPaths(files) {
   }
 
   return paths;
+}
+
+function importSpecifiersFrom(content) {
+  return [
+    ...content.matchAll(/\bfrom\s+["']([^"']+)["']/gu),
+    ...content.matchAll(/\bimport\s*\(\s*["']([^"']+)["']\s*\)/gu)
+  ].map((match) => match[1]);
+}
+
+function hasForbiddenReferenceSessionSource(content) {
+  return importSpecifiersFrom(content).some((specifier) =>
+    forbiddenReferenceSessionImportSpecifiers.has(specifier)
+  ) || forbiddenReferenceSessionSourcePatterns.some((pattern) => pattern.test(content));
+}
+
+for (const [label, source] of referenceSessionPolicyRegressionSources) {
+  if (!hasForbiddenReferenceSessionSource(source)) {
+    errors.push(`reference-session policy regression failed to reject ${label}`);
+  }
 }
 
 for (const file of trackedFiles) {
@@ -79,6 +142,9 @@ for (const file of trackedFiles) {
       if (/midjourney|discord/i.test(dependency)) {
         errors.push(`Midjourney/Discord runtime dependency is not allowed in ${file}: ${dependency}`);
       }
+      if (forbiddenReferenceSessionDependencies.has(dependency)) {
+        errors.push(`reference-session image analysis/decoder dependency is not allowed in ${file}: ${dependency}`);
+      }
     }
   }
 
@@ -93,6 +159,58 @@ for (const file of trackedFiles) {
       }
     }
   }
+}
+
+for (const file of referenceSessionImplementationPaths) {
+  if (!existsSync(file)) {
+    errors.push(`required repo-local reference-session implementation is missing: ${file}`);
+    continue;
+  }
+  const content = readFileSync(file, "utf8");
+  const importSpecifiers = importSpecifiersFrom(content);
+  for (const specifier of importSpecifiers) {
+    if (forbiddenReferenceSessionImportSpecifiers.has(specifier)) {
+      errors.push(`reference-session implementation cannot launch external commands in ${file}: ${specifier}`);
+      continue;
+    }
+    if (
+      !specifier.startsWith("node:")
+      && !(file === "scripts/reference-session.mjs" && specifier === "./reference-session-lib.mjs")
+    ) {
+      errors.push(`reference-session implementation import is outside the Node-built-in/local boundary in ${file}: ${specifier}`);
+    }
+  }
+  for (const pattern of forbiddenReferenceSessionSourcePatterns) {
+    if (pattern.test(content)) {
+      errors.push(`forbidden reference-session analysis/network/guide pattern ${pattern} in ${file}`);
+    }
+  }
+}
+
+for (const file of referenceSessionAllPaths) {
+  if (!existsSync(file)) {
+    errors.push(`required reference-session file is missing: ${file}`);
+  }
+}
+
+for (const file of trackedFiles.filter((candidate) => candidate.startsWith("packages/"))) {
+  if (/\breference(?::|-)session\b/iu.test(readFileSync(file, "utf8"))) {
+    errors.push(`reference-session helper leaked into a public package surface: ${file}`);
+  }
+}
+
+const rootPackage = JSON.parse(readFileSync("package.json", "utf8"));
+if (rootPackage.private !== true) {
+  errors.push("reference-session helper requires the root package to remain private");
+}
+if (
+  rootPackage.scripts?.["reference:session"] !== "node scripts/reference-session.mjs"
+  || rootPackage.scripts?.["check:reference-session"] !== "node scripts/reference-session-regressions.mjs"
+) {
+  errors.push("root package reference-session commands do not match the repo-local contract");
+}
+if (/\breference(?::|-)session\b/iu.test(readFileSync("README.md", "utf8"))) {
+  errors.push("reference-session helper must not appear in the public root README");
 }
 
 if (errors.length > 0) {
