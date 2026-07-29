@@ -30,7 +30,8 @@ const REPORT_HEADER = "# Design Harness Audit Report";
 const README_PATTERNS = [/^README\.md$/, /^packages\/[^/]+\/README\.md$/];
 const ADDITIONAL_PUBLIC_REPORTS = new Set([
   "docs/benchmarks/obedience-v1/report.md",
-  "docs/benchmarks/obedience-repeated-v1/report.md"
+  "docs/benchmarks/obedience-repeated-v1/report.md",
+  "docs/calibration/korean-register-v1/README.md"
 ]);
 
 const trackedFiles = execFileSync("git", ["ls-files"], { cwd: root, encoding: "utf8" })

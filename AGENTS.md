@@ -44,6 +44,8 @@ pnpm check:obedience-repeated       # exact 72-cell/two-case preparation or comp
 pnpm check:guide-data               # guide fingerprint source/generated mirror parity
 pnpm check:visual-metrics-calibration # browserless fixture hashes + exact manifest contract
 pnpm calibrate:fixtures             # manifest Korean fixtures → calibrated copy TP/FP/FN drift gate
+pnpm validate:korean-register       # pinned IWSLT/CDLA + aggregate-only register evidence gates
+pnpm calibrate:korean-register --model-dir <dir> --out <fresh-dir> # optional candidate observation
 pnpm example:serve                  # merchant-dashboard fixture on :4173
 pnpm smoke:copy                     # live parser-free copy/materializer golden path
 pnpm smoke:guide                    # temporary-project guide compile/check + compatibility gate

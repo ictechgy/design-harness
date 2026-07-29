@@ -1,0 +1,72 @@
+{
+  "schemaVersion": "korean-register-evidence-v1/provenance/v1",
+  "datasetId": "iwslt2023-en-ko-formality-test-pinned",
+  "upstream": {
+    "provider": "Amazon Science",
+    "repository": "https://github.com/amazon-science/contrastive-controlled-mt",
+    "commit": "441e23a7c41beeac6329ffdb27d47024eb71b829",
+    "taskPage": "https://iwslt.org/2023/formality",
+    "taskPageDescribedSourceRows": 600,
+    "observedSourceRows": 597,
+    "referenceCount": 1194
+  },
+  "license": {
+    "name": "Community Data License Agreement - Sharing - Version 1.0",
+    "spdxLikeId": "CDLA-Sharing-1.0",
+    "path": "cdla-sharing-1.0/DATALICENSE",
+    "bytes": 11350,
+    "sha256": "a08ff57744857367fb51f27a06c9877818a102692db72fbe06aaadec4d76e5f3"
+  },
+  "changedFilesNotice": "cdla-sharing-1.0/CHANGES.md",
+  "upstreamReadme": {
+    "path": "cdla-sharing-1.0/IWSLT2023-README.md",
+    "bytes": 5048,
+    "sha256": "1c9e7088cd1461de93e2dad1f01aac8b4bb0ef437b4609f5a83f8fa1ced7456d"
+  },
+  "labels": [
+    "formal",
+    "informal"
+  ],
+  "projectRegisterMapping": "none",
+  "files": [
+    {
+      "path": "cdla-sharing-1.0/iwslt2023-en-ko/formality-control.test.en-ko.en",
+      "role": "source",
+      "bytes": 66524,
+      "rows": 597,
+      "sha256": "0eda38358ae22191a2234231939de009aab98ccfb0e836df2db45bf8c844ac9b"
+    },
+    {
+      "path": "cdla-sharing-1.0/iwslt2023-en-ko/formality-control.test.en-ko.formal.annotated.ko",
+      "role": "annotated-reference",
+      "label": "formal",
+      "bytes": 92948,
+      "rows": 597,
+      "sha256": "cf58b7b4c7fff4085517087f07245cab845a87c37833040c0def9a74e3f2fe32"
+    },
+    {
+      "path": "cdla-sharing-1.0/iwslt2023-en-ko/formality-control.test.en-ko.formal.ko",
+      "role": "plain-reference",
+      "label": "formal",
+      "bytes": 78290,
+      "rows": 597,
+      "sha256": "9b9fb5b5ce17420ba036302675148c7a090ec18e2db338d9cc1b81ae8463a49c"
+    },
+    {
+      "path": "cdla-sharing-1.0/iwslt2023-en-ko/formality-control.test.en-ko.informal.annotated.ko",
+      "role": "annotated-reference",
+      "label": "informal",
+      "bytes": 87350,
+      "rows": 597,
+      "sha256": "80a922aa78603d4f2b3504e38ac2d343edd0cbc16a343e959989668d8383b0ab"
+    },
+    {
+      "path": "cdla-sharing-1.0/iwslt2023-en-ko/formality-control.test.en-ko.informal.ko",
+      "role": "plain-reference",
+      "label": "informal",
+      "bytes": 72671,
+      "rows": 597,
+      "sha256": "0757d0f1de720829e02988eaae3f30e3ff9bc75925f47747b245f8fdb7974e43"
+    }
+  ]
+}

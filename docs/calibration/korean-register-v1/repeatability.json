@@ -1,0 +1,21 @@
+{
+  "schemaVersion": "korean-register-evidence-v1/repeatability/v1",
+  "calibrationId": "korean-register-evidence-v1",
+  "runCount": 3,
+  "byteIdentical": true,
+  "aggregateSha256": "58eabfc1141841f883f542776819523cfaa0aa5fa9dc5fcb96bd8004c8dba42f",
+  "runFiles": [
+    {
+      "path": "aggregate-run-1.json",
+      "sha256": "58eabfc1141841f883f542776819523cfaa0aa5fa9dc5fcb96bd8004c8dba42f"
+    },
+    {
+      "path": "aggregate-run-2.json",
+      "sha256": "58eabfc1141841f883f542776819523cfaa0aa5fa9dc5fcb96bd8004c8dba42f"
+    },
+    {
+      "path": "aggregate-run-3.json",
+      "sha256": "58eabfc1141841f883f542776819523cfaa0aa5fa9dc5fcb96bd8004c8dba42f"
+    }
+  ]
+}
