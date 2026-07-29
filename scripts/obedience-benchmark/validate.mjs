@@ -32,6 +32,8 @@ export const TERMINAL_STATUSES = Object.freeze([
 ]);
 export const SCORE_MEASUREMENT_LABEL =
   "secondary/advisory, formula-bound";
+export const CURRENT_ROADMAP_BOUNDARY_STATEMENT =
+  "The repeated/two-case record remains descriptive only; comparative, statistical, provider/model-ranking, causal, general-obedience, real-application, and positioning claims remain blocked.";
 
 const SHA256_PATTERN = /^[a-f0-9]{64}$/;
 const ISO_INSTANT_PATTERN =
@@ -1630,11 +1632,16 @@ function validateCompletion(
     if (requireCompletion && !source.includes(COMPLETION_PHRASE)) {
       issues.push(`${label} omits exact completion phrase: ${COMPLETION_PHRASE}`);
     }
-    if (!source.includes(BLOCKED_CLAIMS_STATEMENT)) {
-      issues.push(
-        `${label} omits exact repeated/two-case blocked-claims statement`
-      );
-    }
+  }
+  if (!report.includes(BLOCKED_CLAIMS_STATEMENT)) {
+    issues.push(
+      "public report omits its exact snapshot-era repeated/two-case blocked-claims statement"
+    );
+  }
+  if (!roadmap.includes(CURRENT_ROADMAP_BOUNDARY_STATEMENT)) {
+    issues.push(
+      "ROADMAP omits the exact current repeated/two-case claim boundary"
+    );
   }
   if (
     !Array.isArray(results?.cells) ||

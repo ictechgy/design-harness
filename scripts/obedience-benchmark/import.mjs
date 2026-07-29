@@ -1153,7 +1153,7 @@ function validateEvidenceAttempts(cell, expected) {
   }
 }
 
-async function assertAuditArtifacts(cellRoot) {
+export async function assertAuditArtifacts(cellRoot) {
   const runEntries = (await readdir(join(cellRoot, "runs")))
     .filter((entry) => !entry.startsWith("."))
     .sort();
@@ -1170,7 +1170,7 @@ async function assertAuditArtifacts(cellRoot) {
   }
 }
 
-function validateAudit(audit, label) {
+export function validateAudit(audit, label) {
   if (!isPlainObject(audit)) {
     throw new Error(`${label} audit must be an object`);
   }
@@ -1218,7 +1218,7 @@ function validateAudit(audit, label) {
   }
 }
 
-function validateAuditPair(baseline, final, cellId) {
+export function validateAuditPair(baseline, final, cellId) {
   for (const key of ["schemaVersion", "harnessVersion"]) {
     equal(baseline[key], final[key], `${cellId} ${key}`);
   }
@@ -1234,7 +1234,7 @@ function validateAuditPair(baseline, final, cellId) {
   );
 }
 
-function validateExecutionOrder(baseline, final, operatorCell, cellId) {
+export function validateExecutionOrder(baseline, final, operatorCell, cellId) {
   const firstAttempt = operatorCell.attempts[0];
   const acceptedAttempt =
     operatorCell.attempts[operatorCell.acceptedAttemptIndex - 1];
@@ -1256,7 +1256,11 @@ function validateExecutionOrder(baseline, final, operatorCell, cellId) {
   }
 }
 
-function provenanceFromAudit(audit, copyStyleSha256, harnessBuildSha256) {
+export function provenanceFromAudit(
+  audit,
+  copyStyleSha256,
+  harnessBuildSha256
+) {
   const buildDescriptor = {
     auditSchemaVersion: audit.schemaVersion,
     harnessVersion: audit.harnessVersion,
@@ -1319,24 +1323,24 @@ function assertControlledBaseline(failures, cellId) {
   }
 }
 
-function normalizeExecutor(executor) {
+export function normalizeExecutor(executor) {
   return Object.fromEntries(SAFE_EXECUTOR_KEYS.map((key) => [key, executor[key]]));
 }
 
-function normalizeCommandDescriptor(descriptor) {
+export function normalizeCommandDescriptor(descriptor) {
   return Object.fromEntries(
     SAFE_COMMAND_KEYS.map((key) => [key, descriptor[key]])
   );
 }
 
-function normalizeEditBoundary(editBoundary) {
+export function normalizeEditBoundary(editBoundary) {
   return {
     passed: editBoundary.passed,
     modifiedPaths: [...editBoundary.modifiedPaths]
   };
 }
 
-function normalizeAttempt(attempt) {
+export function normalizeAttempt(attempt) {
   return Object.fromEntries(SAFE_ATTEMPT_KEYS.map((key) => [key, attempt[key]]));
 }
 

@@ -70,6 +70,14 @@ stay successful with the incomplete-evidence notice and no failed checks. The
 one-root bound is silent; the two-root bound emits exactly one low-confidence
 heuristic density risk. Artifacts live under `runs/density-lower-bound/`.
 
+The repeated obedience benchmark has a separate two-case browser baseline.
+`pnpm smoke:obedience-repeated-baselines` audits the pinned operations-queue
+fixture and the distinct support-triage fixture at the default desktop/mobile
+viewports. Each must expose exactly the same four controlled deterministic
+failure families while retaining case-specific placeholder selectors.
+Artifacts live under `runs/obedience-repeated-baselines/`; this smoke validates
+the synthetic starting evidence only and does not invoke an executor.
+
 ## Fixture Policy
 
 - Add at least one good and one bad fixture for each new check family, including heuristic-risk checks.

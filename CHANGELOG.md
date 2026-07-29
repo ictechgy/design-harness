@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- Added a fail-closed repeated obedience benchmark preparation contract for
+  two project-authored synthetic cases, three repetitions, and the existing
+  twelve executor/model/delivery coordinates. The 72-cell workflow records
+  case, task, adapter, build, audit, executor, and source provenance; publishes
+  no partial result; and permits a complete descriptive snapshot only through
+  deterministic replay, exact-tree validation, and atomic replacement.
+  The completed record contains 72/72 terminal executions, 288→0 detectable
+  deterministic failures, and 71/72 exact controlled-delta preservation
+  passes; the single preservation miss remains visible rather than rerun.
 - Partial text-cluster density evidence now records the number of distinct
   represented flow roots as a conservative `supported-flow-root-count-v1`
   lower bound instead of a null count. The bound may emit a low-confidence

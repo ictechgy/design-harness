@@ -93,6 +93,10 @@ const EXPECTED_JOB_ACTIONS = Object.freeze({
     Object.freeze({ kind: "run", value: "pnpm smoke:copy" }),
     Object.freeze({ kind: "run", value: "pnpm smoke:visual-metrics" }),
     Object.freeze({ kind: "run", value: "pnpm smoke:density-lower-bound" }),
+    Object.freeze({
+      kind: "run",
+      value: "pnpm smoke:obedience-repeated-baselines"
+    }),
     Object.freeze({ kind: "run", value: "pnpm smoke:loop" }),
     Object.freeze({ kind: "run", value: "pnpm smoke:selector-uniqueness" }),
     Object.freeze({ kind: "run", value: "pnpm smoke:spacing-skip" }),
@@ -396,6 +400,7 @@ jobs:
       - run: pnpm smoke:copy
       - run: pnpm smoke:visual-metrics
       - run: pnpm smoke:density-lower-bound
+      - run: pnpm smoke:obedience-repeated-baselines
       - run: pnpm smoke:loop
       - run: pnpm smoke:selector-uniqueness
       - run: pnpm smoke:spacing-skip
@@ -499,6 +504,8 @@ const packedLoopScript = rootManifest.scripts?.["smoke:packed-loop"];
 const visualMetricsSmokeScript = rootManifest.scripts?.["smoke:visual-metrics"];
 const densityLowerBoundSmokeScript =
   rootManifest.scripts?.["smoke:density-lower-bound"];
+const obedienceRepeatedBaselineScript =
+  rootManifest.scripts?.["smoke:obedience-repeated-baselines"];
 const releaseCheckScript = rootManifest.scripts?.["release:check"];
 if (packedLoopScript !== "node scripts/verify-packed-cli.mjs --positive-loop") {
   throw new Error("smoke:packed-loop must select the explicit positive verifier mode.");
@@ -515,10 +522,19 @@ if (
   );
 }
 if (
+  obedienceRepeatedBaselineScript !==
+  "node scripts/obedience-repeated/run-baseline-smoke.mjs"
+) {
+  throw new Error(
+    "smoke:obedience-repeated-baselines must select the two-case baseline runner."
+  );
+}
+if (
   typeof releaseCheckScript !== "string"
   || releaseCheckScript.includes("smoke:packed-loop")
   || releaseCheckScript.includes("smoke:visual-metrics")
   || releaseCheckScript.includes("smoke:density-lower-bound")
+  || releaseCheckScript.includes("smoke:obedience-repeated-baselines")
 ) {
   throw new Error(
     "release:check must remain browserless and exclude live browser smokes."
@@ -532,6 +548,7 @@ const requiredFragments = [
   "runs/copy-smoke",
   "runs/visual-metrics",
   "runs/density-lower-bound",
+  "runs/obedience-repeated-baselines",
   "runs/loop-smoke",
   "runs/packed-loop",
   "runs/calibration",

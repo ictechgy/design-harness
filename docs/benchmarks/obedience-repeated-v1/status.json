@@ -1,0 +1,12 @@
+{
+  "benchmarkId": "obedience-repeated-v1",
+  "caseCount": 2,
+  "claimBoundary": "bounded-descriptive-snapshot-only",
+  "coordinateCount": 12,
+  "executionCount": 72,
+  "providerExecution": "recorded",
+  "publicResults": "present",
+  "repeatCount": 3,
+  "schemaVersion": "obedience-repeated-v1/status/v1",
+  "status": "complete"
+}
