@@ -99,6 +99,23 @@ async function freshCopy(label) {
     label.replaceAll(/[^a-z0-9]+/gi, "-").toLowerCase()
   );
   await cp(BENCHMARK_ROOT, root, { recursive: true });
+  await Promise.all([
+    rm(join(root, "final-sources"), { recursive: true, force: true }),
+    rm(join(root, "report.md"), { force: true }),
+    rm(join(root, "results.json"), { force: true })
+  ]);
+  await writeJson(join(root, "status.json"), {
+    schemaVersion: "obedience-repeated-v1/status/v1",
+    benchmarkId: "obedience-repeated-v1",
+    status: "ready-for-operator",
+    caseCount: 2,
+    repeatCount: 3,
+    coordinateCount: 12,
+    executionCount: 72,
+    providerExecution: "not-performed",
+    publicResults: "absent",
+    claimBoundary: "preparation-contract-only"
+  });
   return root;
 }
 

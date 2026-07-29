@@ -21,6 +21,7 @@ import {
 } from "./render.mjs";
 import {
   BenchmarkValidationError,
+  CURRENT_ROADMAP_BOUNDARY_STATEMENT,
   RESULTS_SCHEMA_VERSION,
   SCORE_MEASUREMENT_LABEL,
   closureRate,
@@ -246,7 +247,8 @@ try {
       )
     )
   );
-  const roadmap = `${COMPLETION_PHRASE}\n${BLOCKED_CLAIMS_STATEMENT}\n`;
+  const roadmap =
+    `${COMPLETION_PHRASE}\n${CURRENT_ROADMAP_BOUNDARY_STATEMENT}\n`;
   const canonicalReport = renderReport(canonical);
   const validateFixtureSnapshot = async ({
     results,

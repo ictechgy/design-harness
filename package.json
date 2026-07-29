@@ -56,7 +56,7 @@
     "benchmark:obedience-repeated:prepare": "node scripts/obedience-repeated/prepare.mjs",
     "benchmark:obedience-repeated:import": "node scripts/obedience-repeated/import.mjs",
     "benchmark:obedience-repeated:render": "node scripts/obedience-repeated/render.mjs",
-    "check:obedience-repeated": "node scripts/obedience-repeated/validate.mjs && node scripts/obedience-repeated/validate-regressions.mjs && node scripts/obedience-repeated/validate-prepare-regressions.mjs",
+    "check:obedience-repeated": "node scripts/obedience-repeated/validate.mjs && node scripts/obedience-repeated/validate-regressions.mjs && node scripts/obedience-repeated/validate-prepare-regressions.mjs && node scripts/obedience-repeated/validate-complete-regressions.mjs",
     "check:v0.3-integrations": "node scripts/check-v0-3-integrations.mjs",
     "design-harness": "pnpm --filter @design-harness/cli start",
     "reference:session": "node scripts/reference-session.mjs",

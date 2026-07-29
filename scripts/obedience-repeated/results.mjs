@@ -227,6 +227,7 @@ export async function validateCompleteSnapshot({
     reportSource ?? await readText(join(root, "report.md"), issues, "report");
 
   await validateTree(root, issues);
+  await validateV1Preservation(root, issues);
   validateNoPrivateMaterial(resolvedResults, "$", issues);
   validateTopLevel(resolvedResults, issues);
   validateComparability(resolvedResults?.comparability, inputs, issues);
@@ -238,6 +239,7 @@ export async function validateCompleteSnapshot({
     root,
     inputs,
     resolvedResults?.comparability,
+    resolvedResults?.recordedAt,
     issues
   );
   validateAggregate(resolvedResults?.aggregate, executions, issues);
@@ -300,6 +302,45 @@ async function validateTree(root, issues) {
     }
   }
   try {
+    const caseEntries = await readdir(join(root, "cases"), {
+      withFileTypes: true
+    });
+    if (
+      caseEntries.length !== 1 ||
+      caseEntries[0].name !== "support-triage" ||
+      !caseEntries[0].isDirectory() ||
+      caseEntries[0].isSymbolicLink()
+    ) {
+      issues.push(
+        "cases must contain only the real support-triage directory"
+      );
+    } else {
+      const supportEntries = await readdir(
+        join(root, "cases", "support-triage"),
+        { withFileTypes: true }
+      );
+      const expectedSupport = new Set([
+        "fixture.html",
+        "preservation-oracle.json"
+      ]);
+      if (
+        supportEntries.length !== expectedSupport.size ||
+        supportEntries.some(
+          (entry) =>
+            !expectedSupport.has(entry.name) ||
+            !entry.isFile() ||
+            entry.isSymbolicLink()
+        )
+      ) {
+        issues.push(
+          "support-triage must contain only regular fixture.html and preservation-oracle.json files"
+        );
+      }
+    }
+  } catch (error) {
+    issues.push(`cannot inspect complete case tree: ${error.message}`);
+  }
+  try {
     const finalEntries = await readdir(join(root, "final-sources"), {
       withFileTypes: true
     });
@@ -318,6 +359,61 @@ async function validateTree(root, issues) {
   } catch (error) {
     issues.push(`cannot inspect final-sources: ${error.message}`);
   }
+}
+
+async function validateV1Preservation(root, issues) {
+  const oracle = await readJson(
+    join(root, "v1-preservation.json"),
+    issues,
+    "v1 preservation oracle"
+  );
+  if (!isPlainObject(oracle) || !isPlainObject(oracle.files)) {
+    issues.push("v1-preservation.json must contain a files object");
+    return;
+  }
+  const v1Root = resolve(root, "../obedience-v1");
+  let files;
+  try {
+    files = await regularFilesRecursively(v1Root);
+  } catch (error) {
+    issues.push(`cannot inspect obedience-v1: ${error.message}`);
+    return;
+  }
+  const relativeFiles = files.map((path) =>
+    relative(v1Root, path).split(sep).join("/")
+  );
+  if (
+    oracle.schemaVersion !==
+      "obedience-repeated-v1/v1-preservation/v1" ||
+    oracle.root !== "../obedience-v1" ||
+    oracle.fileCount !== relativeFiles.length ||
+    Object.keys(oracle.files).length !== relativeFiles.length
+  ) {
+    issues.push("v1-preservation.json identity or file count drifted");
+  }
+  for (const name of relativeFiles) {
+    if (
+      oracle.files[name] !==
+      sha256(await readFile(join(v1Root, name)))
+    ) {
+      issues.push(`obedience-v1 byte drift: ${name}`);
+    }
+  }
+}
+
+async function regularFilesRecursively(root) {
+  const output = [];
+  for (const entry of await readdir(root, { withFileTypes: true })) {
+    const path = join(root, entry.name);
+    if (entry.isDirectory()) {
+      output.push(...await regularFilesRecursively(path));
+    } else if (entry.isFile() && !entry.isSymbolicLink()) {
+      output.push(path);
+    } else {
+      throw new Error(`unsupported entry: ${path}`);
+    }
+  }
+  return output.sort();
 }
 
 function validateTopLevel(results, issues) {
@@ -362,6 +458,7 @@ async function validateExecutions(
   root,
   inputs,
   comparability,
+  recordedAt,
   issues
 ) {
   if (executions.length !== EXPECTED_EXECUTION_COUNT) {
@@ -380,12 +477,45 @@ async function validateExecutions(
       continue;
     }
     ids.add(entry.id);
+    exactKeys(
+      entry,
+      [
+        "acceptedAttemptIndex",
+        "attempts",
+        "audit",
+        "caseId",
+        "caseLabel",
+        "commandDescriptor",
+        "coordinateId",
+        "editBoundary",
+        "effort",
+        "effortSupport",
+        "executor",
+        "executorFamily",
+        "executorLabel",
+        "finalSourcePath",
+        "id",
+        "mechanism",
+        "primary",
+        "provenance",
+        "repeat",
+        "requestedModel",
+        "secondary",
+        "terminalStatus"
+      ],
+      `${entry.id} execution`,
+      issues
+    );
     for (const key of [
       "caseId",
+      "caseLabel",
       "repeat",
       "coordinateId",
       "executorFamily",
       "executorLabel",
+      "requestedModel",
+      "effort",
+      "effortSupport",
       "mechanism"
     ]) {
       if (entry[key] !== expected[key]) {
@@ -401,7 +531,11 @@ async function validateExecutions(
     ) {
       issues.push(`${entry.id} resolved model does not match the request`);
     }
+    validateExecutor(entry, expected, issues);
+    validateCommandDescriptor(entry, expected, issues);
+    validateEditBoundary(entry, issues);
     validateAttempts(entry, issues);
+    validateAuditRecord(entry, recordedAt, issues);
     const caseInputs = inputs.cases.get(entry.caseId);
     const finalPath = join(root, entry.finalSourcePath ?? "");
     let finalSource;
@@ -447,6 +581,7 @@ async function validateExecutions(
       issues.push(`${entry.id} passedBoth does not replay`);
     }
     validatePrimary(entry, issues);
+    validateSecondary(entry, issues);
     validateProvenance(
       entry,
       caseInputs,
@@ -471,6 +606,87 @@ async function validateExecutions(
   }
 }
 
+function validateExecutor(entry, expected, issues) {
+  const executor = entry.executor ?? {};
+  exactKeys(
+    executor,
+    [
+      "binaryName",
+      "cliVersion",
+      "effort",
+      "requestedModel",
+      "resolvedModel",
+      "versionSource"
+    ],
+    `${entry.id} executor`,
+    issues
+  );
+  const expectedBinary =
+    expected.executorFamily === "claude-code" ? "claude" : "codex";
+  if (
+    executor.binaryName !== expectedBinary ||
+    executor.requestedModel !== expected.requestedModel ||
+    executor.effort !== (expected.effort ?? "provider-default") ||
+    typeof executor.cliVersion !== "string" ||
+    executor.cliVersion.trim() === "" ||
+    executor.versionSource !== "operator-probed-cli"
+  ) {
+    issues.push(`${entry.id} executor descriptor drifted`);
+  }
+}
+
+function validateCommandDescriptor(entry, expected, issues) {
+  const command = entry.commandDescriptor ?? {};
+  exactKeys(
+    command,
+    [
+      "deliveryMechanism",
+      "effort",
+      "executable",
+      "invocationMode",
+      "promptInputMode",
+      "requestedModel"
+    ],
+    `${entry.id} commandDescriptor`,
+    issues
+  );
+  const executable =
+    expected.executorFamily === "claude-code" ? "claude" : "codex";
+  if (
+    command.deliveryMechanism !== expected.mechanism ||
+    command.effort !== (expected.effort ?? "provider-default") ||
+    command.executable !== executable ||
+    command.promptInputMode !==
+      "common-task-then-delivery-stanza" ||
+    command.requestedModel !== expected.requestedModel ||
+    typeof command.invocationMode !== "string" ||
+    command.invocationMode.trim() === ""
+  ) {
+    issues.push(`${entry.id} command descriptor drifted`);
+  }
+}
+
+function validateEditBoundary(entry, issues) {
+  const boundary = entry.editBoundary ?? {};
+  exactKeys(
+    boundary,
+    ["modifiedPaths", "passed"],
+    `${entry.id} editBoundary`,
+    issues
+  );
+  if (
+    boundary.passed !== true ||
+    canonicalJson(boundary.modifiedPaths) !==
+      canonicalJson(
+        boundary.modifiedPaths?.length === 0
+          ? []
+          : ["fixture.html"]
+      )
+  ) {
+    issues.push(`${entry.id} edit boundary is invalid`);
+  }
+}
+
 function validateAttempts(entry, issues) {
   const attempts = Array.isArray(entry.attempts) ? entry.attempts : [];
   if (attempts.length < 1 || attempts.length > 2) {
@@ -487,6 +703,26 @@ function validateAttempts(entry, issues) {
   }
   for (let index = 0; index < attempts.length; index += 1) {
     const attempt = attempts[index];
+    exactKeys(
+      attempt,
+      [
+        "endedAt",
+        "exitStatus",
+        "index",
+        "operationalFailureKind",
+        "privateTranscriptSha256",
+        "resolvedModel",
+        "retryReason",
+        "signal",
+        "startedAt",
+        "status",
+        "timedOut",
+        "usage",
+        "wallTimeMs"
+      ],
+      `${entry.id} attempt ${index + 1}`,
+      issues
+    );
     if (
       attempt.index !== index + 1 ||
       !TERMINAL_STATUSES.has(attempt.status) ||
@@ -499,6 +735,11 @@ function validateAttempts(entry, issues) {
     ) {
       issues.push(`${entry.id} attempt ${index + 1} is invalid`);
     }
+    validateUsage(
+      attempt.usage,
+      `${entry.id} attempt ${index + 1} usage`,
+      issues
+    );
   }
   if (attempts.length === 2) {
     const first = attempts[0];
@@ -512,6 +753,76 @@ function validateAttempts(entry, issues) {
       )
     ) {
       issues.push(`${entry.id} retry violates the pre-result operational-only policy`);
+    }
+  }
+}
+
+function validateAuditRecord(entry, recordedAt, issues) {
+  const audit = entry.audit ?? {};
+  exactKeys(
+    audit,
+    [
+      "baselineFinishedAt",
+      "baselineStartedAt",
+      "baselineStatus",
+      "finalFinishedAt",
+      "finalStartedAt",
+      "finalStatus"
+    ],
+    `${entry.id} audit`,
+    issues
+  );
+  const firstAttempt = entry.attempts?.[0];
+  const accepted =
+    entry.attempts?.[entry.acceptedAttemptIndex - 1];
+  const instants = [
+    audit.baselineStartedAt,
+    audit.baselineFinishedAt,
+    audit.finalStartedAt,
+    audit.finalFinishedAt
+  ];
+  if (
+    audit.baselineStatus !== "success" ||
+    audit.finalStatus !== "success" ||
+    instants.some((value) => !Number.isFinite(Date.parse(value))) ||
+    Date.parse(audit.baselineFinishedAt) <
+      Date.parse(audit.baselineStartedAt) ||
+    Date.parse(firstAttempt?.startedAt) <
+      Date.parse(audit.baselineFinishedAt) ||
+    Date.parse(audit.finalStartedAt) <=
+      Date.parse(accepted?.endedAt) ||
+    Date.parse(audit.finalFinishedAt) <
+      Date.parse(audit.finalStartedAt) ||
+    Date.parse(recordedAt) <
+      Date.parse(audit.finalFinishedAt)
+  ) {
+    issues.push(`${entry.id} audit/executor ordering is invalid`);
+  }
+}
+
+function validateUsage(usage, label, issues) {
+  if (usage === null) {
+    return;
+  }
+  if (!isPlainObject(usage)) {
+    issues.push(`${label} must be null or an object`);
+    return;
+  }
+  const allowed = new Set([
+    "cachedInputTokens",
+    "costUsd",
+    "inputTokens",
+    "outputTokens",
+    "totalTokens"
+  ]);
+  for (const [key, value] of Object.entries(usage)) {
+    if (
+      !allowed.has(key) ||
+      typeof value !== "number" ||
+      !Number.isFinite(value) ||
+      value < 0
+    ) {
+      issues.push(`${label}.${key} is invalid`);
     }
   }
 }
@@ -541,6 +852,27 @@ function validatePrimary(entry, issues) {
     passedBoth:
       finalCount === 0 && primary.preservation?.passed === true
   };
+  for (const [label, failures] of [
+    ["initial", initial],
+    ["final", final],
+    ["closed", closed],
+    ["introduced", introduced]
+  ]) {
+    for (const [index, failure] of failures.entries()) {
+      exactKeys(
+        failure,
+        [
+          "checkName",
+          "count",
+          "criterionId",
+          "selector",
+          "viewport"
+        ],
+        `${entry.id} ${label} failure ${index + 1}`,
+        issues
+      );
+    }
+  }
   if (canonicalJson(primary) !== canonicalJson(expected)) {
     issues.push(`${entry.id} primary measurements do not replay`);
   }
@@ -548,6 +880,45 @@ function validatePrimary(entry, issues) {
     entry.secondary?.measurementLabel !== SCORE_MEASUREMENT_LABEL
   ) {
     issues.push(`${entry.id} secondary measurement label drifted`);
+  }
+}
+
+function validateSecondary(entry, issues) {
+  const secondary = entry.secondary ?? {};
+  exactKeys(
+    secondary,
+    ["final", "initial", "measurementLabel"],
+    `${entry.id} secondary`,
+    issues
+  );
+  for (const stage of ["initial", "final"]) {
+    const value = secondary[stage] ?? {};
+    exactKeys(
+      value,
+      [
+        "advisoryScore",
+        "deterministicRiskCount",
+        "heuristicFindingCount",
+        "needsReviewCount"
+      ],
+      `${entry.id} secondary.${stage}`,
+      issues
+    );
+    exactKeys(
+      value.advisoryScore ?? {},
+      ["band", "formulaVersion", "max", "value"],
+      `${entry.id} secondary.${stage}.advisoryScore`,
+      issues
+    );
+    for (const key of [
+      "deterministicRiskCount",
+      "heuristicFindingCount",
+      "needsReviewCount"
+    ]) {
+      if (!Number.isInteger(value[key]) || value[key] < 0) {
+        issues.push(`${entry.id} secondary.${stage}.${key} is invalid`);
+      }
+    }
   }
 }
 
@@ -559,6 +930,34 @@ function validateProvenance(
   issues
 ) {
   const provenance = entry.provenance ?? {};
+  exactKeys(
+    provenance,
+    [
+      "agentPassCount",
+      "auditRuntimeConfigSha256",
+      "auditSchemaVersion",
+      "commonTaskSha256",
+      "copyStyleSha256",
+      "deliveryMaterialSha256",
+      "deliveryStanzaSha256",
+      "externalCommandSha256",
+      "finalReauditCount",
+      "finalSourceSha256",
+      "fixtureSha256",
+      "harnessBuildSha256",
+      "harnessConfigSha256",
+      "harnessVersion",
+      "preservationOracleSha256",
+      "privateTranscriptSha256",
+      "protocolSha256",
+      "scoreFormulaVersion",
+      "sharedRulesSha256",
+      "sourceCommit",
+      "startingSourceSha256"
+    ],
+    `${entry.id} provenance`,
+    issues
+  );
   for (const [key, value] of Object.entries({
     commonTaskSha256: inputs.shared.hashes.commonTaskSha256,
     copyStyleSha256: inputs.shared.hashes.copyStyleSha256,
@@ -586,7 +985,10 @@ function validateProvenance(
   }
   if (
     provenance.agentPassCount !== 1 ||
-    provenance.finalReauditCount !== 1
+    provenance.finalReauditCount !== 1 ||
+    provenance.privateTranscriptSha256 !==
+      entry.attempts?.[entry.acceptedAttemptIndex - 1]
+        ?.privateTranscriptSha256
   ) {
     issues.push(`${entry.id} execution-count provenance is invalid`);
   }
@@ -597,6 +999,23 @@ function validateComparability(comparability, inputs, issues) {
     issues.push("comparability must be an object");
     return;
   }
+  exactKeys(
+    comparability,
+    [
+      "agentPassCount",
+      "auditRuntimeConfigSha256",
+      "auditSchemaVersion",
+      "caseInputHashes",
+      "finalReauditCount",
+      "harnessBuildSha256",
+      "harnessVersion",
+      "scoreFormulaVersion",
+      "sharedInputHashes",
+      "sourceCommit"
+    ],
+    "comparability",
+    issues
+  );
   if (
     canonicalJson(comparability.sharedInputHashes) !==
     canonicalJson(inputs.shared.hashes)
