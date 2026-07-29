@@ -16,6 +16,9 @@ quality, accessibility, standards compliance, or a “reins” claim.
 - Cases: 2
 - Repetitions per case and coordinate: 3
 
+The protocol's `READY_FOR_OPERATOR` header records its pre-execution input
+state. `status.json` is the authoritative current publication state.
+
 ## Aggregate observations
 
 | Measurement | Count |

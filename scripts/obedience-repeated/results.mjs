@@ -56,7 +56,7 @@ const TERMINAL_STATUSES = new Set([
 ]);
 const SHA256_PATTERN = /^[a-f0-9]{64}$/;
 const PRIVATE_PATH_PATTERN =
-  /(?:^|[\s"'=(])(?:\/Users\/[^/\s]+|\/home\/[^/\s]+|\/private\/(?:tmp|var)\/\S+|\/tmp\/\S+|[A-Za-z]:\\Users\\[^\\\s]+)/;
+  /(?:\/Users\/[^/\s]+|\/home\/[^/\s]+|\/private\/(?:tmp|var)\/\S+|\/tmp\/\S+|[A-Za-z]:\\Users\\[^\\\s]+)/;
 const SECRET_PATTERN =
   /(?:\bBearer\s+[A-Za-z0-9._~+/=-]{8,}|\b(?:sk|rk|pk)-[A-Za-z0-9_-]{12,}\b|\bgh[pousr]_[A-Za-z0-9]{12,}\b|\bxox[baprs]-[A-Za-z0-9-]{10,}\b|-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----)/i;
 
@@ -141,6 +141,9 @@ export function renderRepeatedReport(results) {
     `- Operationally completed: ${display(aggregate.completedCellCount)} / ${EXPECTED_EXECUTION_COUNT}`,
     `- Cases: ${CASES.length}`,
     `- Repetitions per case and coordinate: ${REPEAT_COUNT}`,
+    "",
+    "The protocol's `READY_FOR_OPERATOR` header records its pre-execution input",
+    "state. `status.json` is the authoritative current publication state.",
     "",
     "## Aggregate observations",
     "",
@@ -546,6 +549,11 @@ async function validateExecutions(
         issues.push(`${entry.id} finalSourcePath is invalid`);
       }
       finalSource = await readFile(finalPath, "utf8");
+      validateNoPrivateMaterial(
+        finalSource,
+        `${entry.id} final source`,
+        issues
+      );
       if (
         entry.provenance?.finalSourceSha256 !== sha256(finalSource)
       ) {

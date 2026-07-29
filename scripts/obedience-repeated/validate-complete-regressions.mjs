@@ -51,6 +51,21 @@ try {
     "final source hash drifted"
   );
   await expectInvalid(
+    "final-source-private-material",
+    async (root) => {
+      const path = join(
+        root,
+        "final-sources",
+        "operations-queue-r1-claude-haiku-inline.html"
+      );
+      await writeFile(
+        path,
+        `${await readFile(path, "utf8")}\n<!-- /Users/private/secret -->\n`
+      );
+    },
+    "final source contains an absolute private path"
+  );
+  await expectInvalid(
     "report-drift",
     async (root) => {
       await writeFile(
@@ -128,7 +143,7 @@ try {
     "support-triage must contain only"
   );
   console.log(
-    "Repeated obedience complete snapshot regressions passed (11 fail-closed mutations plus unchanged control)."
+    "Repeated obedience complete snapshot regressions passed (12 fail-closed mutations plus unchanged control)."
   );
 } finally {
   await rm(temp, { recursive: true, force: true });
