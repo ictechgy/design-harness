@@ -43,6 +43,10 @@ const forbiddenReferenceSessionDependencies = new Set([
   "sharp",
   "tesseract.js"
 ]);
+const forbiddenReferenceSessionImportSpecifiers = new Set([
+  "child_process",
+  "node:child_process"
+]);
 const forbiddenReferenceSessionSourcePatterns = [
   /\bfetch\s*\(/u,
   /\bXMLHttpRequest\b/u,
@@ -51,8 +55,20 @@ const forbiddenReferenceSessionSourcePatterns = [
   /\b(?:https?|wss?):\/\//u,
   /\b(?:playwright|puppeteer)\b/u,
   /\b(?:tesseract|onnxruntime|sharp|jimp|canvas|image-js)\b/iu,
+  /\b(?:node:)?child_process\b/u,
+  /\b(?:spawn|spawnSync|exec|execSync|execFile|execFileSync)\s*\(/u,
+  /["'](?:[^"']*\/)?(?:sips|magick|convert|identify|exiftool|qlmanage|ffmpeg|ffprobe)["']/iu,
   /\bdesign-guide\.yaml\b/u,
   /packages\/(?:core|copy-audit|visual-audit|cli)\//u
+];
+const referenceSessionPolicyRegressionSources = [
+  ["Node child_process import", 'import { spawn } from "node:child_process";'],
+  ["bare child_process import", 'import { execFile } from "child_process";'],
+  ["spawn API call", "spawn(tool, args);"],
+  ["execFile API call", "execFile(tool, args);"],
+  ["macOS image decoder command", 'run("/usr/bin/sips");'],
+  ["ImageMagick command", 'run("magick");'],
+  ["metadata analysis command", 'run("exiftool");']
 ];
 const approvedAssetPaths = collectApprovedAssetPaths(trackedFiles);
 
@@ -78,6 +94,25 @@ function collectApprovedAssetPaths(files) {
   }
 
   return paths;
+}
+
+function importSpecifiersFrom(content) {
+  return [
+    ...content.matchAll(/\bfrom\s+["']([^"']+)["']/gu),
+    ...content.matchAll(/\bimport\s*\(\s*["']([^"']+)["']\s*\)/gu)
+  ].map((match) => match[1]);
+}
+
+function hasForbiddenReferenceSessionSource(content) {
+  return importSpecifiersFrom(content).some((specifier) =>
+    forbiddenReferenceSessionImportSpecifiers.has(specifier)
+  ) || forbiddenReferenceSessionSourcePatterns.some((pattern) => pattern.test(content));
+}
+
+for (const [label, source] of referenceSessionPolicyRegressionSources) {
+  if (!hasForbiddenReferenceSessionSource(source)) {
+    errors.push(`reference-session policy regression failed to reject ${label}`);
+  }
 }
 
 for (const file of trackedFiles) {
@@ -132,11 +167,12 @@ for (const file of referenceSessionImplementationPaths) {
     continue;
   }
   const content = readFileSync(file, "utf8");
-  const importSpecifiers = [
-    ...content.matchAll(/\bfrom\s+["']([^"']+)["']/gu),
-    ...content.matchAll(/\bimport\s*\(\s*["']([^"']+)["']\s*\)/gu)
-  ].map((match) => match[1]);
+  const importSpecifiers = importSpecifiersFrom(content);
   for (const specifier of importSpecifiers) {
+    if (forbiddenReferenceSessionImportSpecifiers.has(specifier)) {
+      errors.push(`reference-session implementation cannot launch external commands in ${file}: ${specifier}`);
+      continue;
+    }
     if (
       !specifier.startsWith("node:")
       && !(file === "scripts/reference-session.mjs" && specifier === "./reference-session-lib.mjs")
