@@ -308,7 +308,7 @@ describe("findingsFromMeasurements", () => {
     });
   });
 
-  it("keeps an incomplete text-cluster component out of a combined density overage", () => {
+  it("keeps a non-exceeding text-cluster lower bound out of a combined density overage", () => {
     const summary = densityComplexitySummary();
     const findings = findingsFromMeasurements({
       ...baseMeasurements,
@@ -342,11 +342,12 @@ describe("findingsFromMeasurements", () => {
         omittedSampleCount: 0
       },
       textClusters: {
-        coverage: "incomplete",
-        textClusterCount: null,
+        coverage: "lower-bound",
+        lowerBoundMethodId: "supported-flow-root-count-v1",
+        textClusterCount: 1,
         skippedByReason: { "unsupported-clip-or-mask": 1 },
         samples: [],
-        omittedSampleCount: null
+        omittedSampleCount: 1
       },
       overages: [{
         component: "visibleElementCount",
@@ -355,6 +356,47 @@ describe("findingsFromMeasurements", () => {
         excess: 1,
         coverage: "lower-bound"
       }]
+    });
+  });
+
+  it("combines sound visible-element and text-cluster lower-bound overages", () => {
+    const summary = densityComplexitySummary({
+      textClusters: {
+        ...densityComplexitySummary().textClusters!,
+        textNodeUniverseCount: 3,
+        evaluatedTextNodeCount: 2,
+        textFragmentCount: 2,
+        textClusterCount: 2,
+        omittedSampleCount: 2
+      }
+    });
+    const findings = findingsFromMeasurements({
+      ...baseMeasurements,
+      densityComplexity: summary
+    }, ["measurement-desktop"]);
+
+    expect(findings).toHaveLength(1);
+    expect(findings[0]).toMatchObject({
+      checkName: "density-complexity-budget",
+      determinism: "heuristic",
+      resultKind: "risk",
+      severity: "low",
+      confidence: "low",
+      observed: {
+        overages: [{
+          component: "visibleElementCount",
+          observedCount: 2,
+          configuredMaximum: 1,
+          excess: 1,
+          coverage: "lower-bound"
+        }, {
+          component: "textClusterCount",
+          observedCount: 2,
+          configuredMaximum: 1,
+          excess: 1,
+          coverage: "lower-bound"
+        }]
+      }
     });
   });
 
@@ -422,7 +464,7 @@ describe("findingsFromMeasurements", () => {
     expect(absentSummaries).toEqual([]);
   });
 
-  it("never treats an incomplete text-cluster diagnostic as a budget overage", () => {
+  it("does not treat equality on a partial text-cluster lower bound as a pass or overage", () => {
     const summary = densityComplexitySummary();
     const findings = findingsFromMeasurements({
       ...baseMeasurements,
@@ -922,7 +964,8 @@ function densityComplexitySummary(
     textClusters: {
       methodId: "text-flow-connectivity-v1",
       maxTextClusters: 1,
-      coverage: "incomplete",
+      coverage: "lower-bound",
+      lowerBoundMethodId: "supported-flow-root-count-v1",
       textNodeUniverseCount: 2,
       ignoredTextNodeCount: 0,
       ineligibleTextNodeCount: 0,
@@ -930,10 +973,10 @@ function densityComplexitySummary(
       evaluatedTextNodeCount: 1,
       skippedByReason: { "unsupported-clip-or-mask": 1 },
       textFragmentCount: 1,
-      textClusterCount: null,
+      textClusterCount: 1,
       edgeTestCount: null,
       emittedSampleCount: 0,
-      omittedSampleCount: null,
+      omittedSampleCount: 1,
       samples: []
     },
     ...overrides

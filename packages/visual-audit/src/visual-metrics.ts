@@ -165,6 +165,9 @@ export interface DensityTextClusterSample {
   fragmentCount: number;
 }
 
+export const DENSITY_TEXT_CLUSTER_LOWER_BOUND_METHOD_ID =
+  "supported-flow-root-count-v1";
+
 interface DensityTextClusterSummaryBase {
   methodId: DensityComplexityBudgetPolicy["textClusterMethodId"];
   maxTextClusters: number;
@@ -186,18 +189,19 @@ export interface CompleteDensityTextClusterSummary extends DensityTextClusterSum
   samples: DensityTextClusterSample[];
 }
 
-export interface IncompleteDensityTextClusterSummary extends DensityTextClusterSummaryBase {
-  coverage: "incomplete";
-  textClusterCount: null;
+export interface LowerBoundDensityTextClusterSummary extends DensityTextClusterSummaryBase {
+  coverage: "lower-bound";
+  lowerBoundMethodId: typeof DENSITY_TEXT_CLUSTER_LOWER_BOUND_METHOD_ID;
+  textClusterCount: number;
   edgeTestCount: null;
   emittedSampleCount: 0;
-  omittedSampleCount: null;
+  omittedSampleCount: number;
   samples: [];
 }
 
 export type DensityTextClusterSummary =
   | CompleteDensityTextClusterSummary
-  | IncompleteDensityTextClusterSummary;
+  | LowerBoundDensityTextClusterSummary;
 
 export interface DensityComplexitySummary {
   policyId: DensityComplexityBudgetPolicy["policyId"];
@@ -693,15 +697,19 @@ function analyzeDensityTextClusters(
     textFragmentCount: collection.textFragmentCount
   };
   if (collection.skippedTextNodeCount > 0) {
+    const supportedFlowRootCount = new Set(
+      collection.fragments.map((fragment) => fragment.rootId)
+    ).size;
     return {
       ok: true,
       summary: {
         ...shared,
-        coverage: "incomplete",
-        textClusterCount: null,
+        coverage: "lower-bound",
+        lowerBoundMethodId: DENSITY_TEXT_CLUSTER_LOWER_BOUND_METHOD_ID,
+        textClusterCount: supportedFlowRootCount,
         edgeTestCount: null,
         emittedSampleCount: 0,
-        omittedSampleCount: null,
+        omittedSampleCount: supportedFlowRootCount,
         samples: []
       }
     };

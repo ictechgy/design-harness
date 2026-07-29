@@ -62,6 +62,14 @@ Visual-metric calibration is separate from the broad example smoke. `examples/ui
 
 `pnpm smoke:visual-metrics` requires complete evidence with no metric partial notices or failed checks for the six atomic fixtures and merchant case in the browser-equipped `example-smoke` CI job, then audits all 52 unrelated fixtures three times. Atomic/merchant expectations retain their full exact measurement projections. Unrelated entries use the manifest's `visual-metrics-corpus-portable-v1` committed hash: the three visual-metric summaries, findings, and notices remain present except for density text-fragment and edge-test diagnostic counts, whose values legitimately vary with the host font environment. Full audit evidence is still written, and the complete projection including both diagnostics must be byte-repeatable across the three runs within each environment. Unrelated existing findings/notices are allowed, but every audit must still return successful status and an empty `failedChecks`. The gate is intentionally not an assertion that all unrelated metric evidence is complete. `color-adherence-incomplete.html` is the sole reviewed visual-metric lower-bound case: it must keep zero visual-metric risks and exactly one `palette-discipline-slots-skipped` notice with `unsupported-color: 1`; every other visual-metric notice or risk, coverage/status or failed-check change, portable-hash mismatch, or full repeated-run drift fails. Atomic/merchant artifacts live under `runs/visual-metrics/<case-id>/`, corpus artifacts under `runs/visual-metrics/corpus/repeat-{1,2,3}/<entry-id>/`, and CI uploads the root. The project budgets in this oracle calibrate implementation drift only; they are not defaults or recommendations.
 
+Partial text-cluster evidence has a separate disposable live pair so the closed
+fixture hashes above do not move. `pnpm smoke:density-lower-bound` creates one
+page with one represented flow root and one with two, adds the same unsupported
+clipped text candidate to both, and sets `maxTextClusters: 1`. Both audits must
+stay successful with the incomplete-evidence notice and no failed checks. The
+one-root bound is silent; the two-root bound emits exactly one low-confidence
+heuristic density risk. Artifacts live under `runs/density-lower-bound/`.
+
 ## Fixture Policy
 
 - Add at least one good and one bad fixture for each new check family, including heuristic-risk checks.

@@ -176,13 +176,14 @@ detector-scoped partial result. It never becomes a truncated count, zero, pass,
 or clean result.
 
 Expected unsupported evidence may produce a lower-bound component when the
-component's count is provably monotone under omitted candidates. This is
-permitted only for typography distinct variants, palette distinct colors,
-palette hue families, and density visible elements. Such a lower bound may
-create a sound risk when it already exceeds the configured budget. A
-non-exceeding lower bound creates no finding and must not be described as a
-pass or clean result. Text-cluster connected-component count is explicitly
-excluded from this rule.
+component's count is provably monotone under omitted candidates. This applies
+to typography distinct variants, palette distinct colors, palette hue
+families, density visible elements, and the distinct represented flow-root
+count used only for partial text evidence. Such a lower bound may create a
+sound risk when it already exceeds the configured budget. A non-exceeding
+lower bound creates no finding and must not be described as a pass or clean
+result. The supported-only text connected-component count remains explicitly
+excluded because omitted fragments may bridge observed components.
 
 At most one finding per metric per viewport is emitted. When a two-budget
 metric exceeds both budgets, one finding records both overages. Evidence
@@ -488,8 +489,9 @@ A box is visible when:
 An element or ancestor with legacy `clip` other than `auto`, `clip-path` other
 than `none`, or a non-`none` mask is unsupported. Omit the affected candidate
 and record `unsupported-clip-or-mask`. This makes the visible-element component
-a lower bound. It makes the text-cluster component incomplete rather than a
-lower bound. Occlusion by overlapping siblings is deliberately unresolved.
+a lower bound. For text, it replaces the unsafe supported-only connected-
+component count with the distinct represented flow-root lower bound described
+below. Occlusion by overlapping siblings is deliberately unresolved.
 
 ### 6.3 Visible-content elements
 
@@ -613,18 +615,24 @@ Coverage is component-specific:
 - `visibleElementCoverage` is `complete` when there are no skipped element
   candidates and `lower-bound` otherwise. A lower-bound visible-element count
   may emit a risk when it already exceeds `maxVisibleElements`.
-- `textClusterCoverage` is `complete` only when no text candidate or fragment
-  was skipped and all invariants hold. Any skipped/unsupported text fragment
-  makes it `incomplete`. The supported-only connected-component count may
-  remain diagnostic evidence, but it must not be compared with
-  `maxTextClusters`, create a text-cluster overage, or be called a lower bound.
-- When a configured text-cluster component is incomplete, record a
-  detector-scoped partial/notice. A simultaneously sound visible-element
-  overage may still create the single density finding, containing only that
-  component.
+- `textClusterCoverage` is `complete` when no text candidate or fragment was
+  skipped and all invariants hold. Complete evidence uses
+  `text-flow-connectivity-v1`.
+- When text evidence is skipped, report `coverage: lower-bound` and
+  `lowerBoundMethodId: supported-flow-root-count-v1`. Its `textClusterCount` is
+  the number of distinct `rootId` values represented by supported fragments.
+  Set `edgeTestCount` to `null`, emit no samples, and set
+  `omittedSampleCount` to that lower-bound count.
+- The partial bound may create a text-cluster overage only when it already
+  exceeds `maxTextClusters`. Equality or a lower value creates no finding and
+  is never a pass. Record `density-text-clusters-incomplete` as a notice while
+  keeping expected unsupported evidence out of `failedChecks`.
 
 This split is load-bearing: adding an omitted fragment can connect two
-supported components and reduce the true full-fragment cluster count.
+supported components within one root and reduce the true full-fragment cluster
+count, so the observed supported-only component count is not a lower bound.
+Fragments from different flow roots never connect, so every represented root
+still guarantees at least one full-evidence cluster.
 
 Adversarial vectors:
 
@@ -638,8 +646,9 @@ Adversarial vectors:
 - Overlapping labels in separate block roots remain separate.
 - Two supported fragments separated by one skipped fragment may appear as two
   components even when the skipped fragment would bridge them into one.
-  Therefore the supported-only count is incomplete and cannot trigger a
-  text-cluster finding.
+  Therefore the supported-only component count is discarded. If both supported
+  fragments share one root, the partial lower bound is one; if they occupy two
+  roots, the lower bound is two.
 - An ignored card removes its full subtree from both counts.
 - A rectangle that touches only a viewport edge is excluded; any positive
   subpixel intersection qualifies.
@@ -678,13 +687,14 @@ Finding observations include:
 - observed exact totals;
 - every component overage;
 - coverage status for compared components (`complete` or `lower-bound`), plus
-  component-specific `incomplete` text-cluster coverage when present;
+  the partial text lower-bound method when present;
 - skipped-by-reason counts;
 - bounded samples and omitted counts.
 
 A discarded summary cannot create a finding. An approved monotone lower-bound
-component creates a finding only when it already exceeds its budget.
-Incomplete text-cluster coverage never creates a text-cluster overage.
+component creates a finding only when it already exceeds its budget. Partial
+text evidence uses only the represented-flow-root lower bound; its
+supported-only connected-component count never creates an overage.
 
 ## 8. Generation projection and guide profile migration
 

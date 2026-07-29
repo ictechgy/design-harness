@@ -440,22 +440,24 @@ export async function auditUrl(options: AuditUrlOptions): Promise<AuditUrlResult
                   densitySummary.visibleElements
                 ));
               }
-              // Incomplete text-cluster coverage is disclosed, not escalated. The
-              // comparison in findingsFromMeasurements already requires complete
-              // coverage, so no verdict can be invented from partial evidence, and a
-              // failed check here would flip the whole audit to partial/exit 2 — which
-              // stops `design-harness loop` before it evaluates its condition. A single
-              // masked or clipped element is enough to trigger this state on a real page.
-              if (densitySummary?.textClusters?.coverage === "incomplete") {
+              // Partial text-cluster coverage retains a conservative count of
+              // represented flow roots. It may prove a high-side overage, but a
+              // non-overage is never evidence of a pass. Unsupported evidence stays a
+              // notice rather than a failed check so one clipped or masked text node
+              // does not make the whole audit partial or stop the repair loop.
+              if (densitySummary?.textClusters?.coverage === "lower-bound") {
                 const details = {
                   viewport: viewport.name,
+                  textClusterCount: densitySummary.textClusters.textClusterCount,
+                  lowerBoundMethodId:
+                    densitySummary.textClusters.lowerBoundMethodId,
                   skippedTextNodeCount: densitySummary.textClusters.skippedTextNodeCount,
                   skippedByReason: densitySummary.textClusters.skippedByReason,
                   methodId: densitySummary.textClusters.methodId
                 };
                 noticeCandidates.push({
                   code: "density-text-clusters-incomplete",
-                  message: "Text-cluster density could not be evaluated completely for this viewport.",
+                  message: "Text-cluster density is incomplete for this viewport; the reported count is a conservative supported-flow-root lower bound.",
                   viewport: viewport.name,
                   details
                 });
