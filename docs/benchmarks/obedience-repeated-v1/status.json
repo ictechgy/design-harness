@@ -1,0 +1,12 @@
+{
+  "schemaVersion": "obedience-repeated-v1/status/v1",
+  "benchmarkId": "obedience-repeated-v1",
+  "status": "ready-for-operator",
+  "caseCount": 2,
+  "repeatCount": 3,
+  "coordinateCount": 12,
+  "executionCount": 72,
+  "providerExecution": "not-performed",
+  "publicResults": "absent",
+  "claimBoundary": "preparation-contract-only"
+}

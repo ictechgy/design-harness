@@ -1,0 +1,26 @@
+{
+  "schemaVersion": "obedience-repeated-v1/v1-preservation/v1",
+  "root": "../obedience-v1",
+  "fileCount": 19,
+  "files": {
+    "common-task.md": "da27190af2e604ac18fcbb56e05e090b6ddc3d1f5f3b6a94d68337c83a434fc3",
+    "copy-style.yaml": "a75edc98ba6805bb9ad224517ceca7c0e02e5b3381cc830954cc7e2f6b7936ca",
+    "final-sources/claude-haiku-inline.html": "250d8b76922afac5199936777795e3b6e6cb666f1ea83270990bd1e64c8720b5",
+    "final-sources/claude-haiku-no-pack.html": "2f642580b6339873bf108942494121968c24a57a2b92ef9d2c4755bea1795ab2",
+    "final-sources/claude-haiku-skill.html": "aa80e9d0ff84e69b1569c083a7c075ae86ef537d530c67267a34e10f542bab7e",
+    "final-sources/claude-opus-inline.html": "bbba85bc8b3b1596f65ce92cd2e4e4fad29a2c87db7084178085c9978835658a",
+    "final-sources/claude-opus-no-pack.html": "bbba85bc8b3b1596f65ce92cd2e4e4fad29a2c87db7084178085c9978835658a",
+    "final-sources/claude-opus-skill.html": "bbba85bc8b3b1596f65ce92cd2e4e4fad29a2c87db7084178085c9978835658a",
+    "final-sources/claude-sonnet-inline.html": "bbba85bc8b3b1596f65ce92cd2e4e4fad29a2c87db7084178085c9978835658a",
+    "final-sources/claude-sonnet-no-pack.html": "bbba85bc8b3b1596f65ce92cd2e4e4fad29a2c87db7084178085c9978835658a",
+    "final-sources/claude-sonnet-skill.html": "bbba85bc8b3b1596f65ce92cd2e4e4fad29a2c87db7084178085c9978835658a",
+    "final-sources/codex-gpt-5-6-sol-inline.html": "bbba85bc8b3b1596f65ce92cd2e4e4fad29a2c87db7084178085c9978835658a",
+    "final-sources/codex-gpt-5-6-sol-no-pack.html": "250d8b76922afac5199936777795e3b6e6cb666f1ea83270990bd1e64c8720b5",
+    "final-sources/codex-gpt-5-6-sol-skill.html": "bbba85bc8b3b1596f65ce92cd2e4e4fad29a2c87db7084178085c9978835658a",
+    "fixture.html": "57de93ef55620530ecec4a71d29be033da5984fd39e7fd21382a5752ea00c3ee",
+    "preservation-oracle.json": "e6ad1b73951d269bb35b61d752d6053e407c4f53a9c8aebbbf78af8302e1dbfe",
+    "protocol.md": "145a5706ce350bc4f37b7e900a549afbaf11804707f9a03522ccf0fe927ec7b3",
+    "report.md": "c5de783aa4174476eccaaed45ed2029f0ed0766278ed642656908ad0a867bd02",
+    "results.json": "28bdd734236b3ce74635d2d27772b45a1a82e09f413e7e6b0bf1fbfad00e82cc"
+  }
+}

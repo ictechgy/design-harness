@@ -43,6 +43,7 @@ jobs:
       - run: pnpm smoke:copy
       - run: pnpm smoke:visual-metrics
       - run: pnpm smoke:density-lower-bound
+      - run: pnpm smoke:obedience-repeated-baselines
       - run: pnpm smoke:loop
       - run: pnpm smoke:selector-uniqueness
       - run: pnpm smoke:spacing-skip
@@ -58,6 +59,7 @@ jobs:
             runs/copy-smoke
             runs/visual-metrics
             runs/density-lower-bound
+            runs/obedience-repeated-baselines
             runs/loop-smoke
             runs/packed-loop
             runs/calibration
