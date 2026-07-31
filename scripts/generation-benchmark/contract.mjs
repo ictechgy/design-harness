@@ -45,8 +45,42 @@ export const MANIFEST_SCHEMA_VERSION = "generation-benchmark-v1/manifest/v1";
 export const RESULT_SCHEMA_VERSION = "generation-benchmark-v1/result/v1";
 
 export const GENERATIONS_PER_ARM = 6;
-export const ARMS = Object.freeze(["without-pack", "with-pack"]);
+export const ARMS = Object.freeze(["without-pack", "with-pack", "with-widened-pack"]);
 export const GENERATED_FILENAME = "page.html";
+
+/**
+ * The widened guide used by the third arm (ADR-003).
+ *
+ * Held to what the unchanged 2000-token ceiling actually admits: a primary task
+ * plus two commitments measured at ~1898 estimated tokens. A third commitment is
+ * rejected at 2094, so this is the maximum positive vocabulary available, not a
+ * chosen subset.
+ *
+ * The commitments are deliberately aimed at the dimensions that stayed flat in
+ * v1 -- layout mode and emphasis -- because those are the pack-pushed dimensions
+ * the composition axis is computed from.
+ */
+export const WIDENED_GUIDE_ADDITIONS = Object.freeze({
+  primaryTask: Object.freeze({
+    statement: "Clear the overnight settlement exception queue before the shift handover.",
+    supportingTasks: Object.freeze(["Check payout totals."])
+  }),
+  signatureCommitments: Object.freeze([
+    Object.freeze({
+      id: "status-rail",
+      scope: "layout",
+      commitment:
+        "Anchor the screen on a single vertical status rail that orders exceptions by urgency.",
+      instead: "A row of equally sized summary cards across the top."
+    }),
+    Object.freeze({
+      id: "single-loud-number",
+      scope: "emphasis",
+      commitment: "Give exactly one number the largest type on the screen; keep the rest quiet.",
+      instead: "Three metrics rendered at the same size and weight."
+    })
+  ])
+});
 
 /** The single fixed brief. Identical in both arms. */
 export const BRIEF =
@@ -111,10 +145,14 @@ export function canonicalJson(value) {
   return `${JSON.stringify(value, null, 2)}\n`;
 }
 
-/** The exact prompt for a cell. The pack, when present, is referenced by file. */
+/**
+ * The exact prompt for a cell. Both pack arms receive the identical stanza; only
+ * the referenced file's contents differ, so the prompt text cannot itself be a
+ * hidden second treatment.
+ */
 export function buildPrompt(arm, packFilename) {
   const lines = [`Brief: ${BRIEF}`, ""];
-  if (arm === "with-pack") {
+  if (arm !== "without-pack") {
     lines.push(
       `Before you design anything, read ./${packFilename} in this directory and follow every rule in it exactly.`,
       "It is the project's design contract: honor its declared tokens, avoid what it prohibits, and include its signature element.",

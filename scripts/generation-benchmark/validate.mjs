@@ -17,6 +17,7 @@ import {
   LIMITATIONS,
   MATRIX,
   OUTPUT_CONSTRAINTS,
+  WIDENED_GUIDE_ADDITIONS,
   buildPrompt
 } from "./contract.mjs";
 
@@ -29,9 +30,11 @@ const check = (label, condition) => {
 
 // --- matrix -----------------------------------------------------------------
 
-check("two arms", ARMS.length === 2);
+check("three arms", ARMS.length === 3);
+check("exactly one baseline arm", ARMS.filter((arm) => arm === "without-pack").length === 1);
+check("two treatment arms", ARMS.filter((arm) => arm !== "without-pack").length === 2);
 check("matrix size is arms x generations", EXPECTED_CELL_COUNT === ARMS.length * GENERATIONS_PER_ARM);
-check("matrix has 12 cells", MATRIX.length === 12);
+check("matrix has 18 cells", MATRIX.length === 18);
 check("cell ids are unique", new Set(MATRIX.map((cell) => cell.id)).size === MATRIX.length);
 for (const arm of ARMS) {
   check(
@@ -48,6 +51,12 @@ check(
 
 const withPack = buildPrompt("with-pack", "DESIGN.md");
 const withoutPack = buildPrompt("without-pack", "DESIGN.md");
+const withWidened = buildPrompt("with-widened-pack", "DESIGN.md");
+
+// Both treatment arms must be indistinguishable from the prompt alone, so the
+// only difference between them is the compiled pack file's contents.
+check("both pack arms receive byte-identical prompts", withPack === withWidened);
+check("the widened arm still carries the brief", withWidened.includes(BRIEF));
 
 check("both arms carry the identical brief", withPack.includes(BRIEF) && withoutPack.includes(BRIEF));
 check("with-pack references the pack", withPack.includes("DESIGN.md"));
@@ -68,6 +77,34 @@ for (const forbidden of ["external stylesheet", "@import", "<script>", "<svg>", 
   check(`constraints forbid ${forbidden}`, constraintText.includes(forbidden.toLowerCase()));
 }
 check("constraints require a single inline style element", constraintText.includes("single inline <style>"));
+
+// --- the widened guide must fit the unchanged ceiling ----------------------
+
+check(
+  "widened additions declare a primary task",
+  typeof WIDENED_GUIDE_ADDITIONS.primaryTask.statement === "string" &&
+    WIDENED_GUIDE_ADDITIONS.primaryTask.statement.length > 0
+);
+check(
+  "widened additions stay within the measured ceiling headroom (primary task plus two commitments)",
+  WIDENED_GUIDE_ADDITIONS.signatureCommitments.length === 2
+);
+check(
+  "widened commitments target the pack-pushed dimensions",
+  WIDENED_GUIDE_ADDITIONS.signatureCommitments.map((entry) => entry.scope).sort().join(",") ===
+    "emphasis,layout"
+);
+check(
+  "every widened commitment states what it replaces",
+  WIDENED_GUIDE_ADDITIONS.signatureCommitments.every(
+    (entry) => entry.instead.length > 0 && entry.instead !== entry.commitment
+  )
+);
+check(
+  "widened commitment ids are unique",
+  new Set(WIDENED_GUIDE_ADDITIONS.signatureCommitments.map((entry) => entry.id)).size ===
+    WIDENED_GUIDE_ADDITIONS.signatureCommitments.length
+);
 
 // --- axes stay separate ----------------------------------------------------
 
