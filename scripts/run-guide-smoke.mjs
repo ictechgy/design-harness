@@ -90,7 +90,7 @@ async function assertRecognizedPriorMigration() {
 
   const tokenPath = join(target, "design.tokens.json");
   const prior = JSON.parse(await readFile(tokenPath, "utf8"));
-  prior.$extensions["dev.design-harness"].profile = "design-guide-v0.5a-1";
+  prior.$extensions["dev.design-harness"].profile = "design-guide-v0.5a-2";
   prior.$extensions["dev.design-harness"].catalogVersion = "2026-07-18";
   await writeFile(tokenPath, `${JSON.stringify(prior, null, 2)}\n`);
 
@@ -105,7 +105,7 @@ async function assertRecognizedPriorMigration() {
   assert(migration.code === 0, `recognized-prior migration failed:\n${migration.stderr}`);
   const migrated = JSON.parse(await readFile(tokenPath, "utf8"));
   assert(
-    migrated.$extensions?.["dev.design-harness"]?.profile === "design-guide-v0.5a-2",
+    migrated.$extensions?.["dev.design-harness"]?.profile === "design-guide-v0.5a-3",
     "recognized-prior token profile was not migrated"
   );
   assert(!(await exists(join(target, ".design-harness-guide.lock"))), "profile migration lock residue remained");

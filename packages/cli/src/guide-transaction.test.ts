@@ -156,7 +156,7 @@ describe("materializeGuideTargets", () => {
       .toEqual({ name: "design.tokens.json", status: "changed" });
     expect(JSON.parse(await readFile(join(fixture.target, "design.tokens.json"), "utf8"))
       .$extensions["dev.design-harness"]).toMatchObject({
-        profile: "design-guide-v0.5a-2",
+        profile: "design-guide-v0.5a-3",
         catalogVersion: "2026-07-18",
         sourceHash: "a".repeat(64)
       });
@@ -613,7 +613,7 @@ function tokenJson(hashCharacter: string): string {
 
 function priorTokenJson(hashCharacter: string): string {
   return tokenJsonWithOwnership(
-    "design-guide-v0.5a-1",
+    "design-guide-v0.5a-2",
     "2026-07-18",
     hashCharacter.repeat(64)
   );

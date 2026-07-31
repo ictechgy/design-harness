@@ -156,8 +156,49 @@ export interface DesignGuide {
   tokens: DesignGuideTokens;
   prohibitions: string[];
   signatureElement: string;
+  signatureCommitments?: SignatureCommitment[];
+  primaryTask?: DesignGuidePrimaryTask;
   audit?: DesignGuideAudit;
 }
+
+/**
+ * Closed scope enum for typed signature commitments (ADR-003). Closed so the
+ * compiler can order rules deterministically and a later criterion can bind per
+ * scope. Not a `RubricCategory` and deliberately not in enum lockstep with one.
+ */
+export type SignatureScope = "layout" | "emphasis" | "navigation" | "state" | "motion";
+
+export const SIGNATURE_SCOPES: readonly SignatureScope[] = [
+  "layout",
+  "emphasis",
+  "navigation",
+  "state",
+  "motion"
+];
+
+/**
+ * One positive design commitment. `instead` is required: a commitment with no
+ * stated alternative reduces to vague encouragement, which is the measured
+ * failure mode this field exists to fix (ADR-003).
+ */
+export interface SignatureCommitment {
+  id: string;
+  scope: SignatureScope;
+  commitment: string;
+  instead: string;
+}
+
+/**
+ * The one job a surface must make obvious, so declared hierarchy has a referent.
+ * Generation-side only; creates no criterion and gates nothing (ADR-003).
+ */
+export interface DesignGuidePrimaryTask {
+  statement: string;
+  supportingTasks?: string[];
+}
+
+/** Deliberately arbitrary cap. A guide with many primary tasks has declared none. */
+export const PRIMARY_TASK_SUPPORTING_MAX = 3;
 
 export type FontFamilyKind = "named" | "generic";
 

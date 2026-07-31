@@ -20,7 +20,7 @@ describe("pure guide compiler", () => {
     for (const copyStyle of [undefined, createExampleCopyStyle()]) {
       const result = compileDesignGuide(createExampleDesignGuide(), copyStyle);
       expect(result.profileId).toBe(DESIGN_GUIDE_PROFILE_ID);
-      expect(result.profileId).toBe("design-guide-v0.5a-2");
+      expect(result.profileId).toBe("design-guide-v0.5a-3");
       expect(result.catalogVersion).toBe(GUIDE_CATALOG_VERSION);
       expect(result.sourceHash).toMatch(/^[a-f0-9]{64}$/u);
       expect(result.tokenEstimate).toEqual({
@@ -227,7 +227,7 @@ describe("pure guide compiler", () => {
     const base = createExampleDesignGuide();
     const compiledBase = compileDesignGuide(base);
     expect(compiledBase.sourceHash).toBe(
-      "a124481de20b16ed03e917741a8e738d823b32be8b7356f2c7d439d14ba1f127"
+      "2bd4b5b60797347b063713b2505fbc15972fe2bf137491ff82449caa1fa2a46f"
     );
 
     const selectorOnly = structuredClone(base);
@@ -294,7 +294,7 @@ describe("pure guide compiler", () => {
     const copyStyle = createExampleCopyStyle();
     const compiledWithCopy = compileDesignGuide(base, copyStyle);
     expect(compiledWithCopy.sourceHash).toBe(
-      "db8a0236bf85a680e1295289fae094efa730eef547026ed29b9541fdab4ad862"
+      "bd511633681057d190407146241349313c5aed80fcb051804776aef212a4efd0"
     );
     for (const overlay of overlays) {
       expect(compileDesignGuide(overlay, copyStyle)).toEqual(compiledWithCopy);
@@ -329,7 +329,7 @@ describe("pure guide compiler", () => {
 
     // Hexing the guide is presentation only: it must not move the source hash.
     expect(compileDesignGuide(createExampleDesignGuide()).sourceHash).toBe(
-      "a124481de20b16ed03e917741a8e738d823b32be8b7356f2c7d439d14ba1f127"
+      "2bd4b5b60797347b063713b2505fbc15972fe2bf137491ff82449caa1fa2a46f"
     );
   });
 
@@ -365,7 +365,7 @@ describe("pure guide compiler", () => {
     expect(result.designTokensJson).toContain('"unit"');
     expect(result.designTokensJson).toContain('"px"');
     expect(compileDesignGuide(createExampleDesignGuide()).sourceHash).toBe(
-      "a124481de20b16ed03e917741a8e738d823b32be8b7356f2c7d439d14ba1f127"
+      "2bd4b5b60797347b063713b2505fbc15972fe2bf137491ff82449caa1fa2a46f"
     );
   });
 

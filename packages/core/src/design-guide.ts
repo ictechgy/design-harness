@@ -17,8 +17,9 @@ import type {
   VisualMetricsGenerationPolicies,
   VisualMetricsRuntimePolicies
 } from "./types.js";
+import { PRIMARY_TASK_SUPPORTING_MAX, SIGNATURE_SCOPES } from "./types.js";
 
-export const DESIGN_GUIDE_PROFILE_ID = "design-guide-v0.5a-2" as const;
+export const DESIGN_GUIDE_PROFILE_ID = "design-guide-v0.5a-3" as const;
 export const FONT_FAMILY_ADHERENCE_POLICY_ID = "font-family-adherence-v1" as const;
 export const COLOR_ADHERENCE_POLICY_ID = "color-adherence-v1" as const;
 export const SPACING_ADHERENCE_POLICY_ID = "spacing-adherence-v1" as const;
@@ -81,6 +82,7 @@ const UNSUPPORTED_KEYS = new Set([
   "tokenFile"
 ]);
 const CATALOG_IDS = new Set<string>(SLOP_FINGERPRINT_CATALOG.entries.map((entry) => entry.id));
+const SIGNATURE_SCOPE_SET = new Set<string>(SIGNATURE_SCOPES);
 const CSS_GENERIC_FONT_FAMILY_VALUE_SET = new Set<string>(CSS_GENERIC_FONT_FAMILY_VALUES);
 
 export function assertDesignGuideProfile(value: unknown): asserts value is DesignGuide {
@@ -91,10 +93,18 @@ export function assertDesignGuideProfile(value: unknown): asserts value is Desig
 
   checkExactKeys(
     value,
-    ["schemaVersion", "tokens", "prohibitions", "signatureElement", "audit"],
+    [
+      "schemaVersion",
+      "tokens",
+      "prohibitions",
+      "signatureElement",
+      "signatureCommitments",
+      "primaryTask",
+      "audit"
+    ],
     "$",
     issues,
-    ["audit"]
+    ["signatureCommitments", "primaryTask", "audit"]
   );
   if (!hasOwn(value, "schemaVersion") || value.schemaVersion !== "0.2") {
     issues.push(invalid("$.schemaVersion", "must equal 0.2"));
@@ -111,6 +121,12 @@ export function assertDesignGuideProfile(value: unknown): asserts value is Desig
     "$.signatureElement",
     issues
   );
+  if (hasOwn(value, "signatureCommitments")) {
+    validateSignatureCommitments(value.signatureCommitments, "$.signatureCommitments", issues);
+  }
+  if (hasOwn(value, "primaryTask")) {
+    validatePrimaryTask(value.primaryTask, "$.primaryTask", issues);
+  }
   if (hasOwn(value, "audit")) {
     validateAudit(value.audit, "$.audit", issues);
   }
@@ -898,6 +914,102 @@ function validateProhibitions(value: unknown, path: string, issues: DesignGuideP
       seen.add(id);
     }
   }
+}
+
+/**
+ * Typed positive commitments (ADR-003). Every string field goes through the same
+ * safe-text path as `signatureElement`, because these land in generated agent
+ * guidance and must not be able to inject markers or fences.
+ */
+function validateSignatureCommitments(
+  value: unknown,
+  path: string,
+  issues: DesignGuideProfileIssue[]
+): void {
+  if (!Array.isArray(value)) {
+    issues.push(invalid(path, "must be an array"));
+    return;
+  }
+  if (value.length < 1 || value.length > 12) {
+    issues.push(invalid(path, "must contain 1..12 entries"));
+  }
+  const seen = new Set<string>();
+  value.forEach((entry, index) => {
+    const entryPath = `${path}[${index}]`;
+    if (!isRecord(entry)) {
+      issues.push(invalid(entryPath, "must be an object"));
+      return;
+    }
+    checkExactKeys(entry, ["id", "scope", "commitment", "instead"], entryPath, issues, []);
+    const id = hasOwn(entry, "id") ? entry.id : undefined;
+    if (typeof id !== "string" || !LOWER_KEBAB_PATTERN.test(id)) {
+      issues.push(invalid(`${entryPath}.id`, "must be lower-kebab-case"));
+    } else if (seen.has(id)) {
+      issues.push(invalid(`${entryPath}.id`, "must be unique"));
+    } else {
+      seen.add(id);
+    }
+    const scope = hasOwn(entry, "scope") ? entry.scope : undefined;
+    if (typeof scope !== "string" || !SIGNATURE_SCOPE_SET.has(scope)) {
+      issues.push(invalid(`${entryPath}.scope`, `must be one of ${SIGNATURE_SCOPES.join(", ")}`));
+    }
+    for (const field of ["commitment", "instead"] as const) {
+      validateSignature(
+        hasOwn(entry, field) ? entry[field] : undefined,
+        `${entryPath}.${field}`,
+        issues
+      );
+    }
+    if (
+      typeof entry.commitment === "string" &&
+      typeof entry.instead === "string" &&
+      entry.commitment.normalize("NFC") === entry.instead.normalize("NFC")
+    ) {
+      issues.push(
+        invalid(entryPath, "commitment and instead must differ, or the rule states nothing")
+      );
+    }
+  });
+}
+
+/**
+ * The declared primary task (ADR-003). The supporting cap is deliberate: a guide
+ * that declares many primary tasks has declared none.
+ */
+function validatePrimaryTask(
+  value: unknown,
+  path: string,
+  issues: DesignGuideProfileIssue[]
+): void {
+  if (!isRecord(value)) {
+    issues.push(invalid(path, "must be an object"));
+    return;
+  }
+  checkExactKeys(value, ["statement", "supportingTasks"], path, issues, ["supportingTasks"]);
+  validateSignature(
+    hasOwn(value, "statement") ? value.statement : undefined,
+    `${path}.statement`,
+    issues
+  );
+  if (!hasOwn(value, "supportingTasks")) {
+    return;
+  }
+  const supporting = value.supportingTasks;
+  if (!Array.isArray(supporting)) {
+    issues.push(invalid(`${path}.supportingTasks`, "must be an array"));
+    return;
+  }
+  if (supporting.length > PRIMARY_TASK_SUPPORTING_MAX) {
+    issues.push(
+      invalid(
+        `${path}.supportingTasks`,
+        `must contain at most ${PRIMARY_TASK_SUPPORTING_MAX} entries`
+      )
+    );
+  }
+  supporting.forEach((entry, index) => {
+    validateSignature(entry, `${path}.supportingTasks[${index}]`, issues);
+  });
 }
 
 function validateSignature(value: unknown, path: string, issues: DesignGuideProfileIssue[]): void {

@@ -24,7 +24,7 @@ export const GUIDE_MARKER_END = "<!-- design-harness:guide:end -->";
 export const MAX_GUIDE_TARGET_BYTES = 1024 * 1024;
 export const NEW_GUIDE_FILE_MODE = 0o644;
 
-const RECOGNIZED_PRIOR_GUIDE_PROFILE_ID = "design-guide-v0.5a-1";
+const RECOGNIZED_PRIOR_GUIDE_PROFILE_ID = "design-guide-v0.5a-2";
 const RECOGNIZED_PRIOR_GUIDE_CATALOG_VERSION = "2026-07-18";
 const GUIDE_SOURCE_HASH_PATTERN = /^[a-f0-9]{64}$/u;
 
