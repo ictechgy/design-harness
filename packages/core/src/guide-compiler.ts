@@ -15,9 +15,13 @@ import type {
   CopySurface,
   CopyRegister,
   DesignGuide,
+  DesignGuidePrimaryTask,
   DesignGuideTokens,
+  SignatureCommitment,
+  SignatureScope,
   VisualMetricsGenerationPolicies
 } from "./types.js";
+import { PRIMARY_TASK_SUPPORTING_MAX, SIGNATURE_SCOPES } from "./types.js";
 import { SchemaValidationError, validateAgainstSchema } from "./validation.js";
 
 export const GUIDE_TOKEN_ESTIMATE_METHOD = "guide-token-estimate-v1" as const;
@@ -134,8 +138,12 @@ export function compileDesignGuide(designGuide: DesignGuide, copyStyle?: CopySty
     fingerprints
   });
   const rules = [
+    ...(normalizedGuide.primaryTask === undefined
+      ? []
+      : [buildPrimaryTaskRule(normalizedGuide.primaryTask)]),
     ...buildTokenRules(normalizedGuide.tokens),
     buildSignatureRule(normalizedGuide.signatureElement),
+    ...buildSignatureCommitmentRules(normalizedGuide.signatureCommitments ?? []),
     ...buildFingerprintRules(fingerprints),
     ...buildVisualMetricsRules(visualMetrics),
     ...buildCopyRules(safeCopy)
@@ -205,15 +213,87 @@ export function assertGuideTokenCeiling(estimate: GuideTokenEstimate, ceiling: n
 type GenerationGuideProjection = Pick<
   DesignGuide,
   "schemaVersion" | "tokens" | "prohibitions" | "signatureElement"
->;
+> & {
+  signatureCommitments?: SignatureCommitment[];
+  primaryTask?: DesignGuidePrimaryTask;
+};
 
 function normalizeDesignGuide(guide: DesignGuide): GenerationGuideProjection {
-  return {
+  const projection: GenerationGuideProjection = {
     schemaVersion: "0.2",
     tokens: canonicalize(normalizeStrings(guide.tokens)) as DesignGuideTokens,
     prohibitions: [...guide.prohibitions].sort(codePointCompare),
     signatureElement: guide.signatureElement.normalize("NFC")
   };
+  if (guide.signatureCommitments !== undefined) {
+    projection.signatureCommitments = normalizeSignatureCommitments(guide.signatureCommitments);
+  }
+  if (guide.primaryTask !== undefined) {
+    projection.primaryTask = normalizePrimaryTask(guide.primaryTask);
+  }
+  return projection;
+}
+
+/**
+ * Sorted by scope order then id so the compiled pack is deterministic
+ * regardless of authoring order (ADR-003 decision 1).
+ */
+function normalizeSignatureCommitments(
+  commitments: readonly SignatureCommitment[]
+): SignatureCommitment[] {
+  const seen = new Set<string>();
+  for (const commitment of commitments) {
+    if (seen.has(commitment.id)) {
+      throw new GuideCompileError(
+        "contradiction",
+        `Duplicate signature commitment id ${commitment.id}.`
+      );
+    }
+    seen.add(commitment.id);
+  }
+  const byScope = new Map<SignatureScope, SignatureCommitment[]>();
+  for (const commitment of commitments) {
+    const bucket = byScope.get(commitment.scope) ?? [];
+    bucket.push({
+      id: commitment.id,
+      scope: commitment.scope,
+      commitment: normalizeSafeText(commitment.commitment, `signatureCommitments.${commitment.id}.commitment`),
+      instead: normalizeSafeText(commitment.instead, `signatureCommitments.${commitment.id}.instead`)
+    });
+    byScope.set(commitment.scope, bucket);
+  }
+  return SIGNATURE_SCOPES.flatMap((scope) =>
+    [...(byScope.get(scope) ?? [])].sort((left, right) => codePointCompare(left.id, right.id))
+  );
+}
+
+function normalizePrimaryTask(task: DesignGuidePrimaryTask): DesignGuidePrimaryTask {
+  const supporting = task.supportingTasks ?? [];
+  if (supporting.length > PRIMARY_TASK_SUPPORTING_MAX) {
+    throw new GuideCompileError(
+      "contradiction",
+      `primaryTask.supportingTasks has ${supporting.length} entries, exceeding ${PRIMARY_TASK_SUPPORTING_MAX}.`
+    );
+  }
+  const statement = normalizeSafeText(task.statement, "primaryTask.statement");
+  const normalizedSupporting = supporting.map((entry, index) =>
+    normalizeSafeText(entry, `primaryTask.supportingTasks[${index}]`)
+  );
+  if (normalizedSupporting.some((entry) => entry === statement)) {
+    throw new GuideCompileError(
+      "contradiction",
+      "primaryTask.supportingTasks may not repeat the primary statement."
+    );
+  }
+  if (new Set(normalizedSupporting).size !== normalizedSupporting.length) {
+    throw new GuideCompileError(
+      "contradiction",
+      "primaryTask.supportingTasks may not contain duplicates."
+    );
+  }
+  return task.supportingTasks === undefined
+    ? { statement }
+    : { statement, supportingTasks: normalizedSupporting };
 }
 
 function projectCopyStyle(copyStyle: CopyStyle): SafeCopyProjection {
@@ -299,6 +379,44 @@ function buildSignatureRule(signatureElement: string): GuideRule {
     description: "Carry this signature into relevant UI work.",
     badExample: "Use only interchangeable defaults.",
     goodExample: signatureElement
+  };
+}
+
+/**
+ * Typed positive commitments (ADR-003). Emitted after the free-text signature
+ * rule so the broad statement comes first and the specific commitments refine it.
+ */
+function buildSignatureCommitmentRules(
+  commitments: readonly SignatureCommitment[]
+): GuideRule[] {
+  return commitments.map((entry) => ({
+    id: `signature-commitment-${entry.id}`,
+    name: `Signature commitment (${entry.scope})`,
+    effect: "require" as const,
+    subject: `signature-commitment:${entry.scope}:${normalizeSubject(entry.id)}`,
+    description: `Make this ${entry.scope} decision deliberately.`,
+    badExample: entry.instead,
+    goodExample: entry.commitment
+  }));
+}
+
+/**
+ * The declared primary task. Emitted first of all rules, because every later
+ * emphasis decision is relative to it.
+ */
+function buildPrimaryTaskRule(task: DesignGuidePrimaryTask): GuideRule {
+  const supporting = task.supportingTasks ?? [];
+  return {
+    id: "primary-task",
+    name: "Primary task",
+    effect: "require",
+    subject: `primary-task:${normalizeSubject(task.statement)}`,
+    description:
+      supporting.length === 0
+        ? "Make this the most obvious thing on the surface."
+        : `Make this the most obvious thing on the surface; keep these subordinate: ${supporting.join("; ")}.`,
+    badExample: "Give every task equal prominence.",
+    goodExample: task.statement
   };
 }
 

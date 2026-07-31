@@ -623,7 +623,7 @@ function guideResult(action: "compile" | "check"): GuideRunResult {
     action,
     ok: true,
     targetDir: "project",
-    profileId: "design-guide-v0.5a-2",
+    profileId: "design-guide-v0.5a-3",
     catalogVersion: "2026-07-18",
     sourceHash: "a".repeat(64),
     tokenEstimate: {

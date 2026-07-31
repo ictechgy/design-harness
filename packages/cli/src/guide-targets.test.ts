@@ -127,7 +127,7 @@ describe("planGuideTargets", () => {
     const fixture = await targetFixture();
     const paths = await resolvedFixture(fixture);
     const prior = tokenJsonWithOwnership(
-      "design-guide-v0.5a-1",
+      "design-guide-v0.5a-2",
       "2026-07-18",
       "a".repeat(64)
     );
@@ -141,10 +141,10 @@ describe("planGuideTargets", () => {
     });
     const tokenPlan = plans.find((plan) => plan.name === "design.tokens.json")!;
 
-    expect(DESIGN_GUIDE_PROFILE_ID).toBe("design-guide-v0.5a-2");
+    expect(DESIGN_GUIDE_PROFILE_ID).toBe("design-guide-v0.5a-3");
     expect(tokenPlan.status).toBe("changed");
     expect(JSON.parse(tokenPlan.nextContent.toString()).$extensions["dev.design-harness"]).toMatchObject({
-      profile: "design-guide-v0.5a-2",
+      profile: "design-guide-v0.5a-3",
       catalogVersion: GUIDE_CATALOG_VERSION,
       sourceHash: "a".repeat(64)
     });
@@ -159,10 +159,10 @@ describe("planGuideTargets", () => {
     const paths = await resolvedFixture(fixture);
     const tokenPath = join(fixture.target, "design.tokens.json");
     const unknownOwnership = [
-      tokenJsonWithOwnership("design-guide-v0.5a-1", "2026-07-17", "a".repeat(64)),
+      tokenJsonWithOwnership("design-guide-v0.5a-2", "2026-07-17", "a".repeat(64)),
       tokenJsonWithOwnership("design-guide-v0.5a-unknown", "2026-07-18", "a".repeat(64)),
       tokenJsonWithOwnership(DESIGN_GUIDE_PROFILE_ID, "2026-07-17", "a".repeat(64)),
-      tokenJsonWithOwnership("design-guide-v0.5a-1", "2026-07-18", "A".repeat(64))
+      tokenJsonWithOwnership("design-guide-v0.5a-2", "2026-07-18", "A".repeat(64))
     ];
 
     for (const source of unknownOwnership) {
@@ -179,7 +179,7 @@ describe("planGuideTargets", () => {
       paths,
       markdown: "rule",
       designTokensJson: tokenJsonWithOwnership(
-        "design-guide-v0.5a-1",
+        "design-guide-v0.5a-2",
         "2026-07-18",
         "a".repeat(64)
       )
