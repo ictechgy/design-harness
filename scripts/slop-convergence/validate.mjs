@@ -25,6 +25,11 @@ import {
   pairwiseSummary
 } from "./fingerprint.mjs";
 import { evaluate, observe } from "./run.mjs";
+import {
+  DIMENSION_CLASSIFICATION,
+  USABLE_DIMENSIONS,
+  analyzeConfound
+} from "./pack-confound.mjs";
 
 let checks = 0;
 const failures = [];
@@ -200,13 +205,54 @@ check(
 // --- known weaknesses, asserted so they cannot be quietly lost -------------
 
 check(
-  "classTokens is a known dead dimension in this corpus",
+  "classTokens carries no signal in THIS corpus (corpus-specific, not inherent)",
   observed.summaries.divergent.perDimensionMean.classTokens === 0
 );
 check(
   "convergent control is unrealistically clean (scores exactly the identical floor)",
   observed.summaries.convergent.meanDistance === observed.summaries.identical.meanDistance
 );
+
+// --- pack confound ---------------------------------------------------------
+
+const confound = analyzeConfound();
+
+check("confound analysis builds two control corpora", Object.keys(confound.summaries).length === 2);
+check("obedient-generic corpus is generic (near-zero spread)", confound.summaries.obedientGeneric.meanDistance < 0.05);
+check("obedient-varied corpus is varied", confound.summaries.obedientVaried.meanDistance > 0.2);
+
+check(
+  "every pack-pinned dimension fails to distinguish slop from obedience",
+  Object.entries(confound.perDimension)
+    .filter(([, value]) => value.classification === "pinned")
+    .every(([, value]) => value.distinguishesSlop === false)
+);
+check("the confound is therefore demonstrated", confound.confoundDemonstrated === true);
+check(
+  "pinned dimensions score zero in BOTH corpora",
+  Object.entries(confound.perDimension)
+    .filter(([, value]) => value.classification === "pinned")
+    .every(([, value]) => value.obedientGeneric === 0 && value.obedientVaried === 0)
+);
+check(
+  "at least one pack-pushed dimension separates the controls",
+  confound.pushedThatDistinguish.length >= 1
+);
+check(
+  "composition dimensions are the separating ones",
+  confound.pushedThatDistinguish.includes("tagHistogram") &&
+    confound.pushedThatDistinguish.includes("layoutModeHistogram")
+);
+check(
+  "classTokens separates here, proving it is corpus-dependent rather than dead",
+  confound.perDimension.classTokens.distinguishesSlop === true
+);
+check("usable dimension list is non-empty", USABLE_DIMENSIONS.length >= 1);
+check(
+  "usable list excludes every pinned dimension",
+  USABLE_DIMENSIONS.every((id) => DIMENSION_CLASSIFICATION[id] !== "pinned")
+);
+check("confound analysis is deterministic", JSON.stringify(analyzeConfound()) === JSON.stringify(confound));
 
 if (failures.length > 0) {
   console.error(`slop-convergence validate FAILED (${failures.length} of ${checks}):`);
@@ -215,7 +261,14 @@ if (failures.length > 0) {
 }
 console.log(`slop-convergence validate passed: ${checks} checks.`);
 console.log(
-  "Asserted weaknesses: classTokens carries no signal in these controls, and the " +
-    "convergent control scores exactly the identical floor, so it is an easier " +
-    "test than real generations would be."
+  "Asserted weaknesses: the convergent control scores exactly the identical " +
+    "floor, so it is an easier test than real generations would be; classTokens " +
+    "carries no signal in the divergent corpus but does in the confound corpus, " +
+    "so per-dimension signal is corpus-dependent."
 );
+console.log(
+  "Asserted design constraint: pack-pinned dimensions (color, spacing, radius) " +
+    "score zero for both generic and varied token-obedient corpora, so a " +
+    "generation benchmark must never blend them into one slop number."
+);
+
