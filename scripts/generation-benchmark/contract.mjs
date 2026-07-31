@@ -45,7 +45,12 @@ export const MANIFEST_SCHEMA_VERSION = "generation-benchmark-v1/manifest/v1";
 export const RESULT_SCHEMA_VERSION = "generation-benchmark-v1/result/v1";
 
 export const GENERATIONS_PER_ARM = 6;
-export const ARMS = Object.freeze(["without-pack", "with-pack", "with-widened-pack"]);
+export const ARMS = Object.freeze([
+  "without-pack",
+  "with-pack",
+  "with-widened-pack",
+  "with-offtarget-pack"
+]);
 export const GENERATED_FILENAME = "page.html";
 
 /**
@@ -60,6 +65,46 @@ export const GENERATED_FILENAME = "page.html";
  * v1 -- layout mode and emphasis -- because those are the pack-pushed dimensions
  * the composition axis is computed from.
  */
+/**
+ * The generality control (added 2026-08-01).
+ *
+ * The v2 result showed composition divergence rising +0.0704 with the widened
+ * pack -- but its two commitments were aimed at `layout` and `emphasis`, the exact
+ * scopes the composition axis is computed from. That makes the result
+ * targeting-specific by construction, which was recorded as the headline's main
+ * limit.
+ *
+ * This arm is the honest test of that limit. It carries the same *quantity* of
+ * positive vocabulary -- one primary task plus two commitments, the ceiling
+ * maximum -- but aimed at `navigation` and `state`, which no composition
+ * dimension measures.
+ *
+ * If composition still rises, richer vocabulary helps generally.
+ * If it does not, the v2 gain came from targeting, and the honest reading of the
+ * whole line of work narrows sharply. Both outcomes are reportable; neither may
+ * be relabelled afterwards.
+ */
+export const OFFTARGET_GUIDE_ADDITIONS = Object.freeze({
+  primaryTask: Object.freeze({
+    statement: "Clear the overnight settlement exception queue before the shift handover.",
+    supportingTasks: Object.freeze(["Check payout totals."])
+  }),
+  signatureCommitments: Object.freeze([
+    Object.freeze({
+      id: "queue-stepper",
+      scope: "navigation",
+      commitment: "Move between exceptions with a persistent previous and next stepper.",
+      instead: "A dropdown that reloads the whole screen on every change."
+    }),
+    Object.freeze({
+      id: "settled-state-words",
+      scope: "state",
+      commitment: "Name every state in words a new operator understands on their first shift.",
+      instead: "Status codes that only the payments team can read."
+    })
+  ])
+});
+
 export const WIDENED_GUIDE_ADDITIONS = Object.freeze({
   primaryTask: Object.freeze({
     statement: "Clear the overnight settlement exception queue before the shift handover.",

@@ -40,6 +40,7 @@ pnpm check:deps-policy              # ToS/GPL dependency policy
 pnpm check:tracked-hygiene          # local-only files untracked; AGENTS.md line budget
 pnpm check:report-copy-guardrails   # HARD RULE 9: no unqualified overclaims in tracked reports/README
 pnpm check:docs-claims              # quantitative claims in tracked docs cite evidence
+pnpm report:allocation              # machinery/product LOC ratio (reports; ceiling forces a conversation)
 pnpm check:obedience-benchmark      # exact 12-cell snapshot, provenance, preservation + claim gate
 pnpm check:obedience-repeated       # exact 72-cell/two-case preparation or complete snapshot gate
 pnpm check:guide-data               # guide fingerprint source/generated mirror parity

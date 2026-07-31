@@ -140,6 +140,16 @@ export async function importResults() {
     byArm["with-widened-pack"].compositionDivergence.mean -
       byArm["with-pack"].compositionDivergence.mean
   );
+  /**
+   * Generality control: the off-target arm carries the same quantity of positive
+   * vocabulary aimed at scopes no composition dimension measures. If it moves
+   * composition too, richer vocabulary helps generally; if not, the widened gain
+   * came from targeting.
+   */
+  const offtargetEffect = round(
+    byArm["with-offtarget-pack"].compositionDivergence.mean -
+      byArm["with-pack"].compositionDivergence.mean
+  );
 
   return {
     schemaVersion: RESULT_SCHEMA_VERSION,
@@ -159,6 +169,26 @@ export async function importResults() {
       widenedPack: byArm["with-widened-pack"].compositionDivergence.mean,
       delta: wideningEffect,
       raised: wideningEffect > 0
+    },
+    generality: {
+      question:
+        "Does equal-quantity vocabulary aimed AWAY from the measured dimensions move composition too?",
+      onTargetEffectVsBasePack: wideningEffect,
+      offTargetEffectVsBasePack: offtargetEffect,
+      /**
+       * The verdict must use the same reference as the pre-registered axis rule,
+       * which is the no-pack baseline. Comparing only against the base pack
+       * flatters the off-target arm: it can beat a pack that actively suppressed
+       * composition while still sitting below the unguided baseline.
+       */
+      baselineComposition: baseline.compositionDivergence.mean,
+      onTargetComposition: byArm["with-widened-pack"].compositionDivergence.mean,
+      offTargetComposition: byArm["with-offtarget-pack"].compositionDivergence.mean,
+      onTargetClearsBaseline: axes["with-widened-pack"].compositionDivergence.held,
+      offTargetClearsBaseline: axes["with-offtarget-pack"].compositionDivergence.held,
+      generalizes: axes["with-offtarget-pack"].compositionDivergence.held,
+      readingIfNot:
+        "The gain is largely targeting-specific: commitments move the dimensions they name. Equal-quantity vocabulary aimed elsewhere does not clear the unguided baseline."
     },
     limitations: LIMITATIONS
   };
@@ -199,6 +229,20 @@ async function main() {
   console.log("");
   const effect = result.wideningEffect;
   console.log(`  ADR-003 widening effect on composition: ${effect.basePack.toFixed(4)} -> ${effect.widenedPack.toFixed(4)} (${effect.delta >= 0 ? "+" : ""}${effect.delta.toFixed(4)}), raised=${effect.raised}`);
+  const gen = result.generality;
+  console.log("");
+  console.log("  GENERALITY CONTROL");
+  console.log(`    no-pack baseline composition   ${gen.baselineComposition.toFixed(4)}`);
+  console.log(
+    `    on-target  (layout+emphasis)   ${gen.onTargetComposition.toFixed(4)}  clears baseline: ${gen.onTargetClearsBaseline}` +
+      `  (vs base pack ${gen.onTargetEffectVsBasePack >= 0 ? "+" : ""}${gen.onTargetEffectVsBasePack.toFixed(4)})`
+  );
+  console.log(
+    `    off-target (navigation+state)  ${gen.offTargetComposition.toFixed(4)}  clears baseline: ${gen.offTargetClearsBaseline}` +
+      `  (vs base pack ${gen.offTargetEffectVsBasePack >= 0 ? "+" : ""}${gen.offTargetEffectVsBasePack.toFixed(4)})`
+  );
+  console.log(`    generalizes: ${gen.generalizes}`);
+  if (!gen.generalizes) console.log(`    -> ${gen.readingIfNot}`);
   console.log("  This authorizes no detector, criterion, score, or public claim.");
 }
 

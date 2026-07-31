@@ -17,6 +17,7 @@ import {
   LIMITATIONS,
   MATRIX,
   OUTPUT_CONSTRAINTS,
+  OFFTARGET_GUIDE_ADDITIONS,
   WIDENED_GUIDE_ADDITIONS,
   buildPrompt
 } from "./contract.mjs";
@@ -30,11 +31,11 @@ const check = (label, condition) => {
 
 // --- matrix -----------------------------------------------------------------
 
-check("three arms", ARMS.length === 3);
+check("four arms", ARMS.length === 4);
 check("exactly one baseline arm", ARMS.filter((arm) => arm === "without-pack").length === 1);
-check("two treatment arms", ARMS.filter((arm) => arm !== "without-pack").length === 2);
+check("three treatment arms", ARMS.filter((arm) => arm !== "without-pack").length === 3);
 check("matrix size is arms x generations", EXPECTED_CELL_COUNT === ARMS.length * GENERATIONS_PER_ARM);
-check("matrix has 18 cells", MATRIX.length === 18);
+check("matrix has 24 cells", MATRIX.length === 24);
 check("cell ids are unique", new Set(MATRIX.map((cell) => cell.id)).size === MATRIX.length);
 for (const arm of ARMS) {
   check(
@@ -55,7 +56,8 @@ const withWidened = buildPrompt("with-widened-pack", "DESIGN.md");
 
 // Both treatment arms must be indistinguishable from the prompt alone, so the
 // only difference between them is the compiled pack file's contents.
-check("both pack arms receive byte-identical prompts", withPack === withWidened);
+const withOfftarget = buildPrompt("with-offtarget-pack", "DESIGN.md");
+check("all pack arms receive byte-identical prompts", withPack === withWidened && withPack === withOfftarget);
 check("the widened arm still carries the brief", withWidened.includes(BRIEF));
 
 check("both arms carry the identical brief", withPack.includes(BRIEF) && withoutPack.includes(BRIEF));
@@ -88,6 +90,24 @@ check(
 check(
   "widened additions stay within the measured ceiling headroom (primary task plus two commitments)",
   WIDENED_GUIDE_ADDITIONS.signatureCommitments.length === 2
+);
+check(
+  "the generality control carries equal vocabulary quantity",
+  OFFTARGET_GUIDE_ADDITIONS.signatureCommitments.length ===
+    WIDENED_GUIDE_ADDITIONS.signatureCommitments.length &&
+    (OFFTARGET_GUIDE_ADDITIONS.primaryTask.supportingTasks?.length ?? 0) ===
+      (WIDENED_GUIDE_ADDITIONS.primaryTask.supportingTasks?.length ?? 0)
+);
+check(
+  "the generality control aims at scopes the composition axis does not measure",
+  OFFTARGET_GUIDE_ADDITIONS.signatureCommitments.map((e) => e.scope).sort().join(",") ===
+    "navigation,state"
+);
+check(
+  "on-target and off-target scopes are disjoint",
+  OFFTARGET_GUIDE_ADDITIONS.signatureCommitments.every(
+    (off) => !WIDENED_GUIDE_ADDITIONS.signatureCommitments.some((on) => on.scope === off.scope)
+  )
 );
 check(
   "widened commitments target the pack-pushed dimensions",
