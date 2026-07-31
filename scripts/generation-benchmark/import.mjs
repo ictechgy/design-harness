@@ -93,17 +93,53 @@ export async function importResults() {
     };
   }
 
-  const pinnedDelta = round(
-    byArm["with-pack"].tokenAdherenceConvergence.mean -
-      byArm["without-pack"].tokenAdherenceConvergence.mean
-  );
-  const pushedDelta = round(
-    byArm["with-pack"].compositionDivergence.mean -
-      byArm["without-pack"].compositionDivergence.mean
-  );
+  const baseline = byArm["without-pack"];
+  const treatments = ARMS.filter((arm) => arm !== "without-pack");
 
-  const axis1Held = pinnedDelta < 0;
-  const axis2Held = pushedDelta > 0;
+  /** Each treatment arm is compared against the shared no-pack baseline. */
+  const axes = {};
+  for (const arm of treatments) {
+    const pinnedDelta = round(
+      byArm[arm].tokenAdherenceConvergence.mean - baseline.tokenAdherenceConvergence.mean
+    );
+    const pushedDelta = round(
+      byArm[arm].compositionDivergence.mean - baseline.compositionDivergence.mean
+    );
+    axes[arm] = {
+      tokenAdherenceConvergence: {
+        expectation: "LOWER pairwise distance on pack-pinned dimensions than the no-pack baseline",
+        baseline: baseline.tokenAdherenceConvergence.mean,
+        arm: byArm[arm].tokenAdherenceConvergence.mean,
+        delta: pinnedDelta,
+        held: pinnedDelta < 0
+      },
+      compositionDivergence: {
+        expectation: "HIGHER pairwise distance on pack-pushed dimensions than the no-pack baseline",
+        baseline: baseline.compositionDivergence.mean,
+        arm: byArm[arm].compositionDivergence.mean,
+        delta: pushedDelta,
+        held: pushedDelta > 0
+      }
+    };
+  }
+
+  const outcomeFor = (arm) => {
+    const axis1 = axes[arm].tokenAdherenceConvergence.held;
+    const axis2 = axes[arm].compositionDivergence.held;
+    return axis1 && axis2
+      ? "both-axes-moved-as-expected"
+      : axis1
+        ? "token-adherence-only"
+        : axis2
+          ? "composition-only"
+          : "neither-axis-moved-as-expected";
+  };
+
+  /** Did widening the vocabulary move composition relative to the baseline pack? */
+  const wideningEffect = round(
+    byArm["with-widened-pack"].compositionDivergence.mean -
+      byArm["with-pack"].compositionDivergence.mean
+  );
 
   return {
     schemaVersion: RESULT_SCHEMA_VERSION,
@@ -111,34 +147,19 @@ export async function importResults() {
     brief: manifest.brief,
     briefSha256: manifest.briefSha256,
     executor: executions.executor,
-    pack: manifest.pack,
+    packs: manifest.packs,
     dimensions: { pinned: PINNED, pushed: PUSHED },
     sources,
     byArm,
-    axes: {
-      tokenAdherenceConvergence: {
-        expectation: "with-pack scores LOWER pairwise distance on pack-pinned dimensions",
-        withoutPack: byArm["without-pack"].tokenAdherenceConvergence.mean,
-        withPack: byArm["with-pack"].tokenAdherenceConvergence.mean,
-        delta: pinnedDelta,
-        held: axis1Held
-      },
-      compositionDivergence: {
-        expectation: "with-pack scores HIGHER pairwise distance on pack-pushed dimensions",
-        withoutPack: byArm["without-pack"].compositionDivergence.mean,
-        withPack: byArm["with-pack"].compositionDivergence.mean,
-        delta: pushedDelta,
-        held: axis2Held
-      }
+    axes,
+    outcomes: Object.fromEntries(treatments.map((arm) => [arm, outcomeFor(arm)])),
+    wideningEffect: {
+      question: "Does the ADR-003 widened vocabulary raise composition divergence over the baseline pack?",
+      basePack: byArm["with-pack"].compositionDivergence.mean,
+      widenedPack: byArm["with-widened-pack"].compositionDivergence.mean,
+      delta: wideningEffect,
+      raised: wideningEffect > 0
     },
-    outcome:
-      axis1Held && axis2Held
-        ? "both-axes-moved-as-expected"
-        : axis1Held
-          ? "token-adherence-only"
-          : axis2Held
-            ? "composition-only"
-            : "neither-axis-moved-as-expected",
     limitations: LIMITATIONS
   };
 }
@@ -149,31 +170,35 @@ async function main() {
 
   console.log(`${BENCHMARK_ID} result`);
   console.log(`  executor: ${result.executor.binary} ${result.executor.resolvedVersion}`);
-  console.log(`  pack: ${result.pack.ruleCount} rules, ~${result.pack.estimatedTokens} tokens`);
+  for (const [arm, pack] of Object.entries(result.packs)) {
+    console.log(`  ${arm.padEnd(18)} ${pack.ruleCount} rules, ~${pack.estimatedTokens} tokens`);
+  }
   console.log("");
-  for (const [name, axis] of Object.entries(result.axes)) {
-    console.log(`  ${name}`);
-    console.log(`    expectation: ${axis.expectation}`);
-    console.log(`    without-pack ${axis.withoutPack.toFixed(4)}   with-pack ${axis.withPack.toFixed(4)}   delta ${axis.delta >= 0 ? "+" : ""}${axis.delta.toFixed(4)}`);
-    console.log(`    held: ${axis.held}`);
+  for (const [arm, armAxes] of Object.entries(result.axes)) {
+    console.log(`  ${arm}  (outcome: ${result.outcomes[arm]})`);
+    for (const [name, axis] of Object.entries(armAxes)) {
+      console.log(
+        `    ${name.padEnd(26)} baseline ${axis.baseline.toFixed(4)}  arm ${axis.arm.toFixed(4)}  ` +
+          `delta ${axis.delta >= 0 ? "+" : ""}${axis.delta.toFixed(4)}  held=${axis.held}`
+      );
+    }
   }
   console.log("");
   console.log("  per-dimension mean pairwise distance");
-  console.log("    dimension              class    without   with     delta");
+  console.log("    dimension              class    no-pack   pack      widened");
   for (const id of [...result.dimensions.pinned, ...result.dimensions.pushed]) {
     const group = result.dimensions.pinned.includes(id)
       ? "tokenAdherenceConvergence"
       : "compositionDivergence";
-    const without = result.byArm["without-pack"][group].perDimensionMean[id];
-    const withPack = result.byArm["with-pack"][group].perDimensionMean[id];
-    const delta = withPack - without;
+    const cell = (arm) => result.byArm[arm][group].perDimensionMean[id].toFixed(4);
     console.log(
       `    ${id.padEnd(22)} ${DIMENSION_CLASSIFICATION[id].padEnd(8)} ` +
-        `${without.toFixed(4)}    ${withPack.toFixed(4)}   ${delta >= 0 ? "+" : ""}${delta.toFixed(4)}`
+        `${cell("without-pack")}    ${cell("with-pack")}    ${cell("with-widened-pack")}`
     );
   }
   console.log("");
-  console.log(`  OUTCOME: ${result.outcome}`);
+  const effect = result.wideningEffect;
+  console.log(`  ADR-003 widening effect on composition: ${effect.basePack.toFixed(4)} -> ${effect.widenedPack.toFixed(4)} (${effect.delta >= 0 ? "+" : ""}${effect.delta.toFixed(4)}), raised=${effect.raised}`);
   console.log("  This authorizes no detector, criterion, score, or public claim.");
 }
 
