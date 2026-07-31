@@ -153,6 +153,8 @@ Missing optional semantic-tree evidence is skipped. It does not make an audit pa
 
 Password input values are blanked while ARIA snapshots are captured and restored afterward; plaintext password values must not be stored in DOM attributes or output artifacts.
 
+`audit.json` holds the full payload for every evidence asset. `report.md` only **lists** them: an asset with a file path renders that path, and a path-less asset renders a pointer to `audit.json` plus a counts-only shape hint such as item count, truncated count, or snapshot format. It never renders the payload. Before 2026-08-01 a path-less asset was serialized inline, and measuring the merchant-dashboard fixture showed a report with zero findings reaching 33869 bytes of which 96% was that duplicate; the same page now renders 2836 bytes. Nothing became unavailable — a consumer that needs selectors, regions, or the text inventory reads `audit.json`, which is the canonical artifact. Committed example runs generated before that date retain their producer's larger report, because historical runs keep the version that produced them.
+
 ## Advisory Score
 
 `advisoryScore.formulaVersion` is required. Current producers emit

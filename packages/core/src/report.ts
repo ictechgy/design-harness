@@ -289,15 +289,46 @@ function renderSourceBackedCriteria(findings: Finding[]): string {
   ].join("\n");
 }
 
+/**
+ * Evidence assets are listed, never inlined.
+ *
+ * A path-less asset used to be rendered as `JSON.stringify(asset.data)`, which
+ * dumped the whole text inventory and aria snapshot into the report. Measured on
+ * 2026-08-01: a page with zero findings produced a 33 KB report of which 96% was
+ * that payload, and the committed `semantic-a11y-bad` example was 61% payload.
+ *
+ * The data is already in `audit.json` under the same asset id, so inlining
+ * duplicated it while crowding out the part a human or an agent actually reads.
+ * Each asset now gets a one-line descriptor and a pointer to the canonical
+ * artifact. Nothing becomes unavailable; it stops being repeated.
+ */
 function renderEvidence(auditResult: AuditResult): string {
   const lines = auditResult.evidenceAssets.map((asset) => {
-    const location = asset.path ? asset.path : JSON.stringify(asset.data ?? {});
-    return `- \`${asset.id}\` (${asset.type}${asset.viewport ? `, ${asset.viewport}` : ""}): ${location}`;
+    const viewport = asset.viewport ? `, ${asset.viewport}` : "";
+    const location = asset.path
+      ? asset.path
+      : `see \`audit.json\` → \`evidenceAssets\` → \`${asset.id}\`${describeInlineEvidence(asset.data)}`;
+    return `- \`${asset.id}\` (${asset.type}${viewport}): ${location}`;
   });
 
-  return [
-    ...(lines.length ? lines : ["- No evidence assets were recorded."])
-  ].join("\n");
+  return [...(lines.length ? lines : ["- No evidence assets were recorded."])].join("\n");
+}
+
+/**
+ * A short, non-authoritative shape hint so a reader can tell assets apart without
+ * opening `audit.json`. Deliberately counts only, never content.
+ */
+function describeInlineEvidence(data: unknown): string {
+  if (data === undefined || data === null) return "";
+  if (typeof data !== "object") return "";
+  const record = data as Record<string, unknown>;
+  const parts: string[] = [];
+  if (typeof record.count === "number") parts.push(`${record.count} item(s)`);
+  if (typeof record.truncatedCount === "number" && record.truncatedCount > 0) {
+    parts.push(`${record.truncatedCount} truncated`);
+  }
+  if (typeof record.format === "string") parts.push(record.format);
+  return parts.length > 0 ? ` (${parts.join(", ")})` : "";
 }
 
 function renderRecommendations(findings: Finding[]): string {
