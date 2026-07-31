@@ -66,7 +66,41 @@ export interface GuideCompilationResult {
   designTokens: CompiledDesignTokens;
   designTokensJson: string;
   tokenEstimate: GuideTokenEstimate;
+  /**
+   * Non-blocking observations about the guide itself. Never a finding, never
+   * scored, never part of the source hash — a compiled pack must be identical
+   * whether or not anyone reads these.
+   */
+  notices: GuideCompilationNotice[];
 }
+
+export interface GuideCompilationNotice {
+  code: GuideNoticeCode;
+  scale: "spacing" | "radius";
+  declaredCount: number;
+  minimumForNotice: number;
+  message: string;
+}
+
+export type GuideNoticeCode = "sparse-declared-scale";
+
+/**
+ * Explicitly arbitrary, and recorded as arbitrary — the same posture as
+ * `GUIDE_TOKEN_HARD_CEILING`, which AGENTS.md calls a budget rather than science.
+ *
+ * The motivation is measured. Across 24 generated dashboard screens on
+ * 2026-08-01, the example guide's two declared spacing values left 79–91% of the
+ * distinct spacing values actually used off-contract, because a real screen needs
+ * roughly ten to fourteen. The shipped `off-scale-spacing` detector then reports
+ * every one of those as a `project-contract` risk against a contract that never
+ * supplied enough values.
+ *
+ * Four is not a validated threshold and no evidence establishes a correct scale
+ * size. It is a floor low enough that any deliberately authored scale clears it,
+ * chosen so the notice fires on the "I declared two values and moved on" case
+ * that produced the measurement.
+ */
+export const SPARSE_SCALE_NOTICE_MINIMUM = 4 as const;
 
 export class GuideCompileError extends Error {
   constructor(
@@ -180,7 +214,8 @@ export function compileDesignGuide(designGuide: DesignGuide, copyStyle?: CopySty
     markdown,
     designTokens,
     designTokensJson,
-    tokenEstimate
+    tokenEstimate,
+    notices: buildScaleNotices(normalizedGuide.tokens)
   };
 }
 
@@ -418,6 +453,33 @@ function buildPrimaryTaskRule(task: DesignGuidePrimaryTask): GuideRule {
     badExample: "Give every task equal prominence.",
     goodExample: task.statement
   };
+}
+
+/**
+ * Observe declared scale coverage. Returns notices only; never throws, never
+ * changes the pack, and deliberately never enters the source hash, so a pack is
+ * byte-identical whether or not the guide is sparse.
+ */
+function buildScaleNotices(tokens: DesignGuideTokens): GuideCompilationNotice[] {
+  const notices: GuideCompilationNotice[] = [];
+  for (const scale of ["spacing", "radius"] as const) {
+    const group = tokens[scale] as Record<string, unknown> | undefined;
+    if (!group) continue;
+    const declaredCount = Object.keys(group).filter((key) => !key.startsWith("$")).length;
+    if (declaredCount >= SPARSE_SCALE_NOTICE_MINIMUM) continue;
+    notices.push({
+      code: "sparse-declared-scale",
+      scale,
+      declaredCount,
+      minimumForNotice: SPARSE_SCALE_NOTICE_MINIMUM,
+      message:
+        `The guide declares ${declaredCount} ${scale} value(s). A real screen usually needs more, ` +
+        `so an agent will invent the rest and the rendered ${scale} check will report those inventions ` +
+        "as contract risks. Declare the full scale you intend to use, or expect that output to describe " +
+        "an under-declared contract rather than an undisciplined page."
+    });
+  }
+  return notices;
 }
 
 function buildFingerprintRules(fingerprints: FingerprintEntry[]): GuideRule[] {

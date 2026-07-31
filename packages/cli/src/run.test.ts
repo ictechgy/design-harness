@@ -636,6 +636,7 @@ function guideResult(action: "compile" | "check"): GuideRunResult {
       { name: "CLAUDE.md", status: "unchanged", checkStatus: action === "check" ? "current" : undefined },
       { name: "DESIGN.md", status: "changed", checkStatus: action === "check" ? "current" : undefined },
       { name: "design.tokens.json", status: "changed", checkStatus: action === "check" ? "current" : undefined }
-    ]
+    ],
+    notices: []
   };
 }

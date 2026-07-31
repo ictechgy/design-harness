@@ -297,6 +297,9 @@ function renderGuideResult(
     stdout(`${artifact.name}: ${artifact.checkStatus ?? artifact.status}`);
   }
   stdout(`${result.tokenEstimate.method}: ${result.tokenEstimate.estimated}/${result.tokenEstimate.ceiling}`);
+  for (const notice of result.notices) {
+    stdout(`notice ${notice.code}: ${notice.message}`);
+  }
   if (!result.ok) {
     stderr("Guide check found stale or missing owned artifacts.");
   }

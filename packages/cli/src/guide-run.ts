@@ -59,6 +59,13 @@ export interface GuideRunResult {
     ceiling: number;
   };
   artifacts: readonly GuideRunArtifactResult[];
+  /** Non-blocking observations about the guide; never affect `ok`. */
+  notices: readonly GuideRunNotice[];
+}
+
+export interface GuideRunNotice {
+  code: string;
+  message: string;
 }
 
 export interface GuideRunDependencies {
@@ -183,7 +190,8 @@ export async function runGuideCommand(
       estimated: compilation.tokenEstimate.estimated,
       ceiling
     },
-    artifacts: materialized.artifacts
+    artifacts: materialized.artifacts,
+    notices: compilation.notices.map((notice) => ({ code: notice.code, message: notice.message }))
   };
 }
 
@@ -211,6 +219,7 @@ function resultFromCheck(
       name: plan.name,
       status: plan.status,
       checkStatus: checkByName.get(plan.name) ?? "stale"
-    }))
+    })),
+    notices: compilation.notices.map((notice) => ({ code: notice.code, message: notice.message }))
   };
 }
