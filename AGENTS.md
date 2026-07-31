@@ -54,6 +54,7 @@ pnpm smoke:visual-metrics           # live atomic + merchant + repeated unrelate
 pnpm smoke:density-lower-bound      # live partial text-cluster lower-bound good/bad gate
 pnpm smoke:selector-uniqueness      # live deep-DOM gate: no selector may stand in for several elements
 pnpm check:slop-convergence         # offline convergence-instrument probe + pack-confound gate
+pnpm check:generation-benchmark      # offline with-pack/without-pack generation contract gate
 pnpm smoke:spacing-skip             # live gate: screen-reader-only boxes are not scolded for spacing
 pnpm design-harness -- audit --url http://localhost:4173 --out runs/demo
 ```
