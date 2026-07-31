@@ -70,6 +70,52 @@ function layoutModeHistogram(css) {
 }
 
 /**
+ * Split a spacing shorthand into its components without shredding functional
+ * values.
+ *
+ * The naive split on whitespace turned `calc(var(--space-md) * 0.75)` into the
+ * tokens `calc(var(--space-md)`, `*`, and `0.75)`. Those fragments differ between
+ * generations for no design reason, so they inflated pairwise distance on the
+ * `spacingLiterals` dimension. Agents handed a token contract write exactly that
+ * kind of expression -- they are *using* the tokens -- so the extractor has to
+ * treat a functional value as one atom.
+ *
+ * Found while investigating why `spacingLiterals` moved the wrong way for a
+ * pack-pinned dimension in the generation benchmark.
+ */
+export function splitSpacingComponents(declaration) {
+  const parts = [];
+  let depth = 0;
+  let current = "";
+  for (const character of declaration) {
+    if (character === "(") depth += 1;
+    if (character === ")") depth = Math.max(0, depth - 1);
+    if (character === " " && depth === 0) {
+      if (current) parts.push(current);
+      current = "";
+      continue;
+    }
+    current += character;
+  }
+  if (current) parts.push(current);
+  if (parts.some((part) => balanceOf(part) !== 0)) {
+    throw new Error(
+      `unbalanced parentheses in spacing declaration "${declaration}"; refusing to emit fragments`
+    );
+  }
+  return parts;
+}
+
+function balanceOf(value) {
+  let depth = 0;
+  for (const character of value) {
+    if (character === "(") depth += 1;
+    if (character === ")") depth -= 1;
+  }
+  return depth;
+}
+
+/**
  * Extract one fingerprint from HTML source bytes.
  *
  * Every returned dimension is source-derived. None is a rendered value.
@@ -100,7 +146,9 @@ export function fingerprintSource(source, label) {
 
   const spacingLiterals = new Set();
   for (const raw of collect(SPACING_PATTERN, css, (match) => normalizeDeclaration(match[1]))) {
-    for (const part of raw.split(" ")) if (part) spacingLiterals.add(part);
+    for (const part of splitSpacingComponents(raw)) {
+      if (part) spacingLiterals.add(part);
+    }
   }
 
   if (Object.keys(tagHistogram).length === 0) {
