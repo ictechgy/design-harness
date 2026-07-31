@@ -22,7 +22,8 @@ import {
   fingerprintDistance,
   fingerprintSource,
   jaccardDistance,
-  pairwiseSummary
+  pairwiseSummary,
+  splitSpacingComponents
 } from "./fingerprint.mjs";
 import { evaluate, observe } from "./run.mjs";
 import {
@@ -69,6 +70,44 @@ check("cosine: bounded to [0,1]", (() => {
   const value = cosineDistance({ a: 3, b: 1 }, { a: 1, b: 9 });
   return value >= 0 && value <= 1;
 })());
+
+// --- spacing shorthand splitting ------------------------------------------
+
+check("plain shorthand splits into components", (() => {
+  const parts = splitSpacingComponents("8px 16px");
+  return parts.length === 2 && parts[0] === "8px" && parts[1] === "16px";
+})());
+check("calc() stays one atom", (() => {
+  const parts = splitSpacingComponents("calc(var(--space-md) * 0.75)");
+  return parts.length === 1 && parts[0] === "calc(var(--space-md) * 0.75)";
+})());
+check("var() with fallback stays one atom", (() => {
+  const parts = splitSpacingComponents("var(--space-sm, 4px)");
+  return parts.length === 1;
+})());
+check("functional value beside a literal splits correctly", (() => {
+  const parts = splitSpacingComponents("0 calc(var(--space-md) * 2)");
+  return parts.length === 2 && parts[0] === "0" && parts[1] === "calc(var(--space-md) * 2)";
+})());
+check("nested functions stay one atom", (() => {
+  const parts = splitSpacingComponents("calc(min(2rem, 5%) + 1px)");
+  return parts.length === 1;
+})());
+throws("unbalanced parentheses fail closed rather than emitting fragments", () =>
+  splitSpacingComponents("calc(var(--x"));
+
+check(
+  "a generated calc expression no longer shreds into fragments",
+  (() => {
+    const source =
+      '<html><head><style>.a{padding:calc(var(--space-md) * 0.75)}</style></head><body><p>x</p></body></html>';
+    const print = fingerprintSource(source, "calc");
+    return (
+      print.spacingLiterals.length === 1 &&
+      !print.spacingLiterals.some((value) => value === "*" || value.endsWith(")") === false)
+    );
+  })()
+);
 
 // --- fail-closed extraction -------------------------------------------------
 
