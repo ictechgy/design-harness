@@ -229,7 +229,7 @@ Principles and enforcement: ADR-002 (`docs/adr/ADR-002-surface-extensibility-pri
 
 - Whitespace-ratio and alignment/grid-quality remain research notes only, not scheduled checks; the studies do not establish project-independent UI thresholds. See the visual-metrics evidence document.
 - Error-message checks: length threshold, loanword/jargon density, sentence complexity (CHI 2021 measured predictors) — deferred from v0.4 on capacity; partially covered by the unscheduled v0.7 judge rubric.
-- textlint-compatible output adapter (textlint 15.x alive, zero Korean rules) — cheap editor-ecosystem surface; never a full plugin.
+- textlint-compatible output adapter — **BUILT 2026-08-01** as the checkout-local `pnpm render:textlint` recipe (`docs/recipes/textlint-output.md`), gated by `pnpm check:textlint-output`. Serializes `audit.json` into textlint's JSON result shape with no textlint dependency; the format is emitted, not linked. Severity mapping keeps hard rule 1 across the boundary: only `deterministic` + `failure` reaches textlint `error`, every other risk is `warning`, and `needs-review` or `subjective` is `info`, regardless of the finding's own `severity`. Grouping is `<label>#<viewport>` and positions are fixed at line 1 with `positionIsSynthetic: true`, because a rendered-DOM finding has no source position. Still never a full plugin.
 - plainkorean.kr 쉬운 우리말 사전 as loanword→plain-Korean data source (license review first).
 - Claude Design handoff bundles as audit reference input.
 - Figma Code Connect "expected vs rendered component" check.
