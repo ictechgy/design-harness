@@ -87,11 +87,11 @@ Use `pnpm playwright:install` if Chromium is missing.
 From inside the project that owns an explicit `design-guide.yaml`:
 
 ```bash
-npx @design-harness/cli@0.6.2 guide compile \
+npx @design-harness/cli@latest guide compile \
   --guide ./design-guide.yaml \
   --target .
 
-npx @design-harness/cli@0.6.2 guide check \
+npx @design-harness/cli@latest guide check \
   --guide ./design-guide.yaml \
   --target . \
   --max-tokens 2000
@@ -102,7 +102,7 @@ Compile derives marker-owned `AGENTS.md`/`DESIGN.md` guidance, a non-duplicating
 The same guide can parameterize an audit, which is what enables the project-contract checks and any budgets you declared:
 
 ```bash
-npx @design-harness/cli@0.6.2 audit \
+npx @design-harness/cli@latest audit \
   --url http://localhost:3000 \
   --out runs/demo \
   --guide ./design-guide.yaml
@@ -115,7 +115,7 @@ Without `--guide`, none of that policy is loaded, captured, or reported.
 A bounded command for the exact deterministic-failure gate is published starting with v0.6.1:
 
 ```bash
-npx @design-harness/cli@0.6.2 loop \
+npx @design-harness/cli@latest loop \
   --url http://localhost:3000 \
   --out runs/repair-loop \
   --until deterministic-failures==0 \
