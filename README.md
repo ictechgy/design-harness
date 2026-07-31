@@ -224,6 +224,7 @@ The fixture gives new contributors a stable target for checking the full local l
 - [Scenario Audit](docs/recipes/scenario-audit.md): checkout-local recipe to run multiple local URL scenarios and aggregate the results.
 - [npm Execution](docs/recipes/npm-execution.md): verify the packed CLI and the `npx` execution path.
 - [Agent Loop Recipes](docs/recipes/agent-loop.md): prompts for Codex, Claude Code, Gemini CLI, and human reviewers.
+- [textlint Output Adapter](docs/recipes/textlint-output.md): checkout-local recipe to serialize an audit into textlint's JSON result shape.
 - [Release Checklist](docs/recipes/release-checklist.md): package checks to run before publishing a public version.
 
 ## Packages
@@ -257,6 +258,7 @@ Checkout-local recipes/scaffolding:
 
 - PR comment renderer,
 - scenario audit runner,
+- textlint output adapter,
 - MCP adapter manifest and local dispatcher.
 
 Not on the current roadmap: a package-installed MCP server/surface or Open Design integration. The existing checkout-local MCP scaffolding remains available as documented above.
