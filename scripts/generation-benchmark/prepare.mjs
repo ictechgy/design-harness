@@ -25,6 +25,7 @@ import {
   MATRIX,
   OUTPUT_CONSTRAINTS,
   OUTPUT_ROOT,
+  OFFTARGET_GUIDE_ADDITIONS,
   WIDENED_GUIDE_ADDITIONS,
   buildPrompt,
   canonicalJson,
@@ -42,14 +43,16 @@ function arg(name, fallback = null) {
 async function compilePacks(coreDistPath) {
   const core = await import(coreDistPath);
   const baseGuide = core.createExampleDesignGuide();
-  const widenedGuide = {
+  const widen = (additions) => ({
     ...core.createExampleDesignGuide(),
     primaryTask: {
-      statement: WIDENED_GUIDE_ADDITIONS.primaryTask.statement,
-      supportingTasks: [...WIDENED_GUIDE_ADDITIONS.primaryTask.supportingTasks]
+      statement: additions.primaryTask.statement,
+      supportingTasks: [...additions.primaryTask.supportingTasks]
     },
-    signatureCommitments: WIDENED_GUIDE_ADDITIONS.signatureCommitments.map((entry) => ({ ...entry }))
-  };
+    signatureCommitments: additions.signatureCommitments.map((entry) => ({ ...entry }))
+  });
+  const widenedGuide = widen(WIDENED_GUIDE_ADDITIONS);
+  const offtargetGuide = widen(OFFTARGET_GUIDE_ADDITIONS);
   const describe = (compiled) => ({
     markdown: compiled.markdown,
     profileId: compiled.profileId,
@@ -60,18 +63,25 @@ async function compilePacks(coreDistPath) {
   });
   return {
     "with-pack": describe(core.compileDesignGuide(baseGuide)),
-    "with-widened-pack": describe(core.compileDesignGuide(widenedGuide))
+    "with-widened-pack": describe(core.compileDesignGuide(widenedGuide)),
+    "with-offtarget-pack": describe(core.compileDesignGuide(offtargetGuide))
   };
 }
 
 export async function prepare({ coreDistPath, root }) {
   if (!coreDistPath) throw new Error("prepare requires --core <path to packages/core/dist/index.js>");
   const packs = await compilePacks(coreDistPath);
-  if (packs["with-pack"].markdownSha256 === packs["with-widened-pack"].markdownSha256) {
-    throw new Error("the two packs are identical; the widened arm would be a duplicate");
+  const hashes = new Set(Object.values(packs).map((pack) => pack.markdownSha256));
+  if (hashes.size !== Object.keys(packs).length) {
+    throw new Error("two packs hash identically; an arm would be a duplicate");
   }
-  if (packs["with-widened-pack"].ruleCount <= packs["with-pack"].ruleCount) {
-    throw new Error("the widened pack must carry more rules than the baseline pack");
+  for (const arm of ["with-widened-pack", "with-offtarget-pack"]) {
+    if (packs[arm].ruleCount <= packs["with-pack"].ruleCount) {
+      throw new Error(`${arm} must carry more rules than the baseline pack`);
+    }
+  }
+  if (packs["with-widened-pack"].ruleCount !== packs["with-offtarget-pack"].ruleCount) {
+    throw new Error("the widened and off-target packs must carry equal rule counts; only the aim may differ");
   }
   const cellRoot = resolve(root ?? resolve(tmpdir(), `${BENCHMARK_ID}-cells`));
 
@@ -109,8 +119,9 @@ export async function prepare({ coreDistPath, root }) {
   if (prompts["without-pack"].includes(PACK_FILENAME)) {
     throw new Error("the without-pack prompt must not reference the pack");
   }
-  if (prompts["with-pack"] !== prompts["with-widened-pack"]) {
-    throw new Error("both pack arms must receive byte-identical prompts; only the pack file may differ");
+  const packPrompts = new Set(ARMS.filter((arm) => arm !== "without-pack").map((arm) => prompts[arm]));
+  if (packPrompts.size !== 1) {
+    throw new Error("every pack arm must receive byte-identical prompts; only the pack file may differ");
   }
 
   const manifest = {
@@ -161,7 +172,7 @@ async function main() {
         `sha256 ${pack.markdownSha256.slice(0, 12)}`
     );
   }
-  console.log("  prompts identical across both pack arms:", manifest.promptSha256["with-pack"] === manifest.promptSha256["with-widened-pack"]);
+  console.log("  prompts identical across all pack arms:", new Set(Object.values(manifest.promptSha256)).size === 2);
   console.log("  no hosted call was made by this step.");
 }
 
