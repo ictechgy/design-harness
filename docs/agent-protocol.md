@@ -6,7 +6,7 @@ Stable working protocol for AI agents (Claude Code, Codex, or any other) contrib
 
 1. Read the newest handoff in `.omx/handoffs/` if present (git-ignored; may be absent in fresh clones — that's fine).
 2. Check `git log --oneline -5` and `git status`.
-3. Find the current milestone (`AGENTS.md` table → `docs/ROADMAP.md`) and work only inside it. Out-of-scope ideas: one line in `.omx/ideas.md`, never code.
+3. Treat `AGENTS.md` as the authority gate, find the current milestone directly in `docs/ROADMAP.md`, and work only inside it. Out-of-scope ideas: one line in `.omx/ideas.md`, never code.
 4. Verify before claiming done (see the matrix below). Report failures as failures.
 5. Before ending: write a handoff (format below). Never list unverified work as Done.
 

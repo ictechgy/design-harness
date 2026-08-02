@@ -1,109 +1,115 @@
-# AGENTS.md — Working Guide for AI Agents
+# AGENTS.md — Design Harness contributor contract
 
-Design Harness is an open-source, model-agnostic UI/UX QA loop for AI coding agents: local URL → Playwright screenshots → source-backed checks → `audit.json` / `report.md` → coding agent fixes. Monorepo: `@design-harness/core` (contracts), `@design-harness/copy-audit` (pure copy analysis), `@design-harness/visual-audit` (browser capture/checks), `@design-harness/cli`. Published on npm since v0.3.1.
+Design Harness is a model-agnostic UI/UX QA loop for coding agents: a local URL
+becomes Playwright evidence, source-backed findings, `audit.json` / `report.md`,
+and a bounded repair loop. The monorepo contains `core`, `copy-audit`,
+`visual-audit`, and `cli` packages.
 
-**Authority on conflict**: owner's current-session instruction > this file > committed docs (`docs/ROADMAP.md`, `docs/agent-protocol.md`, `docs/criteria-and-checks.md`) > git-ignored local notes (`REPORT.md`, `.omx/`) > your judgment. Every MUST lives in this file or in a machine check; `REPORT.md` (Korean strategy rationale) and `.omx/` are optional background — never block on their absence, and if you find a MUST that exists only there, promote it here.
+## Authority and instruction map
 
-## HARD RULES (never violate)
+Owner instructions in the current session override this file. This file then
+overrides committed docs, which override ignored notes (`REPORT.md`, `.omx/`).
+If prose and an existing machine gate disagree, stop and report the drift; do
+not weaken either just to pass. A nearer `AGENTS.md` adds rules for its subtree;
+it cannot weaken this root contract.
 
-1. **Epistemic discipline is the product.** A finding with `determinism: heuristic` or `subjective` may NEVER have `resultKind: failure` (enforced at finding level by `packages/core/src/integrity.ts`, at criterion level by `check:criteria-policy` per ADR-001 — do not weaken either). Deterministic `failure` language is reserved for official-testable sources (WCAG 2.2), including determinations resolved by explicit project-declared config (`lang` vs `--locale`); `project-contract`-sourced criteria cap at deterministic `risk` (ADR-001 matrix). **Computation determinism never upgrades criterion strength**: exactly countable metrics (colors, font variants, density) with research-grade criteria stay heuristic risk — see `docs/criteria-and-checks.md`. When unsure, downgrade.
-2. **No npm publish, version bump, tag, or GitHub release without the owner's explicit approval in the current session.** Publish order: core → copy-audit → visual-audit → cli. *Enforced for Claude Code by a PreToolUse hook (`.claude/settings.json` → `scripts/hooks/block-release-commands.mjs`). For Codex no hook exists: Codex agents must not run publish/version/tag/release commands at all — ask the owner to run them, unless the owner approves the exact command text in the current session.*
-3. **Never commit generated Midjourney images** or binaries from `datasets/midjourney-reference-lab/local-assets/`. *Enforced: `check:midjourney-policy`, `check:tracked-hygiene`.* Distilled token files derived from images are fine.
-4. **Never add hanspell / py-hanspell / Pusan / Naver / Daum spellcheck endpoints** as dependencies or defaults (ToS-restricted, breakage history). Bareun and other hosted APIs: opt-in provider only, never a default path. *Enforced: `check:deps-policy`.*
-5. **License hygiene (Korean copy stack)**: `kiwi-nlp` is LGPL (npm metadata says LGPL-2.1-or-later; its repo README says LGPL v3 — trust the npm declaration, record the discrepancy). Never statically vendor it; lazy-load behind the `--copy` flag. The `spellcheck-ko` dictionary is GPL-3.0 project / CC-BY-SA-4.0 data — never bundled; fetched only via an explicit, documented prepare step (opt-in spelling provider), not silently inside `--copy`. *Enforced in part: `check:deps-policy`.*
-6. **Calibration-data licensing (prose-only, legal)**: never commit fixtures derived from gated or non-commercial corpora — NIKL 모두의 말뭉치 / 말평 data (no redistribution, no LLM augmentation), SmileStyle (CC-BY-NC-4.0), K-NCT (unlicensed). Redistributable: IWSLT2023 EN-KO (CDLA-Sharing-1.0) and synthetic generation. When in doubt, generate synthetic Korean data.
-7. **No hosted LLM in any required path.** Judge features are opt-in (injectable callback / explicit flag), emit `needs-review` findings only, are score-exempt, and record model ID + prompt hash in `audit.json`.
-8. **Audit targets stay local HTTP(S)** (`assertLocalHttpUrl`, `packages/core/src/input-policy.ts`). Do not widen.
-9. **Report copy guardrails**: never claim "WCAG compliant", "accessible", "good design" etc. unqualified (`validateReportCopyGuardrails` in `packages/core/src/report.ts`). Scoped phrasing only — in reports AND public docs. *Enforced: `check:report-copy-guardrails` scans tracked rendered audit reports, `README.md` files, and the designated public reports under `docs/benchmarks/`; ordinary docs are excluded because they quote the phrases to define the rule.* Report verdict/critique copy must also match the actual finding composition, never asserting a determinism class the findings lack (report/scoring unit tests).
-10. **Enum lockstep**: `RubricCategory` is duplicated across `types.ts`, 3 JSON schemas, `rubric.yaml`, and `implementationAreaFor`. *Enforced: `check:enum-lockstep` — if the script and this sentence disagree, the script wins.* New source-strength kinds or check runtimes need a short ADR in `docs/adr/` first (ADR-001 added runtime `model-judged` and source strength `project-contract`; its policy matrix is enforced by `check:criteria-policy`).
-11. **Do not build cut-list items** (see Roadmap section below) without the owner explicitly reopening them.
-12. **Historical example runs preserve producer provenance.** Never mechanically bump their `harnessVersion` or `toolVersions`; regenerate the complete artifact set or retain the version that actually produced it. *Prose-only; detailed procedure: `docs/recipes/release-checklist.md`.*
+| Area | Read before editing |
+|---|---|
+| `packages/core/` | `packages/core/AGENTS.md` |
+| `packages/copy-audit/` | `packages/copy-audit/AGENTS.md` |
+| `packages/visual-audit/` | `packages/visual-audit/AGENTS.md` |
+| `packages/cli/` | `packages/cli/AGENTS.md` |
+| `scripts/` | `scripts/AGENTS.md` |
+| `docs/` | `docs/AGENTS.md` |
+| `datasets/` | `datasets/AGENTS.md` |
 
-## Ask the owner first (never proceed alone)
+Canonical detail lives in `docs/agent-protocol.md`, `docs/ROADMAP.md`,
+`docs/criteria-and-checks.md`, and `docs/adr/`. Do not promote a rule from an
+ignored note without also committing it here or enforcing it in code.
 
-npm publish / version tags / GitHub releases / any external publication · adding a runtime dependency (especially networked) · schema or enum changes not in the current milestone spec · reopening any cut-list item · new deterministic+failure combinations outside the existing matrix · changing positioning or claims in public docs (README).
+## Non-negotiable rules
 
-## Commands
+1. **Epistemic discipline is the product.** Heuristic or subjective findings
+   never become `failure`. Computation determinism does not upgrade criterion
+   strength. When uncertain, downgrade.
+2. **Release actions require exact current-session owner approval.** Do not run
+   npm publish, version, tag, or GitHub Release commands without approval of the
+   exact command. Publish order is core → copy-audit → visual-audit → cli.
+3. **Required paths stay offline and provider-neutral.** Hosted judges are
+   opt-in, `needs-review`, score-exempt, and provenance-recorded. Audit targets
+   remain local HTTP(S).
+4. **Preserve private and licensed boundaries.** Never track ignored owner
+   evidence, generated Midjourney images, model assets, gated/non-commercial
+   corpus derivatives, secrets, or credentials. `kiwi-nlp` is the exact-pinned
+   LGPL runtime and stays lazy-loaded in copy-audit only. Follow the nearest
+   data/copy instructions and `check:deps-policy`.
+5. **Report only what evidence proves.** Never claim WCAG compliance,
+   accessibility, good design, low false-positive rates, or general slop
+   reduction without the required scoped evidence and citations.
+6. **Keep contracts in lockstep.** Schema, enum, source-strength, runtime, and
+   report-contract changes require the prescribed mirrors, tests, and ADRs.
+7. **Core stays capture-agnostic.** Capture evidence may downgrade a finding;
+   it may never upgrade one. Missing evidence means skip/notice, not invented
+   evidence.
+8. **Do not reopen cut-list or demand-gated surfaces alone.** Put the idea in
+   `.omx/ideas.md` and ask the owner. The file contract remains canonical.
+9. **Historical artifacts retain producer provenance.** Regenerate a complete
+   artifact set or keep the versions that actually produced it; never bump
+   historical versions mechanically.
+10. **Agents obey gates, not aspirations.** A requirement that must persist
+    belongs in a check, hook, schema, or test. Keep prose compact and concrete.
+
+## Ask the owner before proceeding
+
+- External publication, release, version, tag, or publish.
+- A new runtime dependency, especially a networked one.
+- Public README positioning or claim changes.
+- Schema/enum changes outside an already approved milestone.
+- A new deterministic + `failure` combination outside the current matrix.
+- Reopening a cut-list item or adding a new capture/product surface.
+
+## Session workflow
+
+1. Read the newest `.omx/handoffs/*.md` if present; absence in a fresh clone is
+   fine. Then run `git log --oneline -5`, `git status --short`, and identify the
+   current branch/milestone.
+2. Preserve user-owned dirty state. Never reset, overwrite, relabel, or commit
+   ignored owner evidence. Use a separate worktree for unrelated work.
+3. Read the nearest scoped `AGENTS.md`, relevant ADRs, and the verification row
+   in `docs/agent-protocol.md` before editing.
+4. Keep one coherent slice per branch/PR. Record out-of-scope ideas rather than
+   implementing them.
+5. Verify the real behavior, not only types. Report commands and failures
+   truthfully. Before ending, write a concise handoff with the next action.
+
+## Architecture boundaries
+
+Dependency direction is `core` → `copy-audit` → `visual-audit` → `cli`; imports
+may point left, never right. YAML parsing and filesystem orchestration stay in
+CLI. Browser capture stays in visual-audit. Criteria, schemas, integrity,
+scoring, and report contracts stay in core. `check:package-boundaries` enforces
+the graph and exact runtime dependencies.
+
+One config artifact drives both generation guidance and post-render checks.
+Unsupported or absent evidence stays explicit; no implicit body fallback,
+silent provider path, or best-effort repair may hide a contract failure.
+
+## Verification shortcuts
 
 ```bash
-pnpm install && pnpm build          # build workspace in dependency order
-pnpm test                           # all package tests (CI=true for non-interactive)
-pnpm release:check                  # build + typecheck + test + validate + pack + smoke
-pnpm validate                       # schemas, manifests, policy + guard scripts below
-pnpm check:enum-lockstep            # category enum in lockstep across 6 locations
-pnpm check:criteria-policy          # criterion registry vs ADR-001 policy matrix
-pnpm check:version-consistency      # package/HARNESS_VERSION + schemaVersion lockstep
-pnpm check:release-hook-policy      # release-block hook sample coverage
-pnpm check:core-purity              # core stays capture-agnostic (ADR-002)
-pnpm check:package-boundaries       # graph + explicit runtime deps; YAML stays CLI-only
-pnpm check:deps-policy              # ToS/GPL dependency policy
-pnpm check:tracked-hygiene          # local-only files untracked; AGENTS.md line budget
-pnpm check:report-copy-guardrails   # HARD RULE 9: no unqualified overclaims in tracked reports/README
-pnpm check:docs-claims              # quantitative claims in tracked docs cite evidence
-pnpm report:allocation              # machinery/product LOC ratio (reports; ceiling forces a conversation)
-pnpm check:obedience-benchmark      # exact 12-cell snapshot, provenance, preservation + claim gate
-pnpm check:obedience-repeated       # exact 72-cell/two-case preparation or complete snapshot gate
-pnpm check:guide-data               # guide fingerprint source/generated mirror parity
-pnpm check:visual-metrics-calibration # browserless fixture hashes + exact manifest contract
-pnpm calibrate:fixtures             # manifest Korean fixtures → calibrated copy TP/FP/FN drift gate
-pnpm validate:korean-register       # pinned IWSLT/CDLA + aggregate-only register evidence gates
-pnpm calibrate:korean-register --model-dir <dir> --out <fresh-dir> # optional candidate observation
-pnpm example:serve                  # merchant-dashboard fixture on :4173
-pnpm smoke:copy                     # live parser-free copy/materializer golden path
-pnpm smoke:guide                    # temporary-project guide compile/check + compatibility gate
-pnpm smoke:loop                     # live bounded-loop repair/no-progress/process-boundary gate
-pnpm smoke:visual-metrics           # live atomic + merchant + repeated unrelated-corpus gate
-pnpm smoke:density-lower-bound      # live partial text-cluster lower-bound good/bad gate
-pnpm smoke:selector-uniqueness      # live deep-DOM gate: no selector may stand in for several elements
-pnpm check:slop-convergence         # offline convergence-instrument probe + pack-confound gate
-pnpm check:generation-benchmark      # offline with-pack/without-pack generation contract gate
-pnpm smoke:spacing-skip             # live gate: screen-reader-only boxes are not scolded for spacing
-pnpm design-harness -- audit --url http://localhost:4173 --out runs/demo
+pnpm build                       # workspace build in dependency order
+pnpm typecheck                   # all package type checks
+pnpm test                        # all package tests
+pnpm validate                    # schemas, policies, benchmarks, hygiene
+CI=true pnpm release:check       # full local release gate
+pnpm example:serve               # merchant fixture on 127.0.0.1:4173
+pnpm design-harness -- audit --url http://127.0.0.1:4173 --out runs/demo
 ```
 
-Playwright Chromium missing → `pnpm playwright:install`. Partial audits exit `2` unless `--allow-partial`. CI runs `--frozen-lockfile`: any new dependency requires a lockfile change — this is also the slopsquatting guard (5–22% of LLM-recommended packages don't exist).
+For a changed check, add the criterion/source, measurement field, one browser
+evidence path, finding mapping, a one-defect good/bad fixture pair, and unit +
+live audit coverage in the same slice. For docs-only work, resolve links and run
+`pnpm check:docs-claims` plus `pnpm check:tracked-hygiene`.
 
-## Adding a check (the established 7-step path)
-
-Criterion in `packages/core/src/criteria.ts` (with `CRITERION_SOURCES` entry) → measurement fields in `ViewportMeasurements` (`packages/visual-audit/src/checks.ts`) → browser evidence in `browser-measurements.ts` (single `page.evaluate` closure) → `findingsFromMeasurements` mapping → good/bad fixture pair in `examples/ui-quality-fixtures/` (one defect per detector) → unit tests → `pnpm release:check`. Details and registry policy: `docs/criteria-and-checks.md`.
-
-## Roadmap
-
-**Latest release: v0.6.4 — RELEASED 2026-07-29.** It repairs partial text-cluster evidence with the conservative `supported-flow-root-count-v1` lower bound, publishes the bounded 72-cell repeated/two-case obedience snapshot, and records aggregate-only Korean register evidence from 597 licensed IWSLT rows / 1,194 references across three byte-identical real offline Kiwi runs. The release also includes Node 24-backed GitHub Action maintenance and the root-only opaque-byte `reference:session prepare/check` helper. It adds no detector, schema, enum, public provider path, model asset, or Midjourney image; `SCHEMA_VERSION` remains `0.2`, historical artifacts keep their producer versions, and the one 71/72 preservation miss remains visible rather than rerun. See `docs/ROADMAP.md`.
-
-**Cut list (do NOT build now)**: MCP server (file contract `audit.json`/`report.md` is canonical; capture is commoditized) · best-of-N picker · community fixture pipeline · interaction-simulation / below-fold sweep / pixel contrast · more than two agent surfaces (Claude Code + Codex) · `guide from-references` CLI/VLM (still cut; the owner reopened only the repo-local opaque-byte `reference session prepare/check` experiment on 2026-07-29) · Open Design integration · **evidence-against, do not build**: hue-template color harmony, symmetry/balance scoring for real UIs, scored Korean readability, MQM translation LQA, Figma-plugin surface, generic English style-guide enforcement (details: `docs/ROADMAP.md` cut list).
-
-## Korean copy check tiering (decided — do not re-litigate)
-
-| Check | Tier | Notes |
-|---|---|---|
-| `placeholder-leak` ({{var}}, unrendered ICU, lorem, TODO) | deterministic **failure** | unambiguous broken rendering |
-| `page-lang-missing` | deterministic **failure** | WCAG 3.1.1; `lang` mismatch is deterministic ONLY against an explicit declaration (`--locale` / config), never via language inference |
-| Rendered josa hedge "을(를)"/"이(가)" | deterministic **risk** | pure regex, no parser; also a deliberate Korean form convention — never failure; configurable via `josaHedgePolicy` |
-| `josa-batchim-mismatch` | **heuristic** risk | Kiwi-parser-dependent segmentation → heuristic (rule 1 corollary below). Deterministic risk allowed ONLY for the parser-free subset: Hangul-final token + particle provable from raw text. SKIP digit/Latin/symbol-final tokens; require `J*` POS confirmation |
-| Korean line-break (`break-all`) | deterministic **risk** | computed-style; `korean-line-break-risk` ships the `break-all` half only. Merely omitting `keep-all` is the browser default on nearly every Korean page, so flagging it would be noise — reopen as a separate opt-in decision, not as part of this check |
-| Glossary/terminology (typed term tiers: approved/banned/use-carefully) | deterministic **risk** | only when a project glossary is configured |
-| Register mixing (해요체/합쇼체/반말 via Kiwi EF tags) | heuristic | only against a configured per-surface register map; `noun-form` is a valid target for labels/fragments, which the EF-based mixing detector excludes |
-| Object honorifics (사물존칭) | **LLM judge only** (v0.7 unscheduled, needs-review, score-exempt) | re-tiered 2026-07-07: no dataset or detector exists; NIKL calls the 간접존대 boundary undefined; no rule check in copy-audit v1 |
-| Translationese (번역투) lexicon | heuristic, needs-review | versioned data seeded from NIKL materials; always-wrong subset = 이중피동; no calibration corpus exists — log match rates in audit.json, per-pattern suppression |
-| Korean spelling (spellcheck-ko) | heuristic, **never failure** | unknown-word hits = risk with per-project dictionary (brand names/neologisms dominate) |
-| Tone / naturalness / contextual fit | LLM judge, subjective, **needs-review only**, score-exempt | opt-in; Toss 8 principles + 상태→원인→해결 rubric; temp 0; never self-graded; always emits `suggestedRewrite` |
-
-Copy extraction happens at render time (post-interpolation) from the live page — not from locale files — because josa/agreement errors only manifest after variable interpolation. Any check requiring a full morphological parse of informal text inherits Kiwi's ~86.5% web-text accuracy and cannot be deterministic-tier.
-
-## Design invariants
-
-- **Agents obey gates, not prose.** Anything that must hold becomes a machine check (loop exit, hook, CI); prose guidance is a prior-shifter capped at ~2k tokens, MUST rules first.
-- **Precision over recall in every heuristic tier.** False positives cause banner blindness and kill trust (Ditto's measured lesson). Unproven-precision checks ship informational/logged-only.
-- **One config artifact drives both directions**: `design-guide.yaml` / `copy-style.yaml` compile into the pre-generation pack AND parameterize the post-render checks — guidance and verification never drift apart.
-- **Core stays capture-agnostic (ADR-002)**: criteria/schemas/scoring/report never import capture tech (*enforced: `check:core-purity`*); evidence a check needs is declared in layers (missing layer → skip, never garbage); evidence provenance may downgrade a finding's tier, never upgrade it; new surfaces are demand-gated via ROADMAP "Surface horizons" — never build a capture adapter without the owner scheduling it.
-- **Midjourney lapse test**: if the subscription lapsed tomorrow, zero roadmap items may break.
-- **No claims without measurement**: obedience benchmarks before "reins" marketing; owner-vs-judge agreement (≥80% on ≥50 samples) before the Korean judge ships; false-positive dogfooding on real Korean products before any public Korean launch.
-- **Halve milestones.** Solo maintainer. Every release ends publishable with README claims matching npm/code reality.
-
-## Process
-
-- Session protocol: (1) newest `.omx/handoffs/*.md` if present; (2) `git log --oneline -5` + `git status`; (3) current milestone only — out-of-scope ideas go to `.omx/ideas.md`, never code; (4) verify before claiming done (matrix in `docs/agent-protocol.md`); (5) write a handoff before ending. Never list unverified work as Done.
-- Branch from `main` (`codex/...` or `claude/...`), one coherent slice per PR, review before merge. CI runs `release:check` + example-smoke.
-- **Maintenance rule**: any PR that changes a convention, command, check pipeline, or architecture updates this file and/or `docs/ROADMAP.md` in the same PR. This file has a 150-line CI budget (`check:tracked-hygiene`) — a budget, not science; move detail to the committed docs instead of growing this core.
-- Full protocol, anti-drift table, verification matrix, handoff/experiment formats: `docs/agent-protocol.md`.
+Never claim completion from a partial audit (exit 2 unless `--allow-partial`), a
+flaky rerun without explanation, or tests that did not exercise the user path.
