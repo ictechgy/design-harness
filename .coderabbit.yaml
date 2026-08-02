@@ -1,0 +1,80 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+
+language: "en-US"
+early_access: false
+tone_instructions: >-
+  Be concise and evidence-first. Cite exact files and lines, separate blocking
+  defects from non-blocking suggestions, and do not overclaim beyond the diff.
+
+reviews:
+  profile: "chill"
+  request_changes_workflow: true
+  high_level_summary: true
+  review_status: true
+  review_details: true
+  collapse_walkthrough: true
+  sequence_diagrams: false
+  estimate_code_review_effort: true
+  assess_linked_issues: true
+  related_issues: false
+  related_prs: false
+  poem: false
+  enable_prompt_for_ai_agents: true
+
+  auto_review:
+    enabled: true
+    auto_incremental_review: true
+    auto_pause_after_reviewed_commits: 5
+    drafts: false
+    labels:
+      - "!do-not-review"
+    ignore_title_keywords:
+      - "WIP"
+      - "DO NOT MERGE"
+      - "[skip review]"
+
+  path_instructions:
+    - path: "packages/core/**"
+      instructions: >-
+        Trace contract changes across schemas, criteria sources, integrity,
+        scoring, reports, tests, and required ADRs. Flag capture coupling or any
+        heuristic or subjective finding upgraded to failure.
+    - path: "packages/copy-audit/**"
+      instructions: >-
+        Check provider and licensing restrictions, lazy loading, and Korean
+        tier ceilings. Require configured or calibrated evidence before stronger
+        claims.
+    - path: "packages/visual-audit/**"
+      instructions: >-
+        Require browser evidence, measurement-to-finding mapping, focused
+        fixtures, and live coverage for detector changes. Missing evidence must
+        skip or downgrade.
+    - path: "packages/cli/**"
+      instructions: >-
+        Check local-HTTP-only input policy, package boundaries, partial-audit
+        exit behavior, and provider-neutral required paths.
+    - path: "scripts/**"
+      instructions: >-
+        Treat validators as fail-closed gates. Flag weakened coverage, fixtures,
+        or snapshots and require regression tests for changed checks.
+    - path: "docs/**"
+      instructions: >-
+        Check claim scope and nearby citations. Preserve historical producer
+        versions and reject unqualified accessibility or design-quality claims.
+    - path: "README.md"
+      instructions: >-
+        Verify public claims against current code, npm reality, and cited
+        evidence. Flag positioning changes that lack explicit owner approval.
+
+  tools:
+    github-checks:
+      enabled: true
+      timeout_ms: 900000
+
+knowledge_base:
+  code_guidelines:
+    enabled: true
+
+chat:
+  art: false
+  auto_reply: true
