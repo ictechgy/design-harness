@@ -251,11 +251,16 @@ export async function auditUrl(options: AuditUrlOptions): Promise<AuditUrlResult
 
         const screenshotPath = join(screenshotsDir, `${viewport.name}.png`);
         const screenshotEvidenceId = `screenshot-${viewport.name}`;
+        const screenshotOptions = {
+          path: screenshotPath,
+          fullPage: false
+        };
         try {
-          await page.screenshot({
-            path: screenshotPath,
-            fullPage: false
-          });
+          try {
+            await page.screenshot(screenshotOptions);
+          } catch {
+            await page.screenshot(screenshotOptions);
+          }
           evidenceAssets.push({
             id: screenshotEvidenceId,
             type: "screenshot",
