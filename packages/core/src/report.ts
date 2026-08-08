@@ -82,11 +82,7 @@ function renderFailedChecks(auditResult: AuditResult): string {
 export function buildIterationPrompt(auditResult: AuditResult): string {
   const topFindings = selectIterationPromptFindings(auditResult.findings);
   const findingLines = topFindings.length
-    ? topFindings.map((finding) => {
-        const implementationArea = implementationAreaFor(finding);
-        const criterion = finding.criterionId ? ` Criterion: ${finding.criterionId}.` : "";
-        return `- ${implementationArea}: ${finding.id}: ${finding.problem}${criterion} Recommendation: ${finding.recommendation}`;
-      }).join("\n")
+    ? topFindings.flatMap(renderIterationPromptFinding).join("\n")
     : "- No blocking deterministic findings were detected. Improve polish while preserving the current layout stability.";
 
   return [
@@ -97,6 +93,34 @@ export function buildIterationPrompt(auditResult: AuditResult): string {
     findingLines,
     "After revising, rerun the audit and compare the new report against this one."
   ].join("\n");
+}
+
+function renderIterationPromptFinding(finding: Finding): string[] {
+  const implementationArea = implementationAreaFor(finding);
+  const criterion = finding.criterionId ? ` Criterion: ${finding.criterionId}.` : "";
+  const lines = [
+    `- ${implementationArea}: ${finding.id}: ${finding.problem}${criterion} Recommendation: ${finding.recommendation}`
+  ];
+
+  if (finding.viewport.length > 0) {
+    lines.push(`  viewport: ${finding.viewport}`);
+  }
+  if (finding.selector && finding.selector.length > 0) {
+    lines.push(`  selector: ${finding.selector}`);
+  }
+  if (finding.region) {
+    lines.push(
+      `  region: x=${finding.region.x}, y=${finding.region.y}, width=${finding.region.width}, height=${finding.region.height}`
+    );
+  }
+  if (finding.evidenceRefs.length > 0) {
+    lines.push(`  evidenceRefs: ${finding.evidenceRefs.join(", ")}`);
+  }
+  if (finding.sourceRefs?.length) {
+    lines.push(`  sourceRefs: ${finding.sourceRefs.join(", ")}`);
+  }
+
+  return lines;
 }
 
 const ITERATION_PROMPT_SEVERITY_RANK: Record<Finding["severity"], number> = {

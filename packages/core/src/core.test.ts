@@ -1362,10 +1362,72 @@ describe("report rendering", () => {
     expect(prompt).not.toContain("Codex");
   });
 
-  it("includes only deterministic failures and risks in the iteration prompt", () => {
+  it("renders each existing prompt locus and reference value once in field order", () => {
     const auditResult = createExampleAuditResult();
     auditResult.findings = [
-      createPromptFinding("heuristic-risk", { determinism: "heuristic", resultKind: "risk" }),
+      createPromptFinding("context-finding", {
+        viewport: "context-viewport",
+        selector: "[data-audit-context='checkout-primary']",
+        region: { x: 101.25, y: 202.5, width: 303.75, height: 404.125 },
+        evidenceRefs: ["context-evidence-one", "context-evidence-two"],
+        sourceRefs: ["context-source-one", "context-source-two"]
+      })
+    ];
+
+    const prompt = buildIterationPrompt(auditResult);
+    const expectedEntry = [
+      "- layout: context-finding: Problem context-finding. Criterion: responsive.horizontal-overflow.none. Recommendation: Recommendation context-finding.",
+      "  viewport: context-viewport",
+      "  selector: [data-audit-context='checkout-primary']",
+      "  region: x=101.25, y=202.5, width=303.75, height=404.125",
+      "  evidenceRefs: context-evidence-one, context-evidence-two",
+      "  sourceRefs: context-source-one, context-source-two"
+    ];
+
+    expect(prompt).toContain(expectedEntry.join("\n"));
+    for (const contextLine of expectedEntry.slice(1)) {
+      expect(prompt.split(contextLine)).toHaveLength(2);
+    }
+  });
+
+  it("omits empty prompt locus and reference fields without inventing entries", () => {
+    const auditResult = createExampleAuditResult();
+    auditResult.findings = [
+      createPromptFinding("empty-context", {
+        selector: "",
+        region: undefined,
+        evidenceRefs: [],
+        sourceRefs: []
+      })
+    ];
+
+    const prompt = buildIterationPrompt(auditResult);
+
+    expect(prompt).toContain([
+      "- layout: empty-context: Problem empty-context. Criterion: responsive.horizontal-overflow.none. Recommendation: Recommendation empty-context.",
+      "  viewport: desktop",
+      "After revising, rerun the audit and compare the new report against this one."
+    ].join("\n"));
+    expect(prompt).not.toContain("  selector:");
+    expect(prompt).not.toContain("  region:");
+    expect(prompt).not.toContain("  evidenceRefs:");
+    expect(prompt).not.toContain("  sourceRefs:");
+  });
+
+  it("keeps heuristic, subjective, and notice content out of the iteration prompt", () => {
+    const auditResult = createExampleAuditResult();
+    auditResult.notices = [{
+      code: "notice-repair-queue-sentinel",
+      message: "Notice repair queue sentinel must stay out."
+    }];
+    auditResult.findings = [
+      createPromptFinding("heuristic-risk", {
+        determinism: "heuristic",
+        resultKind: "risk",
+        selector: "heuristic-selector-sentinel",
+        evidenceRefs: ["heuristic-evidence-sentinel"],
+        sourceRefs: ["heuristic-source-sentinel"]
+      }),
       createContentFinding({ id: "legacy-unclassified" }),
       createCopyFinding("placeholder-leak", ["unicode-icu-messageformat"], {
         id: "deterministic-failure",
@@ -1396,7 +1458,12 @@ describe("report rendering", () => {
       "legacy-unclassified",
       "deterministic-needs-review",
       "heuristic-needs-review",
-      "subjective-needs-review"
+      "subjective-needs-review",
+      "heuristic-selector-sentinel",
+      "heuristic-evidence-sentinel",
+      "heuristic-source-sentinel",
+      "notice-repair-queue-sentinel",
+      "Notice repair queue sentinel must stay out."
     ]) {
       expect(prompt).not.toContain(excludedId);
     }
@@ -1427,7 +1494,13 @@ describe("report rendering", () => {
     const promptOrder = orderedIds.map((id) => prompt.indexOf(id));
     expect(promptOrder.every((index) => index >= 0)).toBe(true);
     expect(promptOrder).toEqual([...promptOrder].sort((left, right) => left - right));
-    expect(prompt.split("\n").filter((line) => line.startsWith("- "))).toHaveLength(5);
+    expect(prompt.split("\n").filter((line) => line.startsWith("- "))).toEqual([
+      "- layout: render-failure: Problem render-failure. Criterion: render.meaningful-content.present. Recommendation: Recommendation render-failure.",
+      "- layout: blank-render: Problem blank-render. Criterion: render.meaningful-content.present. Recommendation: Recommendation blank-render.",
+      "- content: other-failure: Problem other-failure. Criterion: content.placeholder.unrendered. Recommendation: Recommendation other-failure.",
+      "- layout: risk-critical-medium: Problem risk-critical-medium. Criterion: responsive.horizontal-overflow.none. Recommendation: Recommendation risk-critical-medium.",
+      "- layout: risk-high-high: Problem risk-high-high. Criterion: responsive.horizontal-overflow.none. Recommendation: Recommendation risk-high-high."
+    ]);
     expect(prompt).not.toContain("risk-high-medium");
     expect(prompt).not.toContain("risk-medium-high");
     expect(prompt).not.toContain("low-confidence-risk");

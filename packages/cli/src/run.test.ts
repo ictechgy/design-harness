@@ -19,6 +19,7 @@ import {
 } from "@design-harness/visual-audit";
 import { CopyStyleLoadError } from "./copy-style.js";
 import { GuideOperationError } from "./guide-errors.js";
+import type { AuditComparison } from "./audit-compare.js";
 import type { GuideRunDependencies, GuideRunResult } from "./guide-run.js";
 import type { LoopRunInput, LoopRunResult } from "./loop-run.js";
 import { runCli, type RunCliDependencies } from "./run.js";
@@ -493,6 +494,65 @@ describe("runCli", () => {
     expect(stderr).toHaveBeenCalledWith(expect.stringContaining("condition was reached"));
   });
 
+  it("dispatches compare before all audit, configuration, URL, browser, and output setup", async () => {
+    const {
+      dependencies,
+      runCompare,
+      audit,
+      loadDesignGuide,
+      loadCopyStyle,
+      prepareKiwiMorphology,
+      runGuide,
+      runLoop,
+      writeArtifacts,
+      assertUrl,
+      cwd,
+      stdout
+    } = successfulDependencies();
+
+    await expect(runCli([
+      "compare",
+      "--before",
+      "runs/before/audit.json",
+      "--after",
+      "runs/after/audit.json"
+    ], dependencies)).resolves.toBe(0);
+
+    expect(runCompare).toHaveBeenCalledWith({
+      command: "compare",
+      beforePath: "runs/before/audit.json",
+      afterPath: "runs/after/audit.json"
+    });
+    expect(stdout).toHaveBeenCalledWith("# comparison output");
+    expect(assertUrl).not.toHaveBeenCalled();
+    expect(cwd).not.toHaveBeenCalled();
+    expect(loadDesignGuide).not.toHaveBeenCalled();
+    expect(loadCopyStyle).not.toHaveBeenCalled();
+    expect(prepareKiwiMorphology).not.toHaveBeenCalled();
+    expect(audit).not.toHaveBeenCalled();
+    expect(runGuide).not.toHaveBeenCalled();
+    expect(runLoop).not.toHaveBeenCalled();
+    expect(writeArtifacts).not.toHaveBeenCalled();
+  });
+
+  it("returns exit 1 for compare input failure without entering audit setup", async () => {
+    const { dependencies, runCompare, audit, assertUrl, writeArtifacts, stderr } = successfulDependencies();
+    runCompare.mockRejectedValue(new Error("Compare parse error at broken.json: invalid JSON"));
+
+    await expect(runCli([
+      "compare",
+      "--before",
+      "broken.json",
+      "--after",
+      "after.json"
+    ], dependencies)).resolves.toBe(1);
+
+    expect(stderr).toHaveBeenCalledWith("Compare parse error at broken.json: invalid JSON");
+    expect(assertUrl).not.toHaveBeenCalled();
+    expect(audit).not.toHaveBeenCalled();
+    expect(writeArtifacts).not.toHaveBeenCalled();
+  });
+
   it("routes guide compile without invoking the audit path", async () => {
     const { dependencies, runGuide, audit, loadDesignGuide, loadCopyStyle, writeArtifacts, stdout } = successfulDependencies();
 
@@ -581,7 +641,9 @@ function successfulDependencies(status: "success" | "partial" = "success") {
     _guideDependencies?: GuideRunDependencies
   ) => guideResult(args.action));
   const runLoop = vi.fn(async (_input: LoopRunInput) => loopResult("already-clean", 0));
+  const runCompare = vi.fn(async () => comparisonResult());
   const cwd = vi.fn(() => "/project");
+  const assertUrl = vi.fn((url: string) => `${url}/`);
   const dependencies: RunCliDependencies = {
     audit,
     loadDesignGuide,
@@ -589,8 +651,9 @@ function successfulDependencies(status: "success" | "partial" = "success") {
     prepareKiwiMorphology,
     runGuide,
     runLoop,
+    runCompare,
     writeArtifacts,
-    assertUrl: vi.fn((url: string) => `${url}/`),
+    assertUrl,
     cwd,
     stdout,
     stderr
@@ -604,10 +667,26 @@ function successfulDependencies(status: "success" | "partial" = "success") {
     morphologyCopyAnalyzer,
     runGuide,
     runLoop,
+    runCompare,
     writeArtifacts,
+    assertUrl,
     cwd,
     stdout,
     stderr
+  };
+}
+
+function comparisonResult(): AuditComparison {
+  return {
+    beforeCount: 1,
+    afterCount: 2,
+    sameKeyCount: 1,
+    beforeOnlyCount: 0,
+    afterOnlyCount: 1,
+    sameKey: [],
+    beforeOnly: [],
+    afterOnly: [],
+    markdown: "# comparison output"
   };
 }
 
