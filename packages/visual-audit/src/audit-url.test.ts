@@ -43,7 +43,8 @@ interface FakeBrowserOptions {
   gotoError?: Error;
   gotoErrors?: Array<Error | undefined>;
   closeErrors?: Array<Error | undefined>;
-  screenshotError?: Error;
+  screenshotErrors?: Array<Array<Error | undefined>>;
+  screenshotCallOptions?: Array<Array<{ path: string; fullPage: boolean }>>;
   ariaSnapshot?: string;
   ariaSnapshotError?: Error;
   ariaSnapshotUnavailable?: boolean;
@@ -59,6 +60,7 @@ interface FakeBrowserOptions {
 }
 
 interface FakePageCalls {
+  goto: number;
   marker: number;
   screenshot: number;
   measurement: number;
@@ -94,7 +96,7 @@ describe("auditUrl failure behavior", () => {
     ).rejects.toThrow(BrowserUnavailableError);
   });
 
-  it("stops the failed viewport after a generic navigation error and closes resources", async () => {
+  it("does not retry a generic navigation failure and closes resources", async () => {
     const options: FakeBrowserOptions = {
       gotoError: new Error("connection refused"),
       measurement: hostileMeasurementFor("desktop"),
@@ -132,6 +134,7 @@ describe("auditUrl failure behavior", () => {
       id === "aria-snapshot-desktop"
     ))).toEqual([]);
     expect(options.pageCalls).toEqual([{
+      goto: 1,
       marker: 0,
       screenshot: 0,
       measurement: 0,
@@ -174,6 +177,7 @@ describe("auditUrl failure behavior", () => {
       }
     });
     expect(options.pageCalls).toEqual([{
+      goto: 1,
       marker: 0,
       screenshot: 0,
       measurement: 0,
@@ -213,8 +217,8 @@ describe("auditUrl failure behavior", () => {
       "aria-snapshot-mobile"
     ]));
     expect(options.pageCalls).toEqual([
-      { marker: 0, screenshot: 0, measurement: 0, ariaSnapshot: 0, close: 1 },
-      { marker: 1, screenshot: 1, measurement: 1, ariaSnapshot: 1, close: 1 }
+      { goto: 1, marker: 0, screenshot: 0, measurement: 0, ariaSnapshot: 0, close: 1 },
+      { goto: 1, marker: 1, screenshot: 1, measurement: 1, ariaSnapshot: 1, close: 1 }
     ]);
     expect(options.browserCloseCount).toBe(1);
     expect(() => assertAuditResultIntegrity(result.auditResult)).not.toThrow();
@@ -264,8 +268,8 @@ describe("auditUrl failure behavior", () => {
       "aria-snapshot-mobile"
     ]));
     expect(options.pageCalls).toEqual([
-      { marker: 0, screenshot: 0, measurement: 0, ariaSnapshot: 0, close: 1 },
-      { marker: 1, screenshot: 1, measurement: 1, ariaSnapshot: 1, close: 1 }
+      { goto: 1, marker: 0, screenshot: 0, measurement: 0, ariaSnapshot: 0, close: 1 },
+      { goto: 1, marker: 1, screenshot: 1, measurement: 1, ariaSnapshot: 1, close: 1 }
     ]);
     expect(options.browserCloseCount).toBe(1);
     expect(() => assertAuditResultIntegrity(result.auditResult)).not.toThrow();
@@ -305,34 +309,120 @@ describe("auditUrl failure behavior", () => {
       })
     ]));
     expect(options.pageCalls).toEqual([
-      { marker: 1, screenshot: 1, measurement: 1, ariaSnapshot: 1, close: 1 }
+      { goto: 1, marker: 1, screenshot: 1, measurement: 1, ariaSnapshot: 1, close: 1 }
     ]);
     expect(options.browserCloseCount).toBe(1);
     expect(() => assertAuditResultIntegrity(result.auditResult)).not.toThrow();
   });
 
-  it("keeps finding evidence refs valid when screenshots fail", async () => {
+  it("captures a successful screenshot with one call", async () => {
+    const options: FakeBrowserOptions = {
+      measurement: measurementFor("desktop"),
+      pageCalls: []
+    };
     const result = await auditUrl({
       url: "http://localhost:3000",
       outDir: await tempDir(),
       viewportPresets: [viewport],
-      launchBrowser: async () =>
-        fakeBrowser({
-          screenshotError: new Error("screenshot failed"),
-          measurement: {
-            ...measurementFor("desktop"),
-            documentScrollWidth: 1500
-          }
-        })
+      launchBrowser: async () => fakeBrowser(options)
+    });
+
+    expect(options.pageCalls?.[0]?.screenshot).toBe(1);
+    expect(result.auditResult.failedChecks).not.toContain("desktop:screenshot");
+    expect(result.auditResult.evidenceAssets.filter((asset) => asset.id === "screenshot-desktop")).toHaveLength(1);
+  });
+
+  it("retries one failed screenshot and records only the recovered asset", async () => {
+    const outDir = await tempDir();
+    const options: FakeBrowserOptions = {
+      screenshotErrors: [[new Error("first screenshot failed"), undefined]],
+      screenshotCallOptions: [],
+      measurement: measurementFor("desktop"),
+      pageCalls: []
+    };
+    const result = await auditUrl({
+      url: "http://localhost:3000",
+      outDir,
+      viewportPresets: [viewport],
+      launchBrowser: async () => fakeBrowser(options)
+    });
+
+    const screenshotAssets = result.auditResult.evidenceAssets.filter((asset) => asset.id === "screenshot-desktop");
+    expect(options.pageCalls?.[0]?.screenshot).toBe(2);
+    expect(options.screenshotCallOptions?.[0]).toHaveLength(2);
+    expect(options.screenshotCallOptions?.[0]?.[1]).toBe(options.screenshotCallOptions?.[0]?.[0]);
+    expect(options.screenshotCallOptions?.[0]?.[0]).toEqual({
+      path: join(outDir, "screenshots", "desktop.png"),
+      fullPage: false
+    });
+    expect(result.auditResult.status).toBe("success");
+    expect(result.auditResult.failedChecks).not.toContain("desktop:screenshot");
+    expect(result.auditResult.evidenceAssets.some((asset) => asset.data?.checkName === "screenshot")).toBe(false);
+    expect(screenshotAssets).toHaveLength(1);
+  });
+
+  it("records only the second error when both screenshot attempts fail", async () => {
+    const options: FakeBrowserOptions = {
+      screenshotErrors: [[new Error("first screenshot failed"), new Error("second screenshot failed")]],
+      measurement: {
+        ...measurementFor("desktop"),
+        documentScrollWidth: 1500
+      },
+      pageCalls: []
+    };
+    const result = await auditUrl({
+      url: "http://localhost:3000",
+      outDir: await tempDir(),
+      viewportPresets: [viewport],
+      launchBrowser: async () => fakeBrowser(options)
     });
 
     const evidenceIds = new Set(result.auditResult.evidenceAssets.map((asset) => asset.id));
+    const screenshotFailures = result.auditResult.evidenceAssets.filter((asset) => asset.data?.checkName === "screenshot");
+    expect(options.pageCalls?.[0]?.screenshot).toBe(2);
     expect(result.auditResult.status).toBe("partial");
+    expect(result.auditResult.failedChecks.filter((check) => check === "desktop:screenshot")).toHaveLength(1);
+    expect(screenshotFailures).toEqual([
+      expect.objectContaining({
+        type: "measurement",
+        viewport: "desktop",
+        data: {
+          checkName: "screenshot",
+          message: "second screenshot failed"
+        }
+      })
+    ]);
+    expect(result.auditResult.evidenceAssets.some((asset) => asset.id === "screenshot-desktop")).toBe(false);
     expect(result.auditResult.findings.some((finding) => finding.checkName === "horizontal-overflow")).toBe(true);
     for (const finding of result.auditResult.findings) {
       expect(finding.evidenceRefs.every((ref) => evidenceIds.has(ref))).toBe(true);
     }
     expect(() => assertAuditResultIntegrity(result.auditResult)).not.toThrow();
+  });
+
+  it("keeps screenshot retries isolated to the viewport that failed", async () => {
+    const options: FakeBrowserOptions = {
+      screenshotErrors: [[new Error("desktop screenshot failed"), undefined], []],
+      measurement: measurementFor("desktop"),
+      collectionResults: [
+        { measurements: measurementFor("desktop"), notices: [] },
+        { measurements: measurementFor("mobile"), notices: [] }
+      ],
+      pageCalls: []
+    };
+    const result = await auditUrl({
+      url: "http://localhost:3000",
+      outDir: await tempDir(),
+      viewportPresets: [viewport, mobileViewport],
+      launchBrowser: async () => fakeBrowser(options)
+    });
+
+    expect(options.pageCalls?.map(({ screenshot }) => screenshot)).toEqual([2, 1]);
+    expect(result.auditResult.failedChecks).toEqual([]);
+    expect(result.auditResult.evidenceAssets.filter((asset) => asset.type === "screenshot").map((asset) => asset.id)).toEqual([
+      "screenshot-desktop",
+      "screenshot-mobile"
+    ]);
   });
 
   it("records text inventory and aria snapshot as first-class evidence assets", async () => {
@@ -2288,6 +2378,7 @@ function fakePage(options: FakeBrowserOptions, pageIndex: number): PageHandle {
     setDefaultTimeout: () => undefined,
     setDefaultNavigationTimeout: () => undefined,
     goto: async () => {
+      calls.goto += 1;
       const gotoError = options.gotoErrors ? options.gotoErrors[pageIndex] : options.gotoError;
       if (gotoError) {
         throw gotoError;
@@ -2335,10 +2426,17 @@ function fakePage(options: FakeBrowserOptions, pageIndex: number): PageHandle {
           return options.ariaSnapshot ?? ariaSnapshotFromPasswordInputs(passwordInputs);
         }
       }),
-    screenshot: async () => {
+    screenshot: async (screenshotOptions) => {
+      const screenshotAttempt = calls.screenshot;
       calls.screenshot += 1;
-      if (options.screenshotError) {
-        throw options.screenshotError;
+      const pageScreenshotOptions = options.screenshotCallOptions?.[pageIndex] ?? [];
+      if (options.screenshotCallOptions) {
+        options.screenshotCallOptions[pageIndex] = pageScreenshotOptions;
+        pageScreenshotOptions.push(screenshotOptions);
+      }
+      const screenshotError = options.screenshotErrors?.[pageIndex]?.[screenshotAttempt];
+      if (screenshotError) {
+        throw screenshotError;
       }
       return undefined;
     },
@@ -2357,6 +2455,7 @@ function fakePage(options: FakeBrowserOptions, pageIndex: number): PageHandle {
 
 function pageCallsFor(options: FakeBrowserOptions, pageIndex: number): FakePageCalls {
   const calls: FakePageCalls = {
+    goto: 0,
     marker: 0,
     screenshot: 0,
     measurement: 0,
