@@ -8,6 +8,10 @@ import { fileURLToPath } from "node:url";
 
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(scriptDir, "..");
+const packedHarnessVersion = JSON.parse(await readFile(
+  join(repoRoot, "packages", "core", "package.json"),
+  "utf8"
+)).version;
 const mode = parseMode(process.argv.slice(2));
 const tempRoot = await realpath(await mkdtemp(join(tmpdir(), "design-harness-packed-cli-")));
 
@@ -58,7 +62,7 @@ try {
     console.log("Validated positive packed CLI loop execution and one-pass missing-language repair.");
   } else {
     await runDefaultPackedCliChecks(consumerDir);
-    console.log("Validated packed CLI loop help and plain-audit non-execution plus existing audit/guide gates without root data lookup.");
+    console.log("Validated packed CLI compare/help, plain-audit non-execution, and existing audit/guide gates without root data lookup.");
   }
 } finally {
   await rm(tempRoot, { recursive: true, force: true });
@@ -96,11 +100,13 @@ async function runDefaultPackedCliChecks(consumerDir) {
   const help = await runPnpm(["exec", "design-harness", "--help"], { cwd: consumerDir, capture: true });
   const auditHelp = await runPnpm(["exec", "design-harness", "audit", "--help"], { cwd: consumerDir, capture: true });
   const loopHelp = await runPnpm(["exec", "design-harness", "loop", "--help"], { cwd: consumerDir, capture: true });
+  const compareHelp = await runPnpm(["exec", "design-harness", "compare", "--help"], { cwd: consumerDir, capture: true });
 
   if (
     !help.includes("Design Harness")
     || !help.includes("design-harness audit")
     || !help.includes("design-harness loop")
+    || !help.includes("design-harness compare")
     || !help.includes("--guide <design-guide.yaml>")
     || !help.includes("--copy <copy-style.yaml>")
     || !help.includes("--kiwi-model-dir")
@@ -127,7 +133,18 @@ async function runDefaultPackedCliChecks(consumerDir) {
   ) {
     throw new Error(`Packed loop help omitted the exact gate, warning, or offline Kiwi behavior:\n${loopHelp}`);
   }
+  if (
+    !compareHelp.includes("compare --before <audit.json> --after <audit.json>")
+    || !compareHelp.includes("Inputs are local audit files")
+    || !compareHelp.includes("writes no artifacts")
+    || !compareHelp.includes("Valid comparisons exit 0")
+    || !compareHelp.includes("incompatible inputs exit 1")
+    || !compareHelp.includes("Configuration equivalence and causality are unverified")
+  ) {
+    throw new Error(`Packed compare help omitted its local observation contract:\n${compareHelp}`);
+  }
 
+  await assertPackedCompare(consumerDir);
   await assertPlainAuditRejectsAgentCommand(consumerDir);
   await assertFailClosedKiwiActivation(consumerDir);
   await assertPackedGuideCommands(consumerDir);
@@ -204,6 +221,138 @@ async function runDefaultPackedCliChecks(consumerDir) {
     source: packedGuideYaml().replace("generic-card-grid", "unknown-fingerprint"),
     expectedStage: "profile"
   });
+}
+
+async function assertPackedCompare(consumerDir) {
+  const beforePath = join(consumerDir, "compare-before.json");
+  const afterPath = join(consumerDir, "compare-after.json");
+  const malformedPath = join(consumerDir, "compare-malformed.json");
+  const before = packedCompareAudit("packed-before", "#before-copy");
+  const after = packedCompareAudit("packed-after", "#after-copy");
+  await Promise.all([
+    writeFile(beforePath, `${JSON.stringify(before)}\n`),
+    writeFile(afterPath, `${JSON.stringify(after)}\n`),
+    writeFile(malformedPath, "{\n")
+  ]);
+  const entriesBefore = (await readdir(consumerDir)).sort();
+
+  const valid = await runPnpm([
+    "exec",
+    "design-harness",
+    "compare",
+    "--before",
+    beforePath,
+    "--after",
+    afterPath
+  ], { cwd: consumerDir, capture: true, allowFailure: true });
+  if (
+    valid.code !== 0
+    || !valid.stdout.includes("## Same-key observations")
+    || !valid.stdout.includes("## Before-only observations")
+    || !valid.stdout.includes("## After-only observations")
+    || !valid.stdout.includes(
+      '- count=1; key=["content.placeholder.unrendered","placeholder-leak","desktop","#before-copy"]'
+    )
+    || !valid.stdout.includes(
+      '- count=1; key=["content.placeholder.unrendered","placeholder-leak","desktop","#after-copy"]'
+    )
+    || !valid.stdout.includes("Configuration equivalence and causality are unverified")
+  ) {
+    throw new Error(
+      `Packed valid compare contract drifted (exit ${valid.code}).\n${valid.stdout}\n${valid.stderr}`
+    );
+  }
+
+  const malformed = await runPnpm([
+    "exec",
+    "design-harness",
+    "compare",
+    "--before",
+    malformedPath,
+    "--after",
+    afterPath
+  ], { cwd: consumerDir, capture: true, allowFailure: true });
+  if (
+    malformed.code !== 1
+    || !malformed.stderr.includes(`Compare parse error at ${malformedPath}: invalid JSON`)
+  ) {
+    throw new Error(
+      `Packed malformed compare contract drifted (exit ${malformed.code}).\n${malformed.stdout}\n${malformed.stderr}`
+    );
+  }
+  const entriesAfter = (await readdir(consumerDir)).sort();
+  if (JSON.stringify(entriesAfter) !== JSON.stringify(entriesBefore)) {
+    throw new Error("Packed compare created or removed consumer entries.");
+  }
+}
+
+function packedCompareAudit(runId, selector) {
+  const evidenceId = `${runId}-text-inventory`;
+  const findingId = `${runId}-placeholder-leak`;
+  return {
+    schemaVersion: "0.2",
+    harnessVersion: packedHarnessVersion,
+    runId,
+    target: {
+      schemaVersion: "0.2",
+      kind: "url",
+      url: "http://127.0.0.1:4173/packed-compare"
+    },
+    viewportPresets: [{
+      name: "desktop",
+      width: 1440,
+      height: 900,
+      deviceScaleFactor: 1,
+      isMobile: false
+    }],
+    evidenceAssets: [{
+      id: evidenceId,
+      type: "text-inventory",
+      data: { fixture: "packed-compare" },
+      viewport: "desktop",
+      createdAt: "2026-08-08T00:00:00.000Z"
+    }],
+    findings: [{
+      id: findingId,
+      category: "content",
+      severity: "high",
+      confidence: "high",
+      viewport: "desktop",
+      selector,
+      evidenceRefs: [evidenceId],
+      problem: `Rendered copy in ${selector} exposes an unrendered Mustache variable.`,
+      recommendation: "Render the intended value before showing this copy.",
+      checkName: "placeholder-leak",
+      criterionId: "content.placeholder.unrendered",
+      sourceRefs: ["mustache-spec"],
+      determinism: "deterministic",
+      resultKind: "failure",
+      runtime: "static-dom"
+    }],
+    advisoryScore: {
+      formulaVersion: "epistemic-criterion-max-v2",
+      value: 80,
+      max: 100,
+      band: "usable",
+      deductions: [{
+        findingId,
+        findingIds: [findingId],
+        viewports: ["desktop"],
+        points: 20,
+        reason: "Maximum scoreable occurrence for criterion content.placeholder.unrendered across 1 occurrence; high content finding with high confidence; deterministic failure score weight 1"
+      }],
+      totalDeduction: 20,
+      saturated: false,
+      explanation: "Advisory score starts at 100 and subtracts the maximum scoreable finding once per criterion (or legacy check name), weighted by severity, confidence, and evidence tier. Needs-review findings are score-exempt and omitted, as are other zero-weight findings. This formula is not directly comparable with epistemic-weight-v1. It is not an objective design-quality grade."
+    },
+    timings: {
+      startedAt: "2026-08-08T00:00:00.000Z",
+      finishedAt: "2026-08-08T00:00:01.000Z",
+      durationMs: 1000
+    },
+    status: "success",
+    failedChecks: []
+  };
 }
 
 async function assertPositivePackedLoop(consumerDir, expectedPlaywrightVersion) {

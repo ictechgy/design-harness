@@ -24,6 +24,44 @@ Current artifact `schemaVersion`: `0.2`.
 
 `harnessVersion` follows the package version that produced the run.
 
+## Local Audit Observation Comparison
+
+The read-only local command is:
+
+```bash
+design-harness compare --before <audit.json> --after <audit.json>
+```
+
+It performs no browser launch, URL validation, configuration loading, network
+access, artifact write, telemetry, or score/gate update. A valid comparison
+exits `0` even when observations differ. Invalid, incomplete, truncated,
+incompatible, or malformed input exits `1`.
+
+Each input must be a regular file of at most 8,388,608 bytes. The CLI opens it
+read-only and non-blocking, adding the platform no-follow flag when available,
+then uses that one handle for a pre-read stat, sequential reads of at most 64
+KiB through EOF or limit+1, and a post-read stat. Exactly-at-limit input is
+accepted. Limit+1 is rejected, and size, modification-time, change-time, or
+stable-size byte-count drift is a read failure. The bounded bytes must decode
+as fatal UTF-8 and parse as JSON without repair before the existing audit-result
+schema and integrity checks run.
+
+Both audits must have `status: "success"`, an empty `failedChecks`, and no
+notice whose exact code is `finding-samples-truncated`. `schemaVersion`,
+`harnessVersion`, `target`, and the ordered `viewportPresets` must match. The
+command then considers only findings with `determinism: "deterministic"` and
+`resultKind: "failure"`. Every such finding must have a non-blank
+`criterionId`, `checkName`, `viewport`, and `selector`.
+
+The key is the exact tuple `[criterionId, checkName, viewport, selector]`.
+Multiplicity is preserved; finding ID, presentation copy, severity,
+confidence, evidence references, and region do not change the key. Deterministic
+Markdown reports summary counts plus `Same-key observations`, `Before-only
+observations`, and `After-only observations` in UTF-16 lexical key order.
+Configuration equivalence and causality are always stated as unverified. A
+shared key does not establish DOM identity, and a one-sided key does not
+establish why an observation differs.
+
 ## Bounded Loop Artifacts
 
 The bounded loop is published starting with v0.6.1. Its exact invocation shape is:

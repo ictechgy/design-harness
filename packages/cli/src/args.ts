@@ -23,6 +23,12 @@ export interface LoopCommandArgs {
   timeoutMs?: number;
 }
 
+export interface CompareCommandArgs {
+  command: "compare";
+  beforePath: string;
+  afterPath: string;
+}
+
 export interface GuideCompileCommandArgs {
   command: "guide";
   action: "compile";
@@ -40,7 +46,7 @@ export interface GuideCheckCommandArgs {
   maxTokens: number;
 }
 
-export type HelpScope = "audit" | "loop" | "guide" | "guide-compile" | "guide-check";
+export type HelpScope = "audit" | "loop" | "compare" | "guide" | "guide-compile" | "guide-check";
 
 export interface HelpCommandArgs {
   command: "help";
@@ -50,6 +56,7 @@ export interface HelpCommandArgs {
 export type ParsedArgs =
   | AuditCommandArgs
   | LoopCommandArgs
+  | CompareCommandArgs
   | GuideCompileCommandArgs
   | GuideCheckCommandArgs
   | HelpCommandArgs;
@@ -75,6 +82,7 @@ const LOOP_VALUE_OPTIONS = new Set([
   "copy",
   "kiwi-model-dir"
 ]);
+const COMPARE_VALUE_OPTIONS = new Set(["before", "after"]);
 const GUIDE_COMPILE_VALUE_OPTIONS = new Set(["guide", "copy", "target"]);
 const GUIDE_CHECK_VALUE_OPTIONS = new Set(["guide", "copy", "target", "max-tokens"]);
 const NO_BOOLEAN_OPTIONS = new Set<string>();
@@ -104,6 +112,13 @@ export function parseArgs(argv: string[]): ParsedArgs {
     return parseLoopArgs(rest);
   }
 
+  if (command === "compare") {
+    if (isOnlyHelp(rest)) {
+      return { command: "help", scope: "compare" };
+    }
+    return parseCompareArgs(rest);
+  }
+
   if (command === "guide") {
     return parseGuideArgs(rest);
   }
@@ -117,6 +132,8 @@ export function helpText(scope?: HelpScope): string {
       return auditHelpText();
     case "loop":
       return loopHelpText();
+    case "compare":
+      return compareHelpText();
     case "guide":
       return guideHelpText();
     case "guide-compile":
@@ -168,6 +185,15 @@ function parseLoopArgs(rest: string[]): LoopCommandArgs {
     copyStylePath: values.get("copy"),
     kiwiModelDir: values.get("kiwi-model-dir"),
     timeoutMs: timeout ? parseTimeout(timeout) : undefined
+  };
+}
+
+function parseCompareArgs(rest: string[]): CompareCommandArgs {
+  const { values } = parseOptions(rest, COMPARE_VALUE_OPTIONS, NO_BOOLEAN_OPTIONS);
+  return {
+    command: "compare",
+    beforePath: requireOption(values, "before", "<audit.json>"),
+    afterPath: requireOption(values, "after", "<audit.json>")
   };
 }
 
@@ -317,12 +343,14 @@ function rootHelpText(): string {
     "Usage:",
     "  design-harness audit --url <local-url> --out <directory> [--guide <design-guide.yaml>] [--copy <copy-style.yaml> --kiwi-model-dir <directory>] [--timeout-ms <ms>] [--allow-partial]",
     "  design-harness loop --url <local-url> --out <new-directory> --until deterministic-failures==0 --max-iters <1..10> --agent-cmd '<non-interactive command>' [options]",
+    "  design-harness compare --before <audit.json> --after <audit.json>",
     "  design-harness guide compile --guide <design-guide.yaml> --target <project-dir> [options]",
     "  design-harness guide check --guide <design-guide.yaml> --target <project-dir> [options]",
     "",
     "Commands:",
     "  audit          Capture desktop/mobile screenshots and write audit artifacts.",
     "  loop           Run bounded audit/agent passes until deterministic failures reach zero.",
+    "  compare        Report observation-only deterministic failure key differences between local audit files.",
     "  guide compile  Compile explicit guide inputs into marker-owned project artifacts.",
     "  guide check    Check guide drift and budget without writing files.",
     "",
@@ -334,6 +362,7 @@ function rootHelpText(): string {
     "  Plain audit partial artifacts exit 2 unless audit --allow-partial is set; loop never supports --allow-partial.",
     "  Loop --agent-cmd executes arbitrary code with the caller's permissions and inherited environment, which may expose credentials.",
     "  Loop provides no sandbox or network boundary for the agent command.",
+    "  Compare reads local files only, writes no artifacts, and leaves configuration equivalence and causality unverified.",
     "",
     "Run design-harness <command> --help for command-specific options."
   ].join("\n");
@@ -372,6 +401,21 @@ function auditHelpText(): string {
     "  --kiwi-model-dir requires locale ko or ko-KR and an exact locally prepared Kiwi v0.23.0 core profile; no model is downloaded.",
     "  Kiwi runs after Chromium closes. A macOS Node 22 probe reached about 792 MiB RSS after same-handle model verification and initialization; measure the target environment.",
     "  Partial audits write artifacts and exit 2 unless --allow-partial is set."
+  ].join("\n");
+}
+
+function compareHelpText(): string {
+  return [
+    "Design Harness compare",
+    "",
+    "Usage:",
+    "  design-harness compare --before <audit.json> --after <audit.json>",
+    "",
+    "Notes:",
+    "  Inputs are local audit files. Compare performs no browser, URL, configuration, or network work and writes no artifacts.",
+    "  Only complete compatible deterministic failure key observations are included.",
+    "  Valid comparisons exit 0 even when observations differ; invalid, incomplete, or incompatible inputs exit 1.",
+    "  Configuration equivalence and causality are unverified."
   ].join("\n");
 }
 

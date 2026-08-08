@@ -489,7 +489,11 @@ describe("findingsFromMeasurements", () => {
       },
       ["screenshot-desktop", "measurement-desktop"]
     );
-    expect(findings.some((finding) => finding.checkName === "blank-render")).toBe(true);
+    expect(findings.find((finding) => finding.checkName === "blank-render")).toMatchObject({
+      selector: "body",
+      determinism: "deterministic",
+      resultKind: "failure"
+    });
     expect(findings).toHaveLength(1);
   });
 

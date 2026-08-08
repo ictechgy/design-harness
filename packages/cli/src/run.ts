@@ -25,8 +25,14 @@ import {
   helpText,
   parseArgs,
   type AuditCommandArgs,
+  type CompareCommandArgs,
   type LoopCommandArgs
 } from "./args.js";
+import {
+  runAuditComparison,
+  type AuditCompareDependencies,
+  type AuditComparison
+} from "./audit-compare.js";
 import { loadCopyStyleFile, type LoadCopyStyleOptions } from "./copy-style.js";
 import { loadDesignGuideFile, type LoadDesignGuideOptions } from "./design-guide.js";
 import {
@@ -54,6 +60,10 @@ export interface RunCliDependencies {
   ) => Promise<MorphologyCopyAnalyzer>;
   runGuide?: (args: GuideCommandArgs, dependencies?: GuideRunDependencies) => Promise<GuideRunResult>;
   runLoop?: (input: LoopRunInput, dependencies?: LoopRunDependencies) => Promise<LoopRunResult>;
+  runCompare?: (
+    input: CompareCommandArgs,
+    dependencies?: AuditCompareDependencies
+  ) => Promise<AuditComparison>;
   writeArtifacts?: (input: WriteAuditArtifactsInput) => Promise<void>;
   assertUrl?: (url: string) => string;
   cwd?: () => string;
@@ -86,6 +96,17 @@ export async function runCli(argv: string[], dependencies: RunCliDependencies = 
       });
       renderGuideResult(result, stdout, stderr);
       return result.ok ? 0 : 1;
+    } catch (error) {
+      stderr(errorMessage(error));
+      return 1;
+    }
+  }
+
+  if (args.command === "compare") {
+    try {
+      const result = await (dependencies.runCompare ?? runAuditComparison)(args);
+      stdout(result.markdown);
+      return 0;
     } catch (error) {
       stderr(errorMessage(error));
       return 1;

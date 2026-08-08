@@ -94,6 +94,53 @@ describe("parseArgs", () => {
     });
   });
 
+  it("parses the exact compare contract", () => {
+    expect(parseArgs([
+      "compare",
+      "--before",
+      "runs/before/audit.json",
+      "--after",
+      "runs/after/audit.json"
+    ])).toEqual({
+      command: "compare",
+      beforePath: "runs/before/audit.json",
+      afterPath: "runs/after/audit.json"
+    });
+  });
+
+  it("rejects missing, duplicate, unknown, and positional compare arguments", () => {
+    expect(() => parseArgs(["compare", "--after", "after.json"]))
+      .toThrow("Missing required --before <audit.json>");
+    expect(() => parseArgs(["compare", "--before", "before.json"]))
+      .toThrow("Missing required --after <audit.json>");
+    expect(() => parseArgs([
+      "compare",
+      "--before",
+      "one.json",
+      "--before",
+      "two.json",
+      "--after",
+      "after.json"
+    ])).toThrow("Duplicate option: --before");
+    expect(() => parseArgs([
+      "compare",
+      "--before",
+      "before.json",
+      "--after",
+      "after.json",
+      "--url",
+      "http://localhost:3000"
+    ])).toThrow("Unknown option: --url");
+    expect(() => parseArgs([
+      "compare",
+      "--before",
+      "before.json",
+      "--after",
+      "after.json",
+      "stray"
+    ])).toThrow("Unexpected argument: stray");
+  });
+
   it("parses the exact loop contract and defaults the agent timeout", () => {
     expect(parseArgs(validLoopArgv)).toEqual({
       command: "loop",
@@ -430,6 +477,7 @@ describe("parseArgs", () => {
   it("returns scoped help commands", () => {
     expect(parseArgs(["audit", "--help"])).toEqual({ command: "help", scope: "audit" });
     expect(parseArgs(["loop", "--help"])).toEqual({ command: "help", scope: "loop" });
+    expect(parseArgs(["compare", "--help"])).toEqual({ command: "help", scope: "compare" });
     expect(parseArgs(["guide"])).toEqual({ command: "help", scope: "guide" });
     expect(parseArgs(["guide", "--help"])).toEqual({ command: "help", scope: "guide" });
     expect(parseArgs(["guide", "compile", "--help"])).toEqual({ command: "help", scope: "guide-compile" });
@@ -475,6 +523,16 @@ describe("helpText", () => {
     expect(helpText("audit")).toContain("no auto-discovery");
     expect(helpText("audit")).toContain("no model is downloaded");
     expect(helpText("audit")).toContain("792 MiB");
+  });
+
+  it("renders compare help with local read-only inputs and exit semantics", () => {
+    const text = helpText("compare");
+    expect(text).toContain("compare --before <audit.json> --after <audit.json>");
+    expect(text).toContain("Inputs are local audit files");
+    expect(text).toContain("writes no artifacts");
+    expect(text).toContain("Valid comparisons exit 0");
+    expect(text).toContain("incompatible inputs exit 1");
+    expect(text).toContain("Configuration equivalence and causality are unverified");
   });
 });
 
