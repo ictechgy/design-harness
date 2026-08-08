@@ -188,6 +188,7 @@ export function findingsFromMeasurements(
       category: "layout",
       severity: "critical",
       viewport: measurements.viewport,
+      selector: "body",
       evidenceRefs,
       problem: "The page appears to have rendered with no meaningful visible content.",
       recommendation: "Check client-side errors, loading states, and root layout rendering before evaluating visual quality.",

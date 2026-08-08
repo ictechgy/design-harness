@@ -227,8 +227,8 @@ async function assertPackedCompare(consumerDir) {
   const beforePath = join(consumerDir, "compare-before.json");
   const afterPath = join(consumerDir, "compare-after.json");
   const malformedPath = join(consumerDir, "compare-malformed.json");
-  const before = packedCompareAudit("packed-before");
-  const after = packedCompareAudit("packed-after");
+  const before = packedCompareAudit("packed-before", "#before-copy");
+  const after = packedCompareAudit("packed-after", "#after-copy");
   await Promise.all([
     writeFile(beforePath, `${JSON.stringify(before)}\n`),
     writeFile(afterPath, `${JSON.stringify(after)}\n`),
@@ -250,6 +250,12 @@ async function assertPackedCompare(consumerDir) {
     || !valid.stdout.includes("## Same-key observations")
     || !valid.stdout.includes("## Before-only observations")
     || !valid.stdout.includes("## After-only observations")
+    || !valid.stdout.includes(
+      '- count=1; key=["content.placeholder.unrendered","placeholder-leak","desktop","#before-copy"]'
+    )
+    || !valid.stdout.includes(
+      '- count=1; key=["content.placeholder.unrendered","placeholder-leak","desktop","#after-copy"]'
+    )
     || !valid.stdout.includes("Configuration equivalence and causality are unverified")
   ) {
     throw new Error(
@@ -280,7 +286,9 @@ async function assertPackedCompare(consumerDir) {
   }
 }
 
-function packedCompareAudit(runId) {
+function packedCompareAudit(runId, selector) {
+  const evidenceId = `${runId}-text-inventory`;
+  const findingId = `${runId}-placeholder-leak`;
   return {
     schemaVersion: "0.2",
     harnessVersion: packedHarnessVersion,
@@ -297,15 +305,43 @@ function packedCompareAudit(runId) {
       deviceScaleFactor: 1,
       isMobile: false
     }],
-    evidenceAssets: [],
-    findings: [],
+    evidenceAssets: [{
+      id: evidenceId,
+      type: "text-inventory",
+      data: { fixture: "packed-compare" },
+      viewport: "desktop",
+      createdAt: "2026-08-08T00:00:00.000Z"
+    }],
+    findings: [{
+      id: findingId,
+      category: "content",
+      severity: "high",
+      confidence: "high",
+      viewport: "desktop",
+      selector,
+      evidenceRefs: [evidenceId],
+      problem: `Rendered copy in ${selector} exposes an unrendered Mustache variable.`,
+      recommendation: "Render the intended value before showing this copy.",
+      checkName: "placeholder-leak",
+      criterionId: "content.placeholder.unrendered",
+      sourceRefs: ["mustache-spec"],
+      determinism: "deterministic",
+      resultKind: "failure",
+      runtime: "static-dom"
+    }],
     advisoryScore: {
       formulaVersion: "epistemic-criterion-max-v2",
-      value: 100,
+      value: 80,
       max: 100,
-      band: "strong",
-      deductions: [],
-      totalDeduction: 0,
+      band: "usable",
+      deductions: [{
+        findingId,
+        findingIds: [findingId],
+        viewports: ["desktop"],
+        points: 20,
+        reason: "Maximum scoreable occurrence for criterion content.placeholder.unrendered across 1 occurrence; high content finding with high confidence; deterministic failure score weight 1"
+      }],
+      totalDeduction: 20,
       saturated: false,
       explanation: "Advisory score starts at 100 and subtracts the maximum scoreable finding once per criterion (or legacy check name), weighted by severity, confidence, and evidence tier. Needs-review findings are score-exempt and omitted, as are other zero-weight findings. This formula is not directly comparable with epistemic-weight-v1. It is not an objective design-quality grade."
     },
